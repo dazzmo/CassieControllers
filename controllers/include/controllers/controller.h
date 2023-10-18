@@ -6,13 +6,21 @@
 #include <eigen3/Eigen/Core>
 #include <iostream>
 
+enum class TorquePreScale {
+    RAMP_UP,
+    RAMP_DOWN,
+    UNITY
+};
+
+enum class ControllerStatus : int {
+    SUCCESS,
+    FAILURE
+};
 
 class Controller {
    public:
-    Controller() = default;
+    Controller();
     ~Controller() = default;
-
-    Controller(int nq, int nv, int nu);
 
     const int& nq() const { return nq_; }
     const int& nv() const { return nv_; }
@@ -42,12 +50,21 @@ class Controller {
     Eigen::VectorXd& ctrl_max() { return u_max_; }
     const Eigen::VectorXd& ctrl_max() const { return u_max_; }
 
+    void SetCurrentTime(double t) { t_ = t; }
+    const double& CurrentTime() const { return t_; }
+
+    void Resize(int nq, int nv, int nu);
+
+
     void SetControlFrequency(double freq) { freq_ = freq; }
 
     void UpdateState(const Eigen::VectorXd& qpos, const Eigen::VectorXd& qvel) {
         qpos_ = qpos;
         qvel_ = qvel;
     }
+
+    ControllerStatus Init(int nq, int nv, int nu);
+    void Update(double t);
 
    protected:
     // Size of configuration vector
@@ -57,8 +74,14 @@ class Controller {
     // Number of control inputs
     int nu_;
 
+    // Time from controller start
+    double t_;
+
     // Control freqency (Hz)
     double freq_;
+
+    // First solve
+    bool first_solve_ = true;
 
     Eigen::VectorXd u_;
     Eigen::VectorXd qpos_;
@@ -68,9 +91,31 @@ class Controller {
     Eigen::VectorXd qpos_bl_;
     Eigen::VectorXd qpos_bu_;
     Eigen::VectorXd qvel_max_;
+    Eigen::VectorXd qacc_max_;
     Eigen::VectorXd u_max_;
 
+    void StartTorqueRampUp(double tau);
+    void StartTorqueRampDown(double tau);
+
+    double ApplyTorquePreScale(void);
+
+    virtual void SetupController() {}
+
+    virtual int UpdateControl() {
+        throw std::runtime_error("UpdateControl has not been implemented!");
+        return 1;
+    }
+
+    virtual void UpdateDynamics() {}
+   
    private:
+    double ramp_tau_ = 1.0;
+    double t_ramp_start_ = 0.0;
+
+    TorquePreScale u_prescale_type_;
+
+    double RampUp(void) { return 1.0 - exp(-ramp_tau_ * (t_ - t_ramp_start_)); }
+    double RampDown(void) { return exp(-ramp_tau_ * (t_ - t_ramp_start_)); }
 };
 
 #endif /* INCLUDE_CONTROLLERS_CONTROLLER_HPP */

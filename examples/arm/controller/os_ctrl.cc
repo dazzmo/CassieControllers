@@ -1,8 +1,7 @@
 #include "os_ctrl_leg.h"
 
-void CassieLegOSController::SetupController() {
+int CassieLegOSController::InitMatrices() {
     LOG(INFO) << "InitMatrices";
-
     M_ = Eigen::MatrixXd::Zero(nv_, nv_);
     Minv_ = Eigen::MatrixXd::Zero(nv_, nv_);
     J_ = Eigen::MatrixXd::Zero(1, nv_);
@@ -13,28 +12,13 @@ void CassieLegOSController::SetupController() {
 
     h_ = Eigen::VectorXd::Zero(nv_);
     h_spring_ = Eigen::VectorXd::Zero(nv_);
-
-    qpos_bl() << -0.3927, -0.3927, -0.8727, -2.8623, -0.3, 0.75, -0.3, -2.4435;
-    qpos_bu() << 0.3927, 0.3927, 1.3963, -0.95, 0.3, 3.0, 0.3, -0.5236;
-    ctrl_max() << 4.5, 4.5, 12.2, 12.2, 0.9;
-    
-    SetupEndEffectors();
-    SetupOSC();
-
-    // Ramp up torque initially
-    StartTorqueRampUp(1e-1);
-}
-
-int CassieLegOSController::UpdateControl() {
-    RunOSC();
     return 0;
 }
 
-
 int CassieLegOSController::SetupEndEffectors() {
     LOG(INFO) << "SetupEndEffectors";
-    RegisterEndEffector("ankle", cassie_ankle);
-    // RegisterEndEffector("foot_front", cassie_foot_front);
+    // RegisterEndEffector("ankle", cassie_ankle);
+    RegisterEndEffector("foot_front", cassie_foot_front);
     // RegisterEndEffector("foot_back", cassie_foot_back);
     return 0;
 }
@@ -59,6 +43,8 @@ void CassieLegOSController::UpdateDynamics() {
 
     JMJT_ = J_ * M_.inverse() * J_.transpose();
 
+    // LOG(INFO) << "qpos: " << qpos().transpose();
+    // LOG(INFO) << "qvel: " << qvel().transpose();
     // LOG(INFO) << "M: " << M_;
     // LOG(INFO) << "h: " << h_;
     // LOG(INFO) << "h_spring: " << h_spring_;
@@ -77,6 +63,8 @@ void CassieLegOSController::UpdateDynamics() {
         DynamicsLambdaJacobian().middleCols(3 * ee.second->GetId(), 3) = -N_ * ee.second->J().transpose();
     }
     DynamicsConstraintVector() = N_ * (h_spring_ - h_) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * dJdq_;
+
+    first_solve_ = false;
 }
 
 int CassieLegOSController::HeelSpringDeflection() {

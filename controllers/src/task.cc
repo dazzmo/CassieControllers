@@ -4,6 +4,7 @@ Task::Task(int dim, int nv, f_casadi_cg callback) {
     dim_ = dim;
     nv_ = nv;
     callback_ = callback;
+    task_weight.setConstant(1.0);
 
     Resize(dim_, nv_);
 }
@@ -48,12 +49,20 @@ int Task::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, b
     if (update_jacobians) {
         out[1] = J_.data();
         out[2] = dJdv_.data();
+        callback_(in, out, NULL, NULL, 0);
+        // Compute task velocity
+        dx_ = J_ * qvel;
+
+        LOG(INFO) << "J: " << J_;
+        LOG(INFO) << "dJdv: " << dJdv_.transpose();
+        LOG(INFO) << "x: " << x_.transpose();
+        LOG(INFO) << "dx: " << dx_.transpose();
+
     } else {
         out[1] = nullptr;
         out[2] = nullptr;
+        callback_(in, out, NULL, NULL, 0);
     }
-
-    callback_(in, out, NULL, NULL, 0);
 
     return 0;
 }

@@ -6,28 +6,30 @@
 #include <glog/logging.h>
 
 #include "controllers/os_ctrl.h"
-#include "eigen3/Eigen/Cholesky"
 #include "eigen3/Eigen/Dense"
+#include "eigen3/Eigen/Cholesky"
 #include "model/cg/leg/cassie_actuation.h"
-#include "model/cg/leg/cassie_ankle.h"
 #include "model/cg/leg/cassie_bias_vector.h"
 #include "model/cg/leg/cassie_foot_back.h"
 #include "model/cg/leg/cassie_foot_front.h"
+#include "model/cg/leg/cassie_ankle.h"
 #include "model/cg/leg/cassie_heel_spring_constraint.h"
 #include "model/cg/leg/cassie_mass_matrix.h"
 #include "model/cg/leg/cassie_spring_forces.h"
 
 class CassieLegOSController : public OperationalSpaceController {
    public:
-    CassieLegOSController() : OperationalSpaceController() {
+    CassieLegOSController() : OperationalSpaceController(8, 8, 5) {
+        LOG(INFO) << "CassieLegOSControlle::CassieLegOSController()";
+        ctrl_max() << 4.5, 4.5, 12.2, 12.2, 0.9;
+        SetupEndEffectors();
+        InitMatrices();
+        InitProgram();
     }
     ~CassieLegOSController() = default;
 
     int SetupEndEffectors();
     void UpdateDynamics();
-
-    void SetupController();
-    int UpdateControl();
 
     int HeelSpringDeflection();
 

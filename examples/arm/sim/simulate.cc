@@ -125,12 +125,7 @@ int main(int argc, const char** argv) {
     // make data
     d = mj_makeData(m);
     // make controller
-    const double freq = 1e3;
     CassieLegOSController* c = new CassieLegOSController();
-    if(c->Init(8, 8, 5) != ControllerStatus::SUCCESS) {
-        mju_error("Could not initialise controller");
-    }
-    c->SetControlFrequency(freq);
 
     // Set default position
     mju_copy(d->qpos, m->key_qpos, m->nq);
@@ -161,28 +156,25 @@ int main(int argc, const char** argv) {
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
 
-    // Reference pose (or later on, trajectory)
-    Eigen::Vector3d r(0.1, 0.2, -0.8);
     // run main loop, target real-time simulation and 60 fps rendering
-    mjtNum t_ctrl = d->time;
     while (!glfwWindowShouldClose(window)) {
         // advance interactive simulation for 1/60 sec
         //  Assuming MuJoCo can simulate faster than real-time, which it usually can,
         //  this loop will finish on time for the next frame to be rendered at 60 fps.
         //  Otherwise add a cpu timer and exit this loop when it is time to render.
         mjtNum simstart = d->time;
+        mjtNum ctrlstart = d->time;
         while (d->time - simstart < 1.0 / 60.0) {
-            
-            // Apply control at desired frequency
-            if (d->time - t_ctrl > 1.0 / freq) {
+            // Apply control
+            ctrlstart = d->time;
+            while (d->time - ctrlstart < 1.0 / 500.0) {
+                Eigen::Vector3d r(-0.1, 0.2, -0.7);
+                c->GetEndEffectorTaskMap()["foot_front"]->SetReference(r);
                 c->MapMujocoState(d->qpos, d->qvel);
-                c->GetEndEffectorTaskMap()["ankle"]->SetReference(r);
-                c->Update(d->time);
-                t_ctrl = d->time;
+                c->ComputeControl();
+                mju_copy(d->ctrl, c->ctrl().data(), c->nu());  // Perform control law
+                mj_step(m, d);
             }
-            
-            mju_copy(d->ctrl, c->ctrl().data(), c->nu());
-            mj_step(m, d);
         }
 
         // get framebuffer viewport

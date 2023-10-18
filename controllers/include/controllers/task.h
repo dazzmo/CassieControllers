@@ -1,6 +1,8 @@
 #ifndef INCLUDE_CONTROLLERS_TASK_HPP
 #define INCLUDE_CONTROLLERS_TASK_HPP
 
+#include <glog/logging.h>
+
 #include <eigen3/Eigen/Core>
 
 #include "casadi_interface.h"
@@ -65,7 +67,7 @@ class Task {
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr, const Eigen::VectorXd &ddr);
 
-    int UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true);
+    virtual int UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true);
 
    protected:
     int dim_;

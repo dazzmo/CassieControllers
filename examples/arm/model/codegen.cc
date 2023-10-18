@@ -177,6 +177,7 @@ int main(int argc, char* argv[]) {
     
     for (BodySite& site : contact_locations) {
         J.setZero();
+        dJdt.setZero();
         pinocchio::getFrameJacobian(ad_model, ad_data, ad_model.getFrameId(site.name), pinocchio::LOCAL_WORLD_ALIGNED, J);
         pinocchio::MotionTpl<ADScalar> a = pinocchio::getFrameAcceleration(ad_model, ad_data, ad_model.getFrameId(site.name), pinocchio::LOCAL_WORLD_ALIGNED);
         // Create function
