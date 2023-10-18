@@ -5,9 +5,9 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(mujoco REQUIRED)
-find_package(pinocchio REQUIRED)
-find_package(casadi REQUIRED)
 find_package(Eigen3 3.3 REQUIRED)
+find_package(pinocchio)
+find_package(casadi)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
