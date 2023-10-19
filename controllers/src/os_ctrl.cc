@@ -36,9 +36,9 @@ int OperationalSpaceController::RemoveContact(const char* name) {
     return 0;
 }
 
-int OperationalSpaceController::AddQposReference(const Eigen::VectorXd& qpos) {
-    return 0;
-}
+// int OperationalSpaceController::AddQposReference(const Eigen::VectorXd& qpos) {
+//     return 0;
+// }
 
 /**
  * @brief Sets up the Operational Space Controller (OSC) program by initialising the

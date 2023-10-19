@@ -1,4 +1,4 @@
-#include "controllers/task.h"
+#include "controllers/tasks/task.h"
 
 Task::Task(int dim, int nv, f_casadi_cg callback) {
     dim_ = dim;

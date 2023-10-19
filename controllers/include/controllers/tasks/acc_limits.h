@@ -1,6 +1,17 @@
 #ifndef INCLUDE_CONTROLLERS_ACC_LIMITS_HPP
 #define INCLUDE_CONTROLLERS_ACC_LIMITS_HPP
 
+/**
+ * @file acc_limits.h
+ * @author dazzmo
+ * @brief These task-based position and velocity limits are based on viability analysis, with our implementation
+ * following the method in "Joint Position and Velocity Bounds in Discrete-Time Acceleration/Torque Control of
+ * Robot Manipulators" by Andrea del Prete (https://ieeexplore.ieee.org/document/8007337).
+ * @version 0.1
+ * @date 18-10-2023
+ *
+ */
+
 #include <iostream>
 
 #include "eigen3/Eigen/Core"

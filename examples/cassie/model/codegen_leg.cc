@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     typedef ADModel::TangentVectorType TangentVectorAD;
 
     Model model;
-    pinocchio::urdf::buildModel(argv[1], model, true);
+    pinocchio::urdf::buildModel("cassie_leg.urdf", model, true);
 
     ConfigVector q(model.nq);
     TangentVector v(model.nv);
@@ -195,7 +195,7 @@ int main(int argc, char* argv[]) {
     for (casadi::Function& fun : functions) {
         casadi::CodeGenerator cg(fun.name(), opts);
         cg.add(fun);
-        cg.generate(argv[2]);
+        cg.generate(argv[1]);
     }
 
     return 0;

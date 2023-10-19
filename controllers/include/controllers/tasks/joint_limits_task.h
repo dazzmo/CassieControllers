@@ -1,7 +1,16 @@
 #ifndef INCLUDE_CONTROLLERS_JOINT_LIMITS_TASK_HPP
 #define INCLUDE_CONTROLLERS_JOINT_LIMITS_TASK_HPP
+/**
+ * @file joint_limits_task.h
+ * @author dazzmo
+ * @brief Task created to avoid joint limits, with soft buffers to encourage accelerations which stray joints from the
+ * hard limits rather than acting only when the joints are almost at their limits
+ * @version 0.1
+ * @date 18-10-2023
+ * 
+ */
 
-#include "controllers/task.h"
+#include "controllers/tasks/task.h"
 
 class JointLimitsTask : public Task {
    public:

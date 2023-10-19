@@ -5,7 +5,7 @@
 
 #include <eigen3/Eigen/Core>
 
-#include "casadi_interface.h"
+#include "controllers/tasks/casadi_interface.h"
 
 class Task {
    public:

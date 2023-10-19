@@ -1,4 +1,4 @@
-#include "controllers/joint_limits_task.h"
+#include "controllers/tasks/joint_limits_task.h"
 
 JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv, nullptr) {
     qpos_l_ = Eigen::VectorXd::Zero(nq);
@@ -28,11 +28,12 @@ double JointLimitsTask::TransitionFunction(double q, double ql, double qu) {
     return zeta;
 }
 
-int JointLimitsTask::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true) {
+int JointLimitsTask::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians) {
     // Joint Limit and Velocity
     for (int i = 0; i < nq_; i++) {
         zeta_[i] = TransitionFunction(qpos[i], qpos_l_[i], qpos_u_[i]);
     }
+    // Task for keeping from boundaries
     x_.bottomRows(nq_) = Kp * (qpos - qpos_l_) - Kd * qvel;
     x_.topRows(nq_) = Kp * (qpos_u_ - qpos) - Kd * qvel;
 

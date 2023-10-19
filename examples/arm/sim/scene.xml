@@ -1,6 +1,6 @@
 <mujoco model="arm scene">
 
-  <include file="arm.urdf"/>
+  <include file="../model/urdf/arm.urdf"/>
 
   <statistic center="0 0 0.55" extent="1.1"/>
 

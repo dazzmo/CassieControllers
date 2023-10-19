@@ -8,9 +8,9 @@
 #include <utility>
 
 #include "controllers/controller.h"
-#include "controllers/task.h"
-#include "controllers/ee_task.h"
-#include "controllers/acc_limits.h"
+#include "controllers/tasks/task.h"
+#include "controllers/tasks/ee_task.h"
+#include "controllers/tasks/acc_limits.h"
 
 class OperationalSpaceController : public Controller {
    public:
@@ -24,10 +24,6 @@ class OperationalSpaceController : public Controller {
 
     int SetContact(const char* name, double mu, const Eigen::Vector3d& normal);
     int RemoveContact(const char* name);
-
-    int AddQposReference(const Eigen::VectorXd &qpos);
-    // int AddQvelReference(const Eigen::VectorXd &qvel);
-
 
     int SetupOSC();
     const Eigen::VectorXd& RunOSC();
@@ -49,13 +45,19 @@ class OperationalSpaceController : public Controller {
     // Solution vector
     Eigen::VectorXd x_;
 
-    Eigen::Matrix<double, -1, -1, Eigen::RowMajor> W_;
+    // QP Hessian matrix
     Eigen::Matrix<double, -1, -1, Eigen::RowMajor> H_;
+    // QP gradient vector
     Eigen::Matrix<double, -1, -1, Eigen::RowMajor> g_;
+    // QP constraint jacobian
     Eigen::Matrix<double, -1, -1, Eigen::RowMajor> A_;
+    // QP constraint lower bound
     Eigen::VectorXd lbA_;
+    // QP constraint upper bound
     Eigen::VectorXd ubA_;
+    // QP variables lower bound
     Eigen::VectorXd lbx_;
+    // QP variables upper bound
     Eigen::VectorXd ubx_;
 
     Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> DynamicsQaccJacobian() { return A_.topRows(nv_).middleCols(0, nv_); }

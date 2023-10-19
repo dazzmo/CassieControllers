@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(cassie_simulator)
+project(arm_simulator)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -16,34 +16,39 @@ file(GLOB_RECURSE CTRL_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/controller/*.cc
 )
 
-file(GLOB_RECURSE CASSIE_CG_SRC
+file(GLOB_RECURSE ARM_CG_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/model/cg/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/model/cg/*.c
 )
 
-add_library(cassie_control SHARED ${CTRL_SRC} ${CASSIE_CG_SRC})
-target_link_libraries(cassie_control controllers)
-target_include_directories(cassie_control PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/")
-set_target_properties(cassie_control PROPERTIES LINKER_LANGUAGE CXX)
+add_library(arm_control SHARED ${CTRL_SRC} ${ARM_CG_SRC})
+target_link_libraries(arm_control controllers)
+target_include_directories(arm_control PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/")
+set_target_properties(arm_control PROPERTIES LINKER_LANGUAGE CXX)
 
-add_executable(cassie_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
-target_link_libraries(cassie_codegen PUBLIC 
+add_executable(arm_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
+target_link_libraries(arm_codegen PUBLIC 
 ${pinocchio_LIBRARIES}
 casadi
 Eigen3::Eigen
 )
-target_include_directories(cassie_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
+target_include_directories(arm_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
 
-add_executable(cassie_codegen_leg ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen_leg.cc)
-target_link_libraries(cassie_codegen_leg PUBLIC 
+add_executable(arm_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
+target_link_libraries(arm_codegen PUBLIC 
 ${pinocchio_LIBRARIES}
 casadi
 Eigen3::Eigen
 )
-target_include_directories(cassie_codegen_leg PUBLIC ${pinocchio_INCLUDE_DIRS})
+target_include_directories(arm_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
 
-add_executable(cassie_heel_spring_test test/heel_spring_test.cc)
-target_link_libraries(cassie_heel_spring_test PUBLIC Eigen3::Eigen cassie_control)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/arm.urdf 
+${CMAKE_CURRENT_BINARY_DIR}/arm.urdf
+COPYONLY)
 
-add_executable(cassie_simulator sim/simulate.cc)
-target_link_libraries(cassie_simulator PUBLIC mujoco::mujoco glfw Eigen3::Eigen cassie_control)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/sim/scene.xml
+${CMAKE_CURRENT_BINARY_DIR}/scene.xml
+COPYONLY)
+
+add_executable(arm_simulator sim/simulate.cc)
+target_link_libraries(arm_simulator PUBLIC mujoco::mujoco glfw Eigen3::Eigen arm_control)

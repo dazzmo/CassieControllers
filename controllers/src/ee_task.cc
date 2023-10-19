@@ -1,4 +1,4 @@
-#include "controllers/ee_task.h"
+#include "controllers/tasks/ee_task.h"
 
 EndEffectorTask::EndEffectorTask(int nv, f_casadi_cg callback) : Task(3, nv, callback) {
     inContact = false;

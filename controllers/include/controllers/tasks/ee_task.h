@@ -1,7 +1,7 @@
 #ifndef INCLUDE_CONTROLLERS_EE_TASK_HPP
 #define INCLUDE_CONTROLLERS_EE_TASK_HPP
 
-#include "controllers/task.h"
+#include "controllers/tasks/task.h"
 
 class EndEffectorTask : public Task {
    public:
