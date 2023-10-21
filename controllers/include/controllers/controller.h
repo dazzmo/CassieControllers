@@ -100,7 +100,7 @@ class Controller {
     double ApplyTorquePreScale(void);
 
     virtual void SetupController() {}
-
+    
     virtual int UpdateControl() {
         throw std::runtime_error("UpdateControl has not been implemented!");
         return 1;

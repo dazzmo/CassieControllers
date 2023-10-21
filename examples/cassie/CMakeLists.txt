@@ -45,10 +45,15 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_leg.urdf
 ${CMAKE_CURRENT_BINARY_DIR}/cassie_leg.urdf
 COPYONLY)
 
-add_executable(cassie_heel_spring_test test/heel_spring_test.cc)
-target_link_libraries(cassie_heel_spring_test PUBLIC Eigen3::Eigen cassie_control)
 
 add_executable(cassie_simulator sim/simulate.cc)
 target_link_libraries(cassie_simulator PUBLIC mujoco_simulator Eigen3::Eigen cassie_control)
 
 file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sim/agility_cassie" "${CMAKE_CURRENT_BINARY_DIR}/agility_cassie" SYMBOLIC)
+
+# Testing
+add_executable(cassie_ik_test test/ik.cc)
+target_link_libraries(cassie_ik_test PUBLIC Eigen3::Eigen cassie_control)
+
+add_executable(cassie_heel_spring_test test/heel_spring_test.cc)
+target_link_libraries(cassie_heel_spring_test PUBLIC Eigen3::Eigen cassie_control)

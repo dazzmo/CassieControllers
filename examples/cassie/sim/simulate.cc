@@ -17,7 +17,7 @@ int main(int argc, const char** argv) {
 
     // make controller
     const double freq = 1e3;
-    CassieLegOSController* c = new CassieLegOSController();
+    CassieLegOSC* c = new CassieLegOSC();
     if(c->Init(8, 8, 5) != ControllerStatus::SUCCESS) {
         mju_error("Could not initialise controller");
     }

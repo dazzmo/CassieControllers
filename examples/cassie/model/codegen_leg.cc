@@ -97,7 +97,6 @@ int main(int argc, char* argv[]) {
         v_ad[k] = cs_v(k);
     }
 
-
     pinocchio::framesForwardKinematics(ad_model, ad_data, q_ad);
 
     // If using stiff model
@@ -117,6 +116,7 @@ int main(int argc, char* argv[]) {
     casadi::SX cl = dl.squaredNorm() - length * length;
     // Get jacobian of constraint and time derivative
     casadi::SX Jcl = jacobian(cl, cs_q);
+    casadi::SX Hcl = hessian(cl, cs_q);
     casadi::SX dJcldt = jacobian(mtimes(Jcl, cs_v), cs_q);
 
     // Estimation for heel spring deflection
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
     casadi::SX g_cl_hs = jacobian(cl, q_hs);
 
     // Compute mass matrix and bias forces
-    Eigen::Matrix<ADScalar, -1, -1>  M(model.nv, model.nv);
+    Eigen::Matrix<ADScalar, -1, -1> M(model.nv, model.nv);
     TangentVectorAD h(model.nv);
     M = pinocchio::crba(ad_model, ad_data, q_ad);
     M.triangularView<Eigen::StrictlyLower>() = M.transpose().triangularView<Eigen::StrictlyLower>();
@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
         casadi::Function(model.name + "_mass_matrix", casadi::SXVector{cs_q}, casadi::SXVector{densify(cs_M)}),
         casadi::Function(model.name + "_bias_vector", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(cs_h)}),
         casadi::Function(model.name + "_spring_forces", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(spring_forces)}),
-        casadi::Function(model.name + "_heel_spring_constraint", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(cl), densify(Jcl), densify(mtimes(dJcldt, cs_v))}),
+        casadi::Function(model.name + "_heel_spring_constraint", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(cl), densify(Jcl), densify(mtimes(dJcldt, cs_v)), densify(Hcl)}),
         casadi::Function(model.name + "_actuation", casadi::SXVector{cs_q}, casadi::SXVector{densify(B)})};
 
     // Also compute end-effector positions and jacobians
@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
     pinocchio::forwardKinematics(ad_model, ad_data, q_ad, v_ad, TangentVectorAD::Zero(model.nv));
     pinocchio::updateFramePlacements(ad_model, ad_data);
     pinocchio::computeJointJacobians(ad_model, ad_data, q_ad);
-    
+
     for (BodySite& site : contact_locations) {
         J.setZero();
         pinocchio::getFrameJacobian(ad_model, ad_data, ad_model.getFrameId(site.name), pinocchio::LOCAL_WORLD_ALIGNED, J);

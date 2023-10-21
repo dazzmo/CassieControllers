@@ -8,9 +8,9 @@
 #include <utility>
 
 #include "controllers/controller.h"
-#include "controllers/tasks/task.h"
-#include "controllers/tasks/ee_task.h"
 #include "controllers/tasks/acc_limits.h"
+#include "controllers/tasks/ee_task.h"
+#include "controllers/tasks/task.h"
 
 class OperationalSpaceController : public Controller {
    public:
@@ -60,9 +60,30 @@ class OperationalSpaceController : public Controller {
     // QP variables upper bound
     Eigen::VectorXd ubx_;
 
+    /**
+     * @brief Jacobian for the dynamics of the system with respect to qacc, a sub-matrix in the
+     * constraint jacobian for the QP.
+     *
+     * @return Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
+     */
     Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> DynamicsQaccJacobian() { return A_.topRows(nv_).middleCols(0, nv_); }
+    
+    /**
+     * @brief Jacobian for the dynamics of the system with respect to lambda, a sub-matrix in the
+     * constraint jacobian for the QP.
+     *
+     * @return Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
+     */
     Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> DynamicsLambdaJacobian() { return A_.topRows(nv_).middleCols(nv_, 3 * nc_); }
+    
+    /**
+     * @brief Jacobian for the dynamics of the system with respect to u, a sub-matrix in the
+     * constraint jacobian for the QP.
+     *
+     * @return Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
+     */
     Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> DynamicsCtrlJacobian() { return A_.topRows(nv_).middleCols(nv_ + 3 * nc_, nu_); }
+    
     Eigen::Ref<Eigen::VectorXd> DynamicsConstraintVector() { return dyn_b_; }
 
    private:
