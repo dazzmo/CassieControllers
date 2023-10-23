@@ -36,7 +36,7 @@ int cassie_heel_spring_constraint_work(casadi_int *sz_arg, casadi_int* sz_res, c
 #define cassie_heel_spring_constraint_SZ_ARG 2
 #define cassie_heel_spring_constraint_SZ_RES 4
 #define cassie_heel_spring_constraint_SZ_IW 0
-#define cassie_heel_spring_constraint_SZ_W 329
+#define cassie_heel_spring_constraint_SZ_W 258
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

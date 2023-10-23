@@ -1,4 +1,4 @@
-#include "os_ctrl_leg.h"
+#include "osc_leg.h"
 
 int CassieLegOSController::InitMatrices() {
     LOG(INFO) << "InitMatrices";

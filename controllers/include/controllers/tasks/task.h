@@ -9,10 +9,9 @@
 
 class Task {
    public:
+    Task(int dim, int nv);
     Task(int dim, int nv, f_casadi_cg callback);
     ~Task() = default;
-
-    Eigen::VectorXd task_weight;
 
     /**
      * @brief Dimension of the task
@@ -61,16 +60,49 @@ class Task {
      * @brief Task jacobian time derivative with velocity (ndim x 1)
      *
      */
-    const Eigen::VectorXd &dJdv() const { return dJdv_; }
+    const Eigen::VectorXd &dJdq() const { return dJdq_; }
+
+    /**
+     * @brief Task weighting
+     *
+     */
+    const Eigen::VectorXd &weight() const { return w_; }
 
     void SetReference(const Eigen::VectorXd &r);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr, const Eigen::VectorXd &ddr);
 
+    void SetProportionalErrorGain(const Eigen::VectorXd &Kp) { Kp_ = Kp; }
+    void SetDerivativeErrorGain(const Eigen::VectorXd &Kd) { Kd_ = Kd; }
+
+    void SetTaskWeighting(const Eigen::VectorXd &w) { w_ = w; }
+
+    /**
+     * @brief Returns the error in the task (i.e. x - r)
+     *
+     * @return const Eigen::VectorXd&
+     */
+    const Eigen::VectorXd TaskError() { return x_ - r_; }
+
+    /**
+     * @brief Returns the derivative error in the task (i.e. dx - dr)
+     *
+     * @return const Eigen::VectorXd&
+     */
+    const Eigen::VectorXd TaskErrorDerivative() { return dx_ - dr_; }
+
+    /**
+     * @brief Returns the PD error of the task, using the gains provided (i.e. e = Kp (x - r) + Kd (dx - dr))
+     *
+     * @return const Eigen::VectorXd&
+     */
+    const Eigen::VectorXd TaskErrorPD() { return (Kp_.asDiagonal() * TaskError() + Kd_.asDiagonal() * TaskErrorDerivative()); };
+
     virtual int UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true);
 
    protected:
     int dim_;
+    int nq_;
     int nv_;
 
     Eigen::VectorXd x_;    // Task
@@ -82,13 +114,17 @@ class Task {
     Eigen::VectorXd ddr_;  // Reference task acceleration
 
     Eigen::MatrixXd J_;     // Task jacobian
-    Eigen::VectorXd dJdv_;  // Task jacobian time derivative with velocity
+    Eigen::VectorXd dJdq_;  // Task jacobian time derivative with velocity
+
+    Eigen::VectorXd w_;  // Task weighting
 
     // CasADi codegen function pointer to compute task, task jacobian and
     // task jacobian time derivative - velocity product. Input convention is (q, v) and output is (x, J, dJdq)
     f_casadi_cg callback_;
 
    private:
+    Eigen::VectorXd Kp_;  // Proportional gains for task-error computation
+    Eigen::VectorXd Kd_;  // Derivative gains for task-error computation
     int Resize(int ndim, int nv);
 };
 

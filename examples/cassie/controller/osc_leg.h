@@ -17,9 +17,13 @@
 #include "model/cg/leg/cassie_mass_matrix.h"
 #include "model/cg/leg/cassie_spring_forces.h"
 
+#define CASSIE_LEG_NQ (8)
+#define CASSIE_LEG_NV (8)
+#define CASSIE_LEG_NU (5)
+
 class CassieLegOSC : public OperationalSpaceController {
    public:
-    CassieLegOSC() : OperationalSpaceController() {
+    CassieLegOSC() : OperationalSpaceController(CASSIE_LEG_NQ, CASSIE_LEG_NV, CASSIE_LEG_NU) {
     }
     ~CassieLegOSC() = default;
 
@@ -30,7 +34,7 @@ class CassieLegOSC : public OperationalSpaceController {
     int UpdateControl();
 
     int HeelSpringDeflection();
-    int InverseKinematics(const Eigen::VectorXd &qpos, const Eigen::Vector3d &x_d, const Eigen::VectorXd &q0);
+    int InverseKinematics(Eigen::VectorXd &qpos, const Eigen::Vector3d &x_d, const Eigen::VectorXd &q0);
 
     int MapMujocoState(const double *q, const double *v);
 
@@ -47,6 +51,8 @@ class CassieLegOSC : public OperationalSpaceController {
     Eigen::VectorXd h_spring_;
     Eigen::MatrixXd B_;
 
+    bool ik_restart_ = true;
+    
     bool first_solve_ = true;
 
     int InitMatrices();

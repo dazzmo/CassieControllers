@@ -19,7 +19,7 @@ enum class ControllerStatus : int {
 
 class Controller {
    public:
-    Controller();
+    Controller(int nq, int nv, int nu);
     ~Controller() = default;
 
     const int& nq() const { return nq_; }
@@ -50,6 +50,9 @@ class Controller {
     Eigen::VectorXd& ctrl_max() { return u_max_; }
     const Eigen::VectorXd& ctrl_max() const { return u_max_; }
 
+    Eigen::VectorXd& qpos_0() { return qpos_0_; }
+    const Eigen::VectorXd& qpos_0() const { return qpos_0_; }
+
     void SetCurrentTime(double t) { t_ = t; }
     const double& CurrentTime() const { return t_; }
 
@@ -63,7 +66,7 @@ class Controller {
         qvel_ = qvel;
     }
 
-    ControllerStatus Init(int nq, int nv, int nu);
+    ControllerStatus Init();
     void Update(double t);
 
    protected:
@@ -87,6 +90,8 @@ class Controller {
     Eigen::VectorXd qpos_;
     Eigen::VectorXd qvel_;
     Eigen::VectorXd qacc_;
+
+    Eigen::VectorXd qpos_0_;
 
     Eigen::VectorXd qpos_bl_;
     Eigen::VectorXd qpos_bu_;
@@ -114,8 +119,8 @@ class Controller {
 
     TorquePreScale u_prescale_type_;
 
-    double RampUp(void) { return 1.0 - exp(-ramp_tau_ * (t_ - t_ramp_start_)); }
-    double RampDown(void) { return exp(-ramp_tau_ * (t_ - t_ramp_start_)); }
+    double RampUp(void);
+    double RampDown(void);
 };
 
 #endif /* INCLUDE_CONTROLLERS_CONTROLLER_HPP */

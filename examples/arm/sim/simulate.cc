@@ -19,7 +19,7 @@
 #include <cstring>
 
 // #include "controller/os_ctrl.h"..
-#include "controller/os_ctrl_leg.h"
+#include "controller/osc_leg.h"
 
 // MuJoCo data structures
 mjModel* m = NULL;  // MuJoCo model

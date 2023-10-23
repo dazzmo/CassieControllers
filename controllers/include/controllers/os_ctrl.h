@@ -10,15 +10,21 @@
 #include "controllers/controller.h"
 #include "controllers/tasks/acc_limits.h"
 #include "controllers/tasks/ee_task.h"
+#include "controllers/tasks/joint_track_task.h"
 #include "controllers/tasks/task.h"
 
 class OperationalSpaceController : public Controller {
    public:
-    OperationalSpaceController();
+    OperationalSpaceController(int nq, int nv, int nu);
     ~OperationalSpaceController() = default;
 
     int RegisterTask(const char* name, f_casadi_cg callback);
     int RegisterEndEffector(const char* name, f_casadi_cg callback);
+
+    int UpdateJointTrackWeighting(const Eigen::VectorXd& w);
+    int UpdateJointTrackPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
+    int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r);
+    int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r, const Eigen::VectorXd& qvel_r);
 
     int UpdateEndEffectorTasks();
 
@@ -48,7 +54,7 @@ class OperationalSpaceController : public Controller {
     // QP Hessian matrix
     Eigen::Matrix<double, -1, -1, Eigen::RowMajor> H_;
     // QP gradient vector
-    Eigen::Matrix<double, -1, -1, Eigen::RowMajor> g_;
+    Eigen::VectorXd g_;
     // QP constraint jacobian
     Eigen::Matrix<double, -1, -1, Eigen::RowMajor> A_;
     // QP constraint lower bound
@@ -67,7 +73,7 @@ class OperationalSpaceController : public Controller {
      * @return Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
      */
     Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> DynamicsQaccJacobian() { return A_.topRows(nv_).middleCols(0, nv_); }
-    
+
     /**
      * @brief Jacobian for the dynamics of the system with respect to lambda, a sub-matrix in the
      * constraint jacobian for the QP.
@@ -75,7 +81,7 @@ class OperationalSpaceController : public Controller {
      * @return Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
      */
     Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> DynamicsLambdaJacobian() { return A_.topRows(nv_).middleCols(nv_, 3 * nc_); }
-    
+
     /**
      * @brief Jacobian for the dynamics of the system with respect to u, a sub-matrix in the
      * constraint jacobian for the QP.
@@ -83,10 +89,11 @@ class OperationalSpaceController : public Controller {
      * @return Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
      */
     Eigen::Ref<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> DynamicsCtrlJacobian() { return A_.topRows(nv_).middleCols(nv_ + 3 * nc_, nu_); }
-    
+
     Eigen::Ref<Eigen::VectorXd> DynamicsConstraintVector() { return dyn_b_; }
 
    private:
+    JointTrackTask* joint_track_task_;
     std::map<std::string, std::shared_ptr<Task>> tasks_;
     std::map<std::string, std::shared_ptr<EndEffectorTask>> ee_tasks_;
 

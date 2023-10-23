@@ -1,19 +1,20 @@
-#include "os_ctrl_leg.h"
+#include "osc_leg.h"
 
 void CassieLegOSC::SetupController() {
     LOG(INFO) << "InitMatrices";
+    LOG(INFO) << "nv = " << CASSIE_LEG_NV;
 
-    M_ = Eigen::MatrixXd::Zero(nv_, nv_);
-    Minv_ = Eigen::MatrixXd::Zero(nv_, nv_);
-    J_ = Eigen::MatrixXd::Zero(1, nv_);
+    M_ = Eigen::MatrixXd::Zero(CASSIE_LEG_NV, CASSIE_LEG_NV);
+    J_ = Eigen::MatrixXd::Zero(1, CASSIE_LEG_NV);
     dJdq_ = Eigen::VectorXd::Zero(1, 1);
     JMJT_ = Eigen::MatrixXd::Zero(1, 1);
-    B_ = Eigen::MatrixXd::Zero(nv_, nu_);
-    N_ = Eigen::MatrixXd::Zero(nv_, nv_);
+    B_ = Eigen::MatrixXd::Zero(CASSIE_LEG_NV, CASSIE_LEG_NU);
+    N_ = Eigen::MatrixXd::Zero(CASSIE_LEG_NV, CASSIE_LEG_NV);
 
-    h_ = Eigen::VectorXd::Zero(nv_);
-    h_spring_ = Eigen::VectorXd::Zero(nv_);
+    h_ = Eigen::VectorXd::Zero(CASSIE_LEG_NV);
+    h_spring_ = Eigen::VectorXd::Zero(CASSIE_LEG_NV);
 
+    qpos_0() << 0.00449956, 0, 0.497301, -1.1997, 0, 1.42671, 0.0, -1.59681;
     qpos_bl() << -0.3927, -0.3927, -0.8727, -2.8623, -0.3, 0.75, -0.3, -2.4435;
     qpos_bu() << 0.3927, 0.3927, 1.3963, -0.95, 0.3, 3.0, 0.3, -0.5236;
     ctrl_max() << 4.5, 4.5, 12.2, 12.2, 0.9;
@@ -21,13 +22,26 @@ void CassieLegOSC::SetupController() {
     SetupEndEffectors();
     SetupOSC();
 
+    // Set weights for controller
+    Eigen::VectorXd Kp(CASSIE_LEG_NQ), Kd(CASSIE_LEG_NV), w(CASSIE_LEG_NQ);
+    Kp << 2e3, 2e3, 2e3, 2e3, 2e3, 2e3, 2e3, 2e3;
+    Kd << 1e-1, 1e-1, 1e-1, 1e-1, 1e-1, 1e-1, 1e-1, 1e-1;
+    w << 1e0, 1e0, 1e0, 1e0, 1e-2, 1e0, 1e-2, 1e0;
+    
+    UpdateJointTrackPDGains(Kp, Kd);
+    UpdateJointTrackWeighting(w);
+
     // Ramp up torque initially
-    StartTorqueRampUp(1e-1);
+    StartTorqueRampUp(1e-2);
 }
 
 int CassieLegOSC::SetupEndEffectors() {
     LOG(INFO) << "SetupEndEffectors";
     RegisterEndEffector("ankle", cassie_ankle);
+    GetEndEffectorTaskMap()["ankle"]->SetTaskWeighting(Eigen::Vector3d(1e2, 1e2, 1e2));
+    GetEndEffectorTaskMap()["ankle"]->SetProportionalErrorGain(Eigen::Vector3d(1e1, 1e1, 1e1));
+    GetEndEffectorTaskMap()["ankle"]->SetDerivativeErrorGain(Eigen::Vector3d(1e0, 1e0, 1e0));
+    
     // RegisterEndEffector("foot_front", cassie_foot_front);
     // RegisterEndEffector("foot_back", cassie_foot_back);
     return 0;
@@ -35,7 +49,15 @@ int CassieLegOSC::SetupEndEffectors() {
 
 int CassieLegOSC::UpdateControl() {
     // Update any tasks or objectives
+    Eigen::Vector3d r(-0.2, 0.0, -0.7);
+    GetEndEffectorTaskMap()["ankle"]->SetReference(r);
 
+    // Compute IK for foot
+    Eigen::VectorXd q(CASSIE_LEG_NQ);
+    InverseKinematics(q, r, qpos_0());
+    UpdateJointTrackReference(q);
+
+    LOG(INFO) << "qpos (true): " << qpos().transpose();
     // Run the operational space controller
     RunOSC();
     return 0;
@@ -45,7 +67,7 @@ void CassieLegOSC::UpdateDynamics() {
     LOG(INFO) << "UpdateDynamics";
     // Compute dynamic matrices and nullspace projectors
     const double *in[] = {qpos_.data(), qvel_.data()};
-    double *out[3];
+    double *out[4] = {NULL, NULL, NULL, NULL};
     out[0] = h_.data();
     cassie_bias_vector(in, out, NULL, NULL, 0);
     out[0] = h_spring_.data();
@@ -61,16 +83,15 @@ void CassieLegOSC::UpdateDynamics() {
 
     JMJT_ = J_ * M_.inverse() * J_.transpose();
 
-    // LOG(INFO) << "M: " << M_;
-    // LOG(INFO) << "h: " << h_;
-    // LOG(INFO) << "h_spring: " << h_spring_;
-    // LOG(INFO) << "J: " << J_;
-    // LOG(INFO) << "JMJT: " << JMJT_;
-    // LOG(INFO) << "pinv(JMJT): " << JMJT_.completeOrthogonalDecomposition().pseudoInverse();
-    // LOG(INFO) << "B: " << B_;
+    LOG(INFO) << "M: " << M_;
+    LOG(INFO) << "h: " << h_;
+    LOG(INFO) << "h_spring: " << h_spring_;
+    LOG(INFO) << "J: " << J_;
+    LOG(INFO) << "JMJT: " << JMJT_;
+    LOG(INFO) << "B: " << B_;
 
     // Compute null space matrix
-    N_ = Eigen::MatrixXd::Identity(nv_, nv_) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * J_ * M_.inverse();
+    N_ = Eigen::MatrixXd::Identity(CASSIE_LEG_NV, CASSIE_LEG_NV) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * J_ * M_.inverse();
 
     // Dynamic constraint jacobians and vector
     DynamicsQaccJacobian() = M_;
@@ -79,8 +100,15 @@ void CassieLegOSC::UpdateDynamics() {
         DynamicsLambdaJacobian().middleCols(3 * ee.second->GetId(), 3) = -N_ * ee.second->J().transpose();
     }
     DynamicsConstraintVector() = N_ * (h_spring_ - h_) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * dJdq_;
+    LOG(INFO) << "Dynamics finished";
 }
 
+/**
+ * @brief Estimates the angle of the heel-spring based on the configuration of the leg, given no encoder is provided for the
+ * heel spring joint.
+ *
+ * @return int
+ */
 int CassieLegOSC::HeelSpringDeflection() {
     Eigen::MatrixXd J(1, 1);
     Eigen::VectorXd e(1), dJdq(1);
@@ -88,10 +116,7 @@ int CassieLegOSC::HeelSpringDeflection() {
     Eigen::VectorXd qj = qpos();
 
     const double *in[] = {qj.data()};
-    double *out[3];
-    out[0] = e.data();
-    out[1] = J.data();
-    out[2] = dJdq.data();
+    double *out[3] = {e.data(), J.data(), dJdq.data()};
 
     std::cout << "qj: " << qj.transpose() << std::endl;
 
@@ -113,19 +138,25 @@ int CassieLegOSC::HeelSpringDeflection() {
 }
 
 /**
- * @brief Performs inverse-kinematics with nonlinear equality constraints 
- * 
- * @param qpos 
- * @param x 
- * @param q0 
- * @return int 
+ * @brief Performs inverse-kinematics with nonlinear equality constraints
+ *
+ * @param qpos
+ * @param x
+ * @param q0
+ * @return int
  */
-int CassieLegOSC::InverseKinematics(const Eigen::VectorXd &qpos, const Eigen::Vector3d &x_d, const Eigen::VectorXd &q0) {
+int CassieLegOSC::InverseKinematics(Eigen::VectorXd &qpos, const Eigen::Vector3d &x_d, const Eigen::VectorXd &q0) {
     LOG(INFO) << "Starting IK";
     // Solver options
     const int max_it = 50;
     // Iterates
-    Eigen::VectorXd q_i = q0;
+    Eigen::VectorXd q_i(nq_);
+    if (ik_restart_) {
+        q_i = qpos_0_;
+    } else {
+        q_i = q0;
+    }
+
     Eigen::VectorXd lamba_i(1);
     Eigen::Vector3d x_i;
     // Gradients, Jacobians and Hessians
@@ -138,32 +169,24 @@ int CassieLegOSC::InverseKinematics(const Eigen::VectorXd &qpos, const Eigen::Ve
     Eigen::VectorXd v, x, lam(1);
     Eigen::MatrixXd jac_kkt(nq_ + 1, nq_ + 1);
     Eigen::VectorXd vec_kkt(nq_ + 1);
-    jac_kkt.setZero(); 
-    vec_kkt.setZero(); 
+    jac_kkt.setZero();
+    vec_kkt.setZero();
 
     const double eps = 1e-3;
 
     Eigen::VectorXd gi(1);
     Eigen::MatrixXd jac_gi(1, nq_), hess_gi(nq_, nq_);
     LOG(INFO) << "qi: " << q_i.transpose();
+
     const double *in[] = {q_i.data(), nullptr};
-    double *out_ankle[3];
-    out_ankle[0] = x_i.data();
-    out_ankle[1] = J.data();
-    out_ankle[2] = NULL;
 
-    double *out_constraint[4];
-    out_constraint[0] = gi.data();
-    out_constraint[1] = jac_gi.data();
-    out_constraint[2] = NULL;
-    out_constraint[3] = hess_gi.data();
+    double *out_ankle[3] = {x_i.data(), J.data(), NULL};
+    double *out_constraint[4] = {gi.data(), jac_gi.data(), NULL, hess_gi.data()};
 
-    // Damping for least squares
-    Eigen::Vector3d damp(1e2, 1e2, 1e2);
-    
-    // Identity matrix 
+    // Identity matrix
     Eigen::MatrixXd I(nq_, nq_);
-    I.setIdentity();
+    I.setZero();
+    I.diagonal() << 1e-2, 1e-2, 1e-2, 1e-2, 1e1, 1e-2, 1e1, 1e-2;
 
     lam.setOnes();
 
@@ -183,9 +206,9 @@ int CassieLegOSC::InverseKinematics(const Eigen::VectorXd &qpos, const Eigen::Ve
         Eigen::VectorXd e = x_i - x_d;
         LOG(INFO) << "e = " << e.transpose();
 
-        if(e.squaredNorm() < eps) break;
+        if (e.squaredNorm() < eps) break;
         // Compute hessian of lagrangian
-        lag_hess = (J.transpose() * J + 1e-2 * I) - lam[0] * hess_gi;
+        lag_hess = (J.transpose() * J + I) - lam[0] * hess_gi;
         LOG(INFO) << "lag_hess = " << lag_hess;
 
         // Compute KKT jacobian
@@ -206,17 +229,17 @@ int CassieLegOSC::InverseKinematics(const Eigen::VectorXd &qpos, const Eigen::Ve
         LOG(INFO) << "dx: " << dx.transpose();
 
         // Take a step
-        q_i += dx.topRows(nq_); 
-        lam += dx.bottomRows(1); 
+        q_i += dx.topRows(nq_);
+        lam += dx.bottomRows(1);
 
         // Clamp results
-        for(int i = 0 ; i < nq_; i++) {
+        for (int i = 0; i < nq_; i++) {
             q_i[i] = std::min(std::max(q_i[i], qpos_bl_[i]), qpos_bu_[i]);
         }
-
     }
 
     LOG(INFO) << "q: " << q_i.transpose();
+    qpos = q_i;
 
     return 0;
 }

@@ -3,9 +3,6 @@
 JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv, nullptr) {
     qpos_l_ = Eigen::VectorXd::Zero(nq);
     qpos_u_ = Eigen::VectorXd::Zero(nq);
-
-    Kp.resize(nq);
-    Kd.resize(nv);
 }
 
 double JointLimitsTask::TransitionFunction(double q, double ql, double qu) {
@@ -34,8 +31,8 @@ int JointLimitsTask::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::Vector
         zeta_[i] = TransitionFunction(qpos[i], qpos_l_[i], qpos_u_[i]);
     }
     // Task for keeping from boundaries
-    x_.bottomRows(nq_) = Kp * (qpos - qpos_l_) - Kd * qvel;
-    x_.topRows(nq_) = Kp * (qpos_u_ - qpos) - Kd * qvel;
+    x_.bottomRows(nq_) = (qpos - qpos_l_);
+    x_.topRows(nq_) = (qpos_u_ - qpos);
 
     // Jacobian
     if (update_jacobians) {

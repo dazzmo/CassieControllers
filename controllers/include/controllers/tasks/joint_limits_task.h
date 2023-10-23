@@ -14,9 +14,6 @@
 
 class JointLimitsTask : public Task {
    public:
-    Eigen::DiagonalMatrix<double, -1> Kp;
-    Eigen::DiagonalMatrix<double, -1> Kd;
-    
     JointLimitsTask(int nq, int nv);
     
     int UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true);

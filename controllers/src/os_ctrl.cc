@@ -1,6 +1,6 @@
 #include "controllers/os_ctrl.h"
 
-OperationalSpaceController::OperationalSpaceController() : Controller() {
+OperationalSpaceController::OperationalSpaceController(int nq, int nv, int nu) : Controller(nq, nv, nu) {
     nc_ = 0;
 }
 
@@ -36,9 +36,26 @@ int OperationalSpaceController::RemoveContact(const char* name) {
     return 0;
 }
 
-// int OperationalSpaceController::AddQposReference(const Eigen::VectorXd& qpos) {
-//     return 0;
-// }
+int OperationalSpaceController::UpdateJointTrackReference(const Eigen::VectorXd& qpos_r) {
+    joint_track_task_->SetReference(qpos_r);
+    return 0;
+}
+
+int OperationalSpaceController::UpdateJointTrackReference(const Eigen::VectorXd& qpos_r, const Eigen::VectorXd& qvel_r) {
+    joint_track_task_->SetReference(qpos_r, qvel_r);
+    return 0;
+}
+
+int OperationalSpaceController::UpdateJointTrackWeighting(const Eigen::VectorXd& w) {
+    joint_track_task_->SetTaskWeighting(w);
+    return 0;
+}
+
+int OperationalSpaceController::UpdateJointTrackPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd) {
+    joint_track_task_->SetProportionalErrorGain(Kp);
+    joint_track_task_->SetDerivativeErrorGain(Kd);
+    return 0;
+}
 
 /**
  * @brief Sets up the Operational Space Controller (OSC) program by initialising the
@@ -48,6 +65,10 @@ int OperationalSpaceController::RemoveContact(const char* name) {
  */
 int OperationalSpaceController::SetupOSC() {
     LOG(INFO) << "OperationalSpaceController::InitProgram";
+
+    // Create joint track task
+    joint_track_task_ = new JointTrackTask(nq_, nv_);
+
     LOG(INFO) << "starting";
     // Number of optimisation variables
     int nx = nv_ + 3 * nc_ + nu_;
@@ -74,7 +95,8 @@ int OperationalSpaceController::SetupOSC() {
         // TODO: Will need to account for surface normals
         A_.middleRows(nv_ + 4 * ee.second->GetId(), 4)
                 .middleCols(nv_ + 3 * ee.second->GetId(), 3)
-            << sqrt(2), 0.0, -ee.second->mu(),
+            << sqrt(2),
+            0.0, -ee.second->mu(),
             -sqrt(2), 0.0, -ee.second->mu(),
             0.0, sqrt(2), -ee.second->mu(),
             0.0, -sqrt(2), -ee.second->mu();
@@ -118,22 +140,12 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     // Create objective
     LOG(INFO) << "end effector tasks";
     for (auto const& ee : ee_tasks_) {
-        Eigen::DiagonalMatrix<double, -1> Kp(3), Kd(3);
-        Kp.diagonal() << 5e2, 5e2, 5e2;
-        Kd.diagonal() << 1e1, 1e1, 1e1;
+        
+        Eigen::Vector3d a = -ee.second->dJdq() - ee.second->TaskErrorPD();
 
-        Eigen::Vector3d e = ee.second->x() - ee.second->r();
-        Eigen::Vector3d de = ee.second->dx() - ee.second->dr();
-        Eigen::Vector3d a = -ee.second->dJdv() - Kp * e - Kd * de;
-
-        LOG(INFO) << "Error: e = " << e.transpose() << " de = " << de.transpose();
-        LOG(INFO) << "Task Acceleration = " << (ee.second->J() * qacc() + ee.second->dJdv()).transpose() << " a = " << a.transpose();
-
-        Eigen::DiagonalMatrix<double, 3> W;
-        W.diagonal() << 1e3, 1e3, 1e3;
         // Add to objective
-        H_.topLeftCorner(nv_, nv_) += ee.second->J().transpose() * W * ee.second->J();
-        g_.topRows(nv_) -= 2.0 * ee.second->J().transpose() * W * a;
+        H_.topLeftCorner(nv_, nv_) += ee.second->J().transpose() * ee.second->weight().asDiagonal() * ee.second->J();
+        g_.topRows(nv_) -= 2.0 * ee.second->J().transpose() * ee.second->weight().asDiagonal() * a;
 
         // Contact
         if (ee.second->inContact) {
@@ -145,19 +157,12 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
         }
     }
 
-    // Encourage target pose
-    // Eigen::DiagonalMatrix<double, -1> Kp(3), Kd(3);
-    // Kp.diagonal() << 5e1, 5e1, 5e1;
-    // Kd.diagonal() << 1e1, 1e1, 1e1;
-
-    // Eigen::DiagonalMatrix<double, 3> W;
-    // W.diagonal() << 1e3, 1e3, 1e3;
-
-    // // Pose jacobian is the identity matrix
-
-    // // Add to objective
-    // H_.topLeftCorner(nv_, nv_) += ee.second->J().transpose() * W * ee.second->J();
-    // g_.topRows(nv_) -= 2.0 * ee.second->J().transpose() * W * a;
+    // Joint tracking
+    Eigen::VectorXd a = -joint_track_task_->TaskErrorPD();
+    // Add to objective
+    joint_track_task_->UpdateTask(qpos(), qvel());
+    H_.topLeftCorner(nv_, nv_) += joint_track_task_->J().transpose() * joint_track_task_->weight().asDiagonal() * joint_track_task_->J();
+    g_.topRows(nv_) -= 2.0 * joint_track_task_->J().transpose() * joint_track_task_->weight().asDiagonal() * a;
 
     // Update acceleration bounds (for joint/velocity damping)
     Eigen::VectorXd qacc_u(nv_), qacc_l(nv_);
@@ -173,27 +178,28 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     LOG(INFO) << "au: " << qacc_u.transpose();
 
     for (int i = 0; i < nv_; ++i) {
-        lbx_[i] = qacc_l[i];
-        ubx_[i] = qacc_u[i];
+        // lbx_[i] = qacc_l[i];
+        // ubx_[i] = qacc_u[i];
     }
 
     // Control weighting
     Eigen::DiagonalMatrix<double, -1> Wu(nu_);
-    Wu.diagonal() << 1e-2 * u_max_.cwiseInverse().cwiseAbs2();
+    Wu.diagonal() << 1e-6 * u_max_.cwiseInverse().cwiseAbs2();
 
     for (int i = 0; i < nu_; ++i) {
         H_(nv_ + 3 * nc_ + i, nv_ + 3 * nc_ + i) = Wu.diagonal()[i];
         // Keep torque similar to previous output
-        if (!first_solve_) {
-            g_.middleRows(nv_ + 3 * nc_, nu_) = -2.0 * Wu * ctrl();
-        }
+        // if (!first_solve_) {
+        // g_.middleRows(nv_ + 3 * nc_, nu_) = -2.0 * Wu * ctrl();
+        // }
     }
 
     // Acceleration weighting
     // Eigen::DiagonalMatrix<double, -1> Wa(nv_);
-    // Wa.diagonal() << 1e0, 1e0, 1e0, 1e0, 1e2, 1e0, 1e2, 1e4;
+    // Wa.diagonal() << qacc_max_.cwiseAbs2().cwiseInverse();
     // for (int i = 0; i < nv_; ++i) {
-    //     H_(i, i) += Wa.diagonal()[i];
+    //     H_(i, i) *= Wa.diagonal()[i];
+    //     g_[i] += Wa.diagonal()[i];
     // }
 
     LOG(INFO) << "solve";
@@ -218,7 +224,8 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
 
     if (status != qpOASES::SUCCESSFUL_RETURN) {
         LOG(ERROR) << "Failed";
-        while (1);
+        while (1)
+            ;
     }
     // Get solution
     qp_->getPrimalSolution(x_.data());

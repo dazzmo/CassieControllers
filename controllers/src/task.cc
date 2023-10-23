@@ -1,10 +1,23 @@
 #include "controllers/tasks/task.h"
 
+Task::Task(int dim, int nv) {
+    dim_ = dim;
+    nv_ = nv;
+    callback_ = nullptr;
+
+    Kp_ = Eigen::VectorXd::Ones(dim);
+    Kd_ = Eigen::VectorXd::Ones(dim);
+
+    Resize(dim_, nv_);
+}
+
 Task::Task(int dim, int nv, f_casadi_cg callback) {
     dim_ = dim;
     nv_ = nv;
     callback_ = callback;
-    task_weight.setConstant(1.0);
+
+    Kp_ = Eigen::VectorXd::Ones(dim);
+    Kd_ = Eigen::VectorXd::Ones(dim);
 
     Resize(dim_, nv_);
 }
@@ -18,8 +31,10 @@ int Task::Resize(int dim, int nv) {
     dr_ = Eigen::VectorXd::Zero(dim);
     ddr_ = Eigen::VectorXd::Zero(dim);
 
+    w_ = Eigen::VectorXd::Zero(dim);
+
     J_ = Eigen::MatrixXd::Zero(dim, nv);
-    dJdv_ = Eigen::VectorXd::Zero(dim);
+    dJdq_ = Eigen::VectorXd::Zero(dim);
 
     return 0;
 }
@@ -48,13 +63,13 @@ int Task::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, b
     out[0] = x_.data();
     if (update_jacobians) {
         out[1] = J_.data();
-        out[2] = dJdv_.data();
+        out[2] = dJdq_.data();
         callback_(in, out, NULL, NULL, 0);
         // Compute task velocity
         dx_ = J_ * qvel;
 
         LOG(INFO) << "J: " << J_;
-        LOG(INFO) << "dJdv: " << dJdv_.transpose();
+        LOG(INFO) << "dJdq: " << dJdq_.transpose();
         LOG(INFO) << "x: " << x_.transpose();
         LOG(INFO) << "dx: " << dx_.transpose();
 
