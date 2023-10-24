@@ -10,6 +10,7 @@
 #include "controllers/controller.h"
 #include "controllers/tasks/acc_limits.h"
 #include "controllers/tasks/ee_task.h"
+#include "controllers/tasks/joint_limits_task.h"
 #include "controllers/tasks/joint_track_task.h"
 #include "controllers/tasks/task.h"
 
@@ -25,6 +26,9 @@ class OperationalSpaceController : public Controller {
     int UpdateJointTrackPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
     int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r);
     int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r, const Eigen::VectorXd& qvel_r);
+
+    int UpdateJointLimitWeighting(const Eigen::VectorXd& w);
+    int UpdateJointLimitPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
 
     int UpdateEndEffectorTasks();
 
@@ -94,6 +98,7 @@ class OperationalSpaceController : public Controller {
 
    private:
     JointTrackTask* joint_track_task_;
+    JointLimitsTask* joint_limits_task_;
     std::map<std::string, std::shared_ptr<Task>> tasks_;
     std::map<std::string, std::shared_ptr<EndEffectorTask>> ee_tasks_;
 

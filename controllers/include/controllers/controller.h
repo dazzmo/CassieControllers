@@ -47,6 +47,9 @@ class Controller {
     Eigen::VectorXd& qvel_max() { return qvel_max_; }
     const Eigen::VectorXd& qvel_max() const { return qvel_max_; }
 
+    Eigen::VectorXd& qacc_max() { return qacc_max_; }
+    const Eigen::VectorXd& qacc_max() const { return qacc_max_; }
+
     Eigen::VectorXd& ctrl_max() { return u_max_; }
     const Eigen::VectorXd& ctrl_max() const { return u_max_; }
 
@@ -57,7 +60,6 @@ class Controller {
     const double& CurrentTime() const { return t_; }
 
     void Resize(int nq, int nv, int nu);
-
 
     void SetControlFrequency(double freq) { freq_ = freq; }
 
@@ -105,14 +107,14 @@ class Controller {
     double ApplyTorquePreScale(void);
 
     virtual void SetupController() {}
-    
+
     virtual int UpdateControl() {
         throw std::runtime_error("UpdateControl has not been implemented!");
         return 1;
     }
 
     virtual void UpdateDynamics() {}
-   
+
    private:
     double ramp_tau_ = 1.0;
     double t_ramp_start_ = 0.0;

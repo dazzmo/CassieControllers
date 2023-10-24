@@ -65,6 +65,14 @@ class MujocoSimulator {
     const mjtNum* GetModelVelocity() { return d_->qvel; }
 
     /**
+     * @brief Returns the pointer to the qacc data array for the acceeleration
+     * of the model (nv x 1)
+     *
+     * @return const mjtNum*
+     */
+    const mjtNum* GetModelAcceleration() { return d_->qacc; }
+
+    /**
      * @brief Returns the current time within the simulation.
      *
      * @return const double

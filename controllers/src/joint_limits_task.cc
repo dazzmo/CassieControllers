@@ -1,10 +1,22 @@
 #include "controllers/tasks/joint_limits_task.h"
 
-JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv, nullptr) {
+JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv) {
+    nq_ = nq;
+    beta_ = 0.5;
+    zeta_ = Eigen::VectorXd::Zero(nq);
     qpos_l_ = Eigen::VectorXd::Zero(nq);
     qpos_u_ = Eigen::VectorXd::Zero(nq);
 }
 
+/**
+ * @brief Function that activates (i.e. goes to a value of 1) as a joint approaches
+ *  either of its limits. Transition rate is adjusted through beta.
+ *
+ * @param q
+ * @param ql
+ * @param qu
+ * @return double
+ */
 double JointLimitsTask::TransitionFunction(double q, double ql, double qu) {
     double zeta = 1.0;
     double qu_tilde = qu - beta_;
@@ -26,31 +38,27 @@ double JointLimitsTask::TransitionFunction(double q, double ql, double qu) {
 }
 
 int JointLimitsTask::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians) {
+    
     // Joint Limit and Velocity
     for (int i = 0; i < nq_; i++) {
         zeta_[i] = TransitionFunction(qpos[i], qpos_l_[i], qpos_u_[i]);
     }
     // Task for keeping from boundaries
-    x_.bottomRows(nq_) = (qpos - qpos_l_);
-    x_.topRows(nq_) = (qpos_u_ - qpos);
+    x_.topRows(nq_) = (qpos_u_ - qpos).cwiseProduct(zeta_);
+    x_.bottomRows(nq_) = (qpos - qpos_l_).cwiseProduct(zeta_);
 
     // Jacobian
     if (update_jacobians) {
         // Assess if near joint bound
         for (int i = 0; i < nq_; i++) {
-            if(qpos_u_[i] - qpos[i] > beta_) {
-                J_(i, i) = 1.0;
-            } else if(qpos[i] - qpos_l_[i] < beta_) {
-                J_(nq_ + i, i) = 1.0;
-            } else {
-                J_(i, i) = 0.0;
-                J_(nq_ + i, i) = 0.0;
-            }
+            J_(i, i) = -zeta_[i];
+            J_(nq_ + i, i) = zeta_[i];
         }
     }
 
     // Compute task velocity
-    dx_ = J_ * qvel;
+    dx_.topRows(nq_) = -qvel.cwiseProduct(zeta_);
+    dx_.bottomRows(nq_) = qvel.cwiseProduct(zeta_);
 
     return 0;
 }

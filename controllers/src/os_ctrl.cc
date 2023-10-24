@@ -57,6 +57,17 @@ int OperationalSpaceController::UpdateJointTrackPDGains(const Eigen::VectorXd& K
     return 0;
 }
 
+int OperationalSpaceController::UpdateJointLimitWeighting(const Eigen::VectorXd& w) {
+    joint_limits_task_->SetTaskWeighting(w);
+    return 0;
+}
+
+int OperationalSpaceController::UpdateJointLimitPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd) {
+    joint_limits_task_->SetProportionalErrorGain(Kp);
+    joint_limits_task_->SetDerivativeErrorGain(Kd);
+    return 0;
+}
+
 /**
  * @brief Sets up the Operational Space Controller (OSC) program by initialising the
  * necessary matrices and vectors for computation.
@@ -68,6 +79,11 @@ int OperationalSpaceController::SetupOSC() {
 
     // Create joint track task
     joint_track_task_ = new JointTrackTask(nq_, nv_);
+
+    // Create joint limit avoidance task
+    joint_limits_task_ = new JointLimitsTask(nq_, nv_);
+    joint_limits_task_->SetUpperPositionLimit(qpos_bu());
+    joint_limits_task_->SetLowerPositionLimit(qpos_bl());
 
     LOG(INFO) << "starting";
     // Number of optimisation variables
@@ -104,6 +120,12 @@ int OperationalSpaceController::SetupOSC() {
         lbA_.middleRows(nv_ + 4 * ee.second->GetId(), 4).setConstant(-qpOASES::INFTY);
     }
 
+    LOG(INFO) << "acceleration bounds";
+    for (int i = 0; i < nv_; i++) {
+        ubx_[i] = qacc_max_[i];
+        lbx_[i] = -qacc_max_[i];
+    }
+
     LOG(INFO) << "control bounds";
     for (int i = 0; i < nu_; i++) {
         ubx_[nv_ + 3 * nc_ + i] = u_max_[i];
@@ -125,6 +147,7 @@ int OperationalSpaceController::SetupOSC() {
  * @return int
  */
 const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
+    double c = 0.0;
     LOG(INFO) << "OperationalSpaceController::ComputeControl";
     UpdateEndEffectorTasks();
     UpdateDynamics();
@@ -140,12 +163,18 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     // Create objective
     LOG(INFO) << "end effector tasks";
     for (auto const& ee : ee_tasks_) {
-        
-        Eigen::Vector3d a = -ee.second->dJdq() - ee.second->TaskErrorPD();
+        ee.second->PrintTaskData();
+        // Task jacobian in qacc
+        const Eigen::MatrixXd& A = ee.second->J();
+        // Task weight
+        const Eigen::Matrix3d W = ee.second->weight().asDiagonal();
+        // Task constant vector
+        Eigen::Vector3d a = ee.second->dJdq() + ee.second->TaskErrorPD();
 
         // Add to objective
-        H_.topLeftCorner(nv_, nv_) += ee.second->J().transpose() * ee.second->weight().asDiagonal() * ee.second->J();
-        g_.topRows(nv_) -= 2.0 * ee.second->J().transpose() * ee.second->weight().asDiagonal() * a;
+        // H_.topLeftCorner(nv_, nv_) += A.transpose() * W * A;
+        // g_.topRows(nv_) += 2.0 * A.transpose() * W * a;
+        // c += (W * a).dot(a);
 
         // Contact
         if (ee.second->inContact) {
@@ -158,64 +187,46 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     }
 
     // Joint tracking
-    Eigen::VectorXd a = -joint_track_task_->TaskErrorPD();
-    // Add to objective
+    LOG(INFO) << "joint tracking";
     joint_track_task_->UpdateTask(qpos(), qvel());
-    H_.topLeftCorner(nv_, nv_) += joint_track_task_->J().transpose() * joint_track_task_->weight().asDiagonal() * joint_track_task_->J();
-    g_.topRows(nv_) -= 2.0 * joint_track_task_->J().transpose() * joint_track_task_->weight().asDiagonal() * a;
+    joint_track_task_->PrintTaskData();
+    const Eigen::MatrixXd& At = joint_track_task_->J();
+    const Eigen::MatrixXd Wt = joint_track_task_->weight().asDiagonal();
+    Eigen::VectorXd at = joint_track_task_->TaskErrorPD();
+    // Add to objective
+    H_.topLeftCorner(nv_, nv_) += At.transpose() * Wt * At;
+    g_.topRows(nv_) += 2.0 * At.transpose() * Wt * at;
+    c += (Wt * at).dot(at);
 
-    // Update acceleration bounds (for joint/velocity damping)
-    Eigen::VectorXd qacc_u(nv_), qacc_l(nv_);
-    GetAccelerationLimits(qpos(), qvel(), qpos_bl(), qpos_bu(), qvel_max(), qacc_max_,
-                          qacc_l, qacc_u, nq_, nv_, 1.0 / freq_);
+    // Joint limit avoidance
+    // LOG(INFO) << "joint limit avoidance";
+    // LOG(INFO) << "qu: " << qpos_bu().transpose();
+    // LOG(INFO) << " q: " << qpos().transpose();
+    // LOG(INFO) << "ql: " << qpos_bl().transpose();
+    // joint_limits_task_->UpdateTask(qpos(), qvel());
+    // joint_limits_task_->PrintTaskData();
+    // const Eigen::MatrixXd& Al = joint_limits_task_->J();
+    // const Eigen::MatrixXd Wl = joint_limits_task_->weight().asDiagonal();
+    // Eigen::VectorXd al = joint_limits_task_->TaskErrorPD();
+    // // Add to objective
+    // H_.topLeftCorner(nv_, nv_) += Al.transpose() * Al;
+    // g_.topRows(nv_) += 2.0 * Al.transpose() * al;
+    // c += (al).dot(al);
 
-    LOG(INFO) << "ql: " << qpos_bl().transpose();
-    LOG(INFO) << "q: " << qpos().transpose();
-    LOG(INFO) << "qu: " << qpos_bu().transpose();
-    LOG(INFO) << "v: " << qvel().transpose();
-    LOG(INFO) << "vmax: " << qvel_max().transpose();
-    LOG(INFO) << "al: " << qacc_l.transpose();
-    LOG(INFO) << "au: " << qacc_u.transpose();
-
-    for (int i = 0; i < nv_; ++i) {
-        // lbx_[i] = qacc_l[i];
-        // ubx_[i] = qacc_u[i];
+    // Torque regularisation
+    for(int i = 0; i < nu_; ++i) {
+        int idx = nv_ + 3 * nc_ + i;
+        H_(idx, idx) += 1e-6;
     }
-
-    // Control weighting
-    Eigen::DiagonalMatrix<double, -1> Wu(nu_);
-    Wu.diagonal() << 1e-6 * u_max_.cwiseInverse().cwiseAbs2();
-
-    for (int i = 0; i < nu_; ++i) {
-        H_(nv_ + 3 * nc_ + i, nv_ + 3 * nc_ + i) = Wu.diagonal()[i];
-        // Keep torque similar to previous output
-        // if (!first_solve_) {
-        // g_.middleRows(nv_ + 3 * nc_, nu_) = -2.0 * Wu * ctrl();
-        // }
-    }
-
-    // Acceleration weighting
-    // Eigen::DiagonalMatrix<double, -1> Wa(nv_);
-    // Wa.diagonal() << qacc_max_.cwiseAbs2().cwiseInverse();
-    // for (int i = 0; i < nv_; ++i) {
-    //     H_(i, i) *= Wa.diagonal()[i];
-    //     g_[i] += Wa.diagonal()[i];
-    // }
 
     LOG(INFO) << "solve";
     int nWSR = 1000;
-    // LOG(INFO) << "H: " << H_;
-    // LOG(INFO) << "g: " << g_;
-    // LOG(INFO) << "A: " << A_;
-    // LOG(INFO) << "lbA: " << lbA_;
-    // LOG(INFO) << "ubA: " << ubA_;
-    // LOG(INFO) << "lbx: " << lbx_;
-    // LOG(INFO) << "ubx: " << ubx_;
 
     H_ *= 2.0;
     qpOASES::returnValue status = qpOASES::SUCCESSFUL_RETURN;
 
     if (first_solve_) {
+        qp_->setHessianType(qpOASES::HessianType::HST_POSDEF);
         status = qp_->init(H_.data(), g_.data(), A_.data(), lbx_.data(), ubx_.data(), lbA_.data(), ubA_.data(), nWSR);
         first_solve_ = false;
     } else {
@@ -227,6 +238,7 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
         while (1)
             ;
     }
+
     // Get solution
     qp_->getPrimalSolution(x_.data());
     qacc_ = x_.topRows(nv_).transpose();
@@ -238,6 +250,12 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
         ee.second->lambda() = x_.middleRows(nv_ + 3 * ee.second->GetId(), 3);
         LOG(INFO) << "lambda (" << ee.first << "): " << ee.second->lambda().transpose();
     }
+
+    // Joint track error
+    LOG(INFO) << "Joint track error";
+    LOG(INFO) << "e = " << -joint_track_task_->TaskErrorPD().transpose();
+    LOG(INFO) << "ddx = " << (At * qacc_ + joint_track_task_->dJdq()).transpose();
+
 
     return u_;
 }

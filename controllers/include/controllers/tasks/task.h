@@ -72,8 +72,8 @@ class Task {
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr, const Eigen::VectorXd &ddr);
 
-    void SetProportionalErrorGain(const Eigen::VectorXd &Kp) { Kp_ = Kp; }
-    void SetDerivativeErrorGain(const Eigen::VectorXd &Kd) { Kd_ = Kd; }
+    virtual void SetProportionalErrorGain(const Eigen::VectorXd &Kp) { Kp_ = Kp; }
+    virtual void SetDerivativeErrorGain(const Eigen::VectorXd &Kd) { Kd_ = Kd; }
 
     void SetTaskWeighting(const Eigen::VectorXd &w) { w_ = w; }
 
@@ -92,11 +92,13 @@ class Task {
     const Eigen::VectorXd TaskErrorDerivative() { return dx_ - dr_; }
 
     /**
-     * @brief Returns the PD error of the task, using the gains provided (i.e. e = Kp (x - r) + Kd (dx - dr))
+     * @brief Returns the PD error of the task, using the gains provided (i.e. Kp (x - r) + Kd (dx - dr))
      *
      * @return const Eigen::VectorXd&
      */
     const Eigen::VectorXd TaskErrorPD() { return (Kp_.asDiagonal() * TaskError() + Kd_.asDiagonal() * TaskErrorDerivative()); };
+
+    void PrintTaskData();
 
     virtual int UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true);
 
@@ -118,13 +120,14 @@ class Task {
 
     Eigen::VectorXd w_;  // Task weighting
 
+    Eigen::VectorXd Kp_;  // Proportional gains for task-error computation
+    Eigen::VectorXd Kd_;  // Derivative gains for task-error computation
+
     // CasADi codegen function pointer to compute task, task jacobian and
     // task jacobian time derivative - velocity product. Input convention is (q, v) and output is (x, J, dJdq)
     f_casadi_cg callback_;
 
    private:
-    Eigen::VectorXd Kp_;  // Proportional gains for task-error computation
-    Eigen::VectorXd Kd_;  // Derivative gains for task-error computation
     int Resize(int ndim, int nv);
 };
 

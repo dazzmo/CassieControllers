@@ -2,7 +2,6 @@
 
 void CassieLegOSC::SetupController() {
     LOG(INFO) << "InitMatrices";
-    LOG(INFO) << "nv = " << CASSIE_LEG_NV;
 
     M_ = Eigen::MatrixXd::Zero(CASSIE_LEG_NV, CASSIE_LEG_NV);
     J_ = Eigen::MatrixXd::Zero(1, CASSIE_LEG_NV);
@@ -18,30 +17,35 @@ void CassieLegOSC::SetupController() {
     qpos_bl() << -0.3927, -0.3927, -0.8727, -2.8623, -0.3, 0.75, -0.3, -2.4435;
     qpos_bu() << 0.3927, 0.3927, 1.3963, -0.95, 0.3, 3.0, 0.3, -0.5236;
     ctrl_max() << 4.5, 4.5, 12.2, 12.2, 0.9;
+    qvel_max().setConstant(1e1);
+    qacc_max().setConstant(1e20);
 
     SetupEndEffectors();
     SetupOSC();
 
     // Set weights for controller
     Eigen::VectorXd Kp(CASSIE_LEG_NQ), Kd(CASSIE_LEG_NV), w(CASSIE_LEG_NQ);
-    Kp << 2e3, 2e3, 2e3, 2e3, 2e3, 2e3, 2e3, 2e3;
-    Kd << 1e-1, 1e-1, 1e-1, 1e-1, 1e-1, 1e-1, 1e-1, 1e-1;
-    w << 1e0, 1e0, 1e0, 1e0, 1e-2, 1e0, 1e-2, 1e0;
-    
+    Kp.setConstant(2e2);
+    Kd.setConstant(5e0);
+    w.setConstant(1e3);
+
+    w.setZero();
+    w[7] = 1.0;
+
     UpdateJointTrackPDGains(Kp, Kd);
     UpdateJointTrackWeighting(w);
 
     // Ramp up torque initially
-    StartTorqueRampUp(1e-2);
+    StartTorqueRampUp(1e0);
 }
 
 int CassieLegOSC::SetupEndEffectors() {
     LOG(INFO) << "SetupEndEffectors";
     RegisterEndEffector("ankle", cassie_ankle);
-    GetEndEffectorTaskMap()["ankle"]->SetTaskWeighting(Eigen::Vector3d(1e2, 1e2, 1e2));
+    GetEndEffectorTaskMap()["ankle"]->SetTaskWeighting(Eigen::Vector3d(1e-6, 1e-6, 1e-6));
     GetEndEffectorTaskMap()["ankle"]->SetProportionalErrorGain(Eigen::Vector3d(1e1, 1e1, 1e1));
     GetEndEffectorTaskMap()["ankle"]->SetDerivativeErrorGain(Eigen::Vector3d(1e0, 1e0, 1e0));
-    
+
     // RegisterEndEffector("foot_front", cassie_foot_front);
     // RegisterEndEffector("foot_back", cassie_foot_back);
     return 0;
@@ -49,15 +53,18 @@ int CassieLegOSC::SetupEndEffectors() {
 
 int CassieLegOSC::UpdateControl() {
     // Update any tasks or objectives
-    Eigen::Vector3d r(-0.2, 0.0, -0.7);
+    Eigen::Vector3d r(0.0, 0.0, -0.8);
     GetEndEffectorTaskMap()["ankle"]->SetReference(r);
 
     // Compute IK for foot
     Eigen::VectorXd q(CASSIE_LEG_NQ);
     InverseKinematics(q, r, qpos_0());
+    
+    q.setZero();
+    std::cout << "Time: " << t_;
+    q[7] = 0.3 + 0.3 * sin(5 * t_);
     UpdateJointTrackReference(q);
 
-    LOG(INFO) << "qpos (true): " << qpos().transpose();
     // Run the operational space controller
     RunOSC();
     return 0;
@@ -83,13 +90,6 @@ void CassieLegOSC::UpdateDynamics() {
 
     JMJT_ = J_ * M_.inverse() * J_.transpose();
 
-    LOG(INFO) << "M: " << M_;
-    LOG(INFO) << "h: " << h_;
-    LOG(INFO) << "h_spring: " << h_spring_;
-    LOG(INFO) << "J: " << J_;
-    LOG(INFO) << "JMJT: " << JMJT_;
-    LOG(INFO) << "B: " << B_;
-
     // Compute null space matrix
     N_ = Eigen::MatrixXd::Identity(CASSIE_LEG_NV, CASSIE_LEG_NV) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * J_ * M_.inverse();
 
@@ -100,7 +100,8 @@ void CassieLegOSC::UpdateDynamics() {
         DynamicsLambdaJacobian().middleCols(3 * ee.second->GetId(), 3) = -N_ * ee.second->J().transpose();
     }
     DynamicsConstraintVector() = N_ * (h_spring_ - h_) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * dJdq_;
-    LOG(INFO) << "Dynamics finished";
+
+    LOG(INFO) << "UpdateDynamics finished";
 }
 
 /**
@@ -209,16 +210,16 @@ int CassieLegOSC::InverseKinematics(Eigen::VectorXd &qpos, const Eigen::Vector3d
         if (e.squaredNorm() < eps) break;
         // Compute hessian of lagrangian
         lag_hess = (J.transpose() * J + I) - lam[0] * hess_gi;
-        LOG(INFO) << "lag_hess = " << lag_hess;
+        // LOG(INFO) << "lag_hess = " << lag_hess;
 
         // Compute KKT jacobian
-        LOG(INFO) << "jac_kkt = " << jac_kkt;
+        // LOG(INFO) << "jac_kkt = " << jac_kkt;
 
         jac_kkt.topLeftCorner(nq_, nq_) << lag_hess;
         jac_kkt.bottomLeftCorner(1, nq_) << jac_gi;
         jac_kkt.topRightCorner(nq_, 1) << jac_gi.transpose();
 
-        LOG(INFO) << "jac_kkt = " << jac_kkt;
+        // LOG(INFO) << "jac_kkt = " << jac_kkt;
 
         // Compute KKT vector
         vec_kkt << J.transpose() * e, gi;

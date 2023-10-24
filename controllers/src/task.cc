@@ -81,3 +81,14 @@ int Task::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, b
 
     return 0;
 }
+
+void Task::PrintTaskData() {
+    LOG(INFO) << "Task: ";
+    LOG(INFO) << "x: " << x_.transpose();
+    LOG(INFO) << "r: " << r_.transpose();
+    LOG(INFO) << "dx: " << dx_.transpose();
+    LOG(INFO) << "dr: " << dr_.transpose();
+    LOG(INFO) << "e: " << TaskError().transpose();
+    LOG(INFO) << "de: " << TaskErrorDerivative().transpose();
+    LOG(INFO) << "e (PD): " << TaskErrorPD().transpose();
+}
