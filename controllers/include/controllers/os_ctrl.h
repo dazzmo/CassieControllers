@@ -16,11 +16,17 @@
 
 class OperationalSpaceController : public Controller {
    public:
+    struct Options {
+        Options() : include_holonomic_constraint_forces(true){};
+
+        bool include_holonomic_constraint_forces;
+    };
+
     OperationalSpaceController(int nq, int nv, int nu);
     ~OperationalSpaceController() = default;
 
-    int RegisterTask(const char* name, f_casadi_cg callback);
-    int RegisterEndEffectorTask(const char* name, f_casadi_cg callback);
+    int RegisterTask(const char* name, const int dim, f_cg callback);
+    int RegisterEndEffectorTask(const char* name, f_cg callback);
 
     int SetContact(const char* name, double mu, const Eigen::Vector3d& normal);
     int RemoveContact(const char* name);
@@ -29,11 +35,13 @@ class OperationalSpaceController : public Controller {
     int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r);
     int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r, const Eigen::VectorXd& qvel_r);
 
+    // int AddHolonomicConstraint();
+
     int AddJointLimitsTask(double weight, const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
 
     void SetTorqueWeight(double weight) { torque_weight_ = weight; }
 
-    int SetupOSC();
+    int CreateOSC(const Options& opt = Options());
     const Eigen::VectorXd& RunOSC();
 
     std::shared_ptr<Task> GetTask(const std::string& name) { return tasks_[name]; }
@@ -42,6 +50,10 @@ class OperationalSpaceController : public Controller {
    protected:
     // Number of contact sites
     int nc_;
+
+    Eigen::MatrixXd M_;
+    Eigen::VectorXd h_;
+    Eigen::MatrixXd B_;
 
     // Dynamics
     Eigen::VectorXd dyn_b_;  // Vector for dynamic constraints

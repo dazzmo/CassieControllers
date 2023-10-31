@@ -36,7 +36,7 @@ int arm_tip_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casa
 #define arm_tip_SZ_ARG 2
 #define arm_tip_SZ_RES 3
 #define arm_tip_SZ_IW 0
-#define arm_tip_SZ_W 18
+#define arm_tip_SZ_W 17
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

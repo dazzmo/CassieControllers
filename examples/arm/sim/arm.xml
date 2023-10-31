@@ -20,8 +20,8 @@
       </body>
     </worldbody>
     <actuator>
-        <motor name='shoulder' joint='shoulder'/>
-        <motor name='elbow' joint='elbow'/>
-        <motor name='wrist' joint='wrist'/>
+        <motor name='shoulder' joint='shoulder' gear="1"/>
+        <motor name='elbow' joint='elbow' gear="1"/>
+        <motor name='wrist' joint='wrist' gear="1"/>
     </actuator>
   </mujoco>

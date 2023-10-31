@@ -36,7 +36,7 @@ int arm_bias_vector_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_
 #define arm_bias_vector_SZ_ARG 2
 #define arm_bias_vector_SZ_RES 1
 #define arm_bias_vector_SZ_IW 0
-#define arm_bias_vector_SZ_W 24
+#define arm_bias_vector_SZ_W 22
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

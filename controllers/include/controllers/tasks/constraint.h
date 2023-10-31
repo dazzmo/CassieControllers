@@ -1,5 +1,5 @@
-#ifndef INCLUDE_CONTROLLERS_TASK_HPP
-#define INCLUDE_CONTROLLERS_TASK_HPP
+#ifndef INCLUDE_CONTROLLERS_CONSTRAINT_HPP
+#define INCLUDE_CONTROLLERS_CONSTRAINT_HPP
 
 #include <glog/logging.h>
 
@@ -7,12 +7,10 @@
 
 #include "controllers/tasks/code_generation_functions.h"
 
-typedef int (*f_cg)(const double **arg, double **res);
-
 class Task {
    public:
     Task(int dim, int nv, const std::string &name);
-    Task(int dim, int nv, const std::string &name, f_cg callback);
+    Task(int dim, int nv, const std::string &name, f_casadi_cg callback);
     ~Task() = default;
 
     /**
@@ -25,7 +23,7 @@ class Task {
      * @brief Name
      */
     const std::string &name() const { return name_; }
-
+    
     /**
      * @brief Task
      */
@@ -76,7 +74,7 @@ class Task {
     double weight() const { return w_; }
 
     void SetTaskWeighting(double w) { w_ = w; }
-
+    
     void SetReference(const Eigen::VectorXd &r);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr, const Eigen::VectorXd &ddr);
@@ -131,12 +129,12 @@ class Task {
     Eigen::VectorXd Kp_;  // Proportional gains for task-error computation
     Eigen::VectorXd Kd_;  // Derivative gains for task-error computation
 
-    // Codegen function pointer to compute task, task jacobian and
+    // CasADi codegen function pointer to compute task, task jacobian and
     // task jacobian time derivative - velocity product. Input convention is (q, v) and output is (x, J, dJdq)
-    f_cg callback_;
+    f_casadi_cg callback_;
 
    private:
     int Resize(int ndim, int nv);
 };
 
-#endif /* INCLUDE_CONTROLLERS_TASK_HPP */
+#endif /* INCLUDE_CONTROLLERS_CONSTRAINT_HPP */

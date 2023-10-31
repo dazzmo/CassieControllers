@@ -65,7 +65,7 @@ class MujocoSimulator {
     const mjtNum* GetModelVelocity() { return d_->qvel; }
 
     /**
-     * @brief Returns the pointer to the qacc data array for the acceeleration
+     * @brief Returns the pointer to the qacc data array for the acceleration
      * of the model (nv x 1)
      *
      * @return const mjtNum*
@@ -78,6 +78,12 @@ class MujocoSimulator {
      * @return const double
      */
     const double GetSimulatorTime() { return d_->time; };
+
+    void PrintDynamicsCoefficients() {
+        double M[m_->nv * m_->nv];
+        mj_fullM(m_, M, d_->qM);
+        mju_printMat(M, m_->nv, m_->nv);
+    };
 
    private:
     // Determines if the system has been iniitalised

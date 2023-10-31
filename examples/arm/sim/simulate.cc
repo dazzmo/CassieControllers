@@ -37,6 +37,7 @@ int main(int argc, const char** argv) {
                 }
                 std::cout << '\n';
                 std::cout << "u: " << c->ctrl().transpose() << '\n';
+                sim.PrintDynamicsCoefficients();
                 c->Update(sim.GetSimulatorTime());
                 t_ctrl = sim.GetSimulatorTime();
             }

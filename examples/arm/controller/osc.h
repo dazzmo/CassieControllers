@@ -9,6 +9,7 @@
 #include "model/cg/arm_actuation_matrix.h"
 #include "model/cg/arm_bias_vector.h"
 #include "model/cg/arm_mass_matrix.h"
+#include "model/cg/arm_constraint.h"
 #include "model/cg/arm_tip.h"
 
 #define ARM_MODEL_NQ 3 

@@ -21,7 +21,7 @@ void CassieLegOSC::SetupController() {
     qacc_max().setConstant(1e20);
 
     SetupEndEffectors();
-    SetupOSC();
+    CreateOSC();
 
     // Set weights for controller
     Eigen::VectorXd Kp(CASSIE_LEG_NQ), Kd(CASSIE_LEG_NV), w(CASSIE_LEG_NQ);

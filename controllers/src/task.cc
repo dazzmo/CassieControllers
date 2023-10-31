@@ -14,7 +14,7 @@ Task::Task(int dim, int nv, const std::string &name) {
     Resize(dim_, nv_);
 }
 
-Task::Task(int dim, int nv, const std::string &name, f_casadi_cg callback) {
+Task::Task(int dim, int nv, const std::string &name, f_cg callback) {
     dim_ = dim;
     nv_ = nv;
     name_ = name;
@@ -67,14 +67,14 @@ int Task::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, b
         out[1] = J_.data();
         out[2] = dJdq_.data();
         // Use callback
-        callback_(in, out, NULL, NULL, 0);
+        callback_(in, out);
         // Compute task velocity
         dx_ = J_ * qvel;
 
     } else {
         out[1] = nullptr;
         out[2] = nullptr;
-        callback_(in, out, NULL, NULL, 0);
+        callback_(in, out);
     }
 
     return 0;

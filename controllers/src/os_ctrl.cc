@@ -11,12 +11,12 @@ OperationalSpaceController::OperationalSpaceController(int nq, int nv, int nu) :
  * @param callback
  * @return int
  */
-int OperationalSpaceController::RegisterTask(const char* name, f_casadi_cg callback) {
-    tasks_[name] = std::shared_ptr<Task>(new Task(3, nv_, name, callback));
+int OperationalSpaceController::RegisterTask(const char* name, const int dim, f_cg callback) {
+    tasks_[name] = std::shared_ptr<Task>(new Task(dim, nv_, name, callback));
     return 0;
 }
 
-int OperationalSpaceController::RegisterEndEffectorTask(const char* name, f_casadi_cg callback) {
+int OperationalSpaceController::RegisterEndEffectorTask(const char* name, f_cg callback) {
     ee_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(nv_, name, callback));
     ee_tasks_[name]->SetId(nc_);
     nc_++;
@@ -102,9 +102,7 @@ int OperationalSpaceController::AddJointLimitsTask(double w,
  *
  * @return int
  */
-int OperationalSpaceController::SetupOSC() {
-    LOG(INFO) << "OperationalSpaceController::InitProgram";
-
+int OperationalSpaceController::CreateOSC(const Options &opt) {
     LOG(INFO) << "starting";
     // Number of optimisation variables
     int nx = nv_ + 3 * nc_ + nu_;
@@ -167,7 +165,7 @@ int OperationalSpaceController::SetupOSC() {
  */
 const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     if (!osc_setup_) {
-        std::runtime_error("OSC has not been set up! Call SetupOSC() after adding all tasks.");
+        std::runtime_error("OSC has not been set up! Call CreateOSC() after adding all tasks.");
     }
 
     double c = 0.0;
@@ -258,6 +256,8 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     for (auto const& ee : ee_tasks_) {
         ee.second->lambda() = x_.middleRows(nv_ + 3 * ee.second->GetId(), 3);
     }
+
+    LOG(INFO) << "qacc: " << qacc().transpose();
 
     return u_;
 }
