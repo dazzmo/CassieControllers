@@ -1,6 +1,6 @@
 #include "controllers/tasks/joint_track_task.h"
 
-JointTrackTask::JointTrackTask(int nq, int nv) : Task(nq, nv, nullptr) {
+JointTrackTask::JointTrackTask(int nq, int nv) : Task(nq, nv, "joint track", nullptr) {
 }
 
 int JointTrackTask::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians) {

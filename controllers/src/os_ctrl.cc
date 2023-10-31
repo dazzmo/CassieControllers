@@ -4,23 +4,22 @@ OperationalSpaceController::OperationalSpaceController(int nq, int nv, int nu) :
     nc_ = 0;
 }
 
+/**
+ * @brief Registers a new task
+ *
+ * @param name
+ * @param callback
+ * @return int
+ */
 int OperationalSpaceController::RegisterTask(const char* name, f_casadi_cg callback) {
-    tasks_[name] = std::shared_ptr<Task>(new Task(3, nv_, callback));
+    tasks_[name] = std::shared_ptr<Task>(new Task(3, nv_, name, callback));
     return 0;
 }
 
-int OperationalSpaceController::RegisterEndEffector(const char* name, f_casadi_cg callback) {
-    ee_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(nv_, callback));
+int OperationalSpaceController::RegisterEndEffectorTask(const char* name, f_casadi_cg callback) {
+    ee_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(nv_, name, callback));
     ee_tasks_[name]->SetId(nc_);
     nc_++;
-    return 0;
-}
-
-int OperationalSpaceController::UpdateEndEffectorTasks() {
-    for (auto const& task : ee_tasks_) {
-        task.second->UpdateTask(qpos_, qvel_, true);
-    }
-
     return 0;
 }
 
@@ -37,34 +36,63 @@ int OperationalSpaceController::RemoveContact(const char* name) {
 }
 
 int OperationalSpaceController::UpdateJointTrackReference(const Eigen::VectorXd& qpos_r) {
-    joint_track_task_->SetReference(qpos_r);
+    if (use_joint_track_) {
+        joint_track_task_->SetReference(qpos_r);
+    }
     return 0;
 }
 
 int OperationalSpaceController::UpdateJointTrackReference(const Eigen::VectorXd& qpos_r, const Eigen::VectorXd& qvel_r) {
-    joint_track_task_->SetReference(qpos_r, qvel_r);
+    if (use_joint_track_) {
+        joint_track_task_->SetReference(qpos_r, qvel_r);
+    }
     return 0;
 }
 
-int OperationalSpaceController::UpdateJointTrackWeighting(const Eigen::VectorXd& w) {
-    joint_track_task_->SetTaskWeighting(w);
+int OperationalSpaceController::AddJointTrackTask(double w,
+                                                  const Eigen::VectorXd& Kp, 
+                                                  const Eigen::VectorXd& Kd) {
+    if (joint_track_task_ == nullptr) {
+        // Create joint limit avoidance task
+        joint_track_task_ = new JointTrackTask(nq_, nv_);
+
+        joint_track_task_->SetTaskWeighting(w);
+        joint_track_task_->SetProportionalErrorGain(Kp);
+        joint_track_task_->SetDerivativeErrorGain(Kd);
+
+        use_joint_track_ = true;
+
+        // Add to map of tasks
+        tasks_[joint_track_task_->name()] = std::shared_ptr<Task>(joint_track_task_);
+        LOG(INFO) << "Joint track task added";
+    } else {
+        std::runtime_error("AddJointTrackTask: tracking task already added!");
+    }
+
     return 0;
 }
 
-int OperationalSpaceController::UpdateJointTrackPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd) {
-    joint_track_task_->SetProportionalErrorGain(Kp);
-    joint_track_task_->SetDerivativeErrorGain(Kd);
-    return 0;
-}
+int OperationalSpaceController::AddJointLimitsTask(double w,
+                                                   const Eigen::VectorXd& Kp, 
+                                                   const Eigen::VectorXd& Kd) {
+    if (joint_limits_task_ != nullptr) {
+        // Create joint track task
+        joint_track_task_ = new JointTrackTask(nq_, nv_);
+        joint_limits_task_->SetTaskWeighting(w);
+        joint_limits_task_->SetProportionalErrorGain(Kp);
+        joint_limits_task_->SetDerivativeErrorGain(Kd);
 
-int OperationalSpaceController::UpdateJointLimitWeighting(const Eigen::VectorXd& w) {
-    joint_limits_task_->SetTaskWeighting(w);
-    return 0;
-}
+        joint_limits_task_->SetUpperPositionLimit(qpos_bu());
+        joint_limits_task_->SetLowerPositionLimit(qpos_bl());
 
-int OperationalSpaceController::UpdateJointLimitPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd) {
-    joint_limits_task_->SetProportionalErrorGain(Kp);
-    joint_limits_task_->SetDerivativeErrorGain(Kd);
+        use_joint_limits_ = true;
+
+        tasks_[joint_limits_task_->name()] = std::shared_ptr<Task>(joint_limits_task_);
+
+    } else {
+        std::runtime_error("AddJointLimitsTask: limits task already added!");
+    }
+
     return 0;
 }
 
@@ -76,14 +104,6 @@ int OperationalSpaceController::UpdateJointLimitPDGains(const Eigen::VectorXd& K
  */
 int OperationalSpaceController::SetupOSC() {
     LOG(INFO) << "OperationalSpaceController::InitProgram";
-
-    // Create joint track task
-    joint_track_task_ = new JointTrackTask(nq_, nv_);
-
-    // Create joint limit avoidance task
-    joint_limits_task_ = new JointLimitsTask(nq_, nv_);
-    joint_limits_task_->SetUpperPositionLimit(qpos_bu());
-    joint_limits_task_->SetLowerPositionLimit(qpos_bl());
 
     LOG(INFO) << "starting";
     // Number of optimisation variables
@@ -135,6 +155,7 @@ int OperationalSpaceController::SetupOSC() {
     // Create program
     qp_ = std::unique_ptr<qpOASES::SQProblem>(new qpOASES::SQProblem(nx, nv_ + 4 * nc_));
 
+    osc_setup_ = true;
     LOG(INFO) << "finished";
     return 0;
 }
@@ -143,13 +164,14 @@ int OperationalSpaceController::SetupOSC() {
  * @brief Solves the current OSC program with the current values for the state of the
  * system at time t
  *
- * @param t Current time for the controller
- * @return int
  */
 const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
+    if (!osc_setup_) {
+        std::runtime_error("OSC has not been set up! Call SetupOSC() after adding all tasks.");
+    }
+
     double c = 0.0;
     LOG(INFO) << "OperationalSpaceController::ComputeControl";
-    UpdateEndEffectorTasks();
     UpdateDynamics();
 
     // Dynamic constraints
@@ -160,63 +182,52 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     H_.setZero();
     g_.setZero();
 
-    // Create objective
-    LOG(INFO) << "end effector tasks";
-    for (auto const& ee : ee_tasks_) {
-        ee.second->PrintTaskData();
+    LOG(INFO) << "regular tasks";
+    for (auto const& task : tasks_) {
+        task.second->UpdateTask(qpos(), qvel(), true);
+        task.second->PrintTaskData();
+        double w = task.second->weight();
         // Task jacobian in qacc
-        const Eigen::MatrixXd& A = ee.second->J();
-        // Task weight
-        const Eigen::Matrix3d W = ee.second->weight().asDiagonal();
+        const Eigen::MatrixXd& A = task.second->J();
         // Task constant vector
-        Eigen::Vector3d a = ee.second->dJdq() + ee.second->TaskErrorPD();
+        Eigen::Vector3d a = task.second->dJdq() + task.second->TaskErrorPD();
 
         // Add to objective
-        // H_.topLeftCorner(nv_, nv_) += A.transpose() * W * A;
-        // g_.topRows(nv_) += 2.0 * A.transpose() * W * a;
-        // c += (W * a).dot(a);
+        H_.topLeftCorner(nv_, nv_) += w * A.transpose() * A;
+        g_.topRows(nv_) += 2.0 * w * A.transpose() * a;
+        c += w * a.dot(a);
+    }
+
+    LOG(INFO) << "end effector tasks";
+    for (auto const& task : ee_tasks_) {
+        // Update the task
+        task.second->UpdateTask(qpos(), qvel(), true);
+        task.second->PrintTaskData();
+        double w = task.second->weight();
+        // Task jacobian in qacc
+        const Eigen::MatrixXd& A = task.second->J();
+        // Task constant vector
+        Eigen::Vector3d a = task.second->dJdq() + task.second->TaskErrorPD();
+
+        // Add to objective
+        H_.topLeftCorner(nv_, nv_) += w * A.transpose() * A;
+        g_.topRows(nv_) += 2.0 * w * A.transpose() * a;
+        c += w * a.dot(a);
 
         // Contact
-        if (ee.second->inContact) {
-            ubx_.middleRows(nv_ + 3 * ee.second->GetId(), 3) << qpOASES::INFTY, qpOASES::INFTY, qpOASES::INFTY;
-            lbx_.middleRows(nv_ + 3 * ee.second->GetId(), 3) << -qpOASES::INFTY, -qpOASES::INFTY, qpOASES::ZERO;
+        if (task.second->inContact) {
+            ubx_.middleRows(nv_ + 3 * task.second->GetId(), 3) << qpOASES::INFTY, qpOASES::INFTY, qpOASES::INFTY;
+            lbx_.middleRows(nv_ + 3 * task.second->GetId(), 3) << -qpOASES::INFTY, -qpOASES::INFTY, qpOASES::ZERO;
         } else {
-            ubx_.middleRows(nv_ + 3 * ee.second->GetId(), 3) << qpOASES::ZERO, qpOASES::ZERO, qpOASES::ZERO;
-            lbx_.middleRows(nv_ + 3 * ee.second->GetId(), 3) << -qpOASES::ZERO, -qpOASES::ZERO, -qpOASES::ZERO;
+            ubx_.middleRows(nv_ + 3 * task.second->GetId(), 3) << qpOASES::ZERO, qpOASES::ZERO, qpOASES::ZERO;
+            lbx_.middleRows(nv_ + 3 * task.second->GetId(), 3) << -qpOASES::ZERO, -qpOASES::ZERO, -qpOASES::ZERO;
         }
     }
 
-    // Joint tracking
-    LOG(INFO) << "joint tracking";
-    joint_track_task_->UpdateTask(qpos(), qvel());
-    joint_track_task_->PrintTaskData();
-    const Eigen::MatrixXd& At = joint_track_task_->J();
-    const Eigen::MatrixXd Wt = joint_track_task_->weight().asDiagonal();
-    Eigen::VectorXd at = joint_track_task_->TaskErrorPD();
-    // Add to objective
-    H_.topLeftCorner(nv_, nv_) += At.transpose() * Wt * At;
-    g_.topRows(nv_) += 2.0 * At.transpose() * Wt * at;
-    c += (Wt * at).dot(at);
-
-    // Joint limit avoidance
-    // LOG(INFO) << "joint limit avoidance";
-    // LOG(INFO) << "qu: " << qpos_bu().transpose();
-    // LOG(INFO) << " q: " << qpos().transpose();
-    // LOG(INFO) << "ql: " << qpos_bl().transpose();
-    // joint_limits_task_->UpdateTask(qpos(), qvel());
-    // joint_limits_task_->PrintTaskData();
-    // const Eigen::MatrixXd& Al = joint_limits_task_->J();
-    // const Eigen::MatrixXd Wl = joint_limits_task_->weight().asDiagonal();
-    // Eigen::VectorXd al = joint_limits_task_->TaskErrorPD();
-    // // Add to objective
-    // H_.topLeftCorner(nv_, nv_) += Al.transpose() * Al;
-    // g_.topRows(nv_) += 2.0 * Al.transpose() * al;
-    // c += (al).dot(al);
-
     // Torque regularisation
-    for(int i = 0; i < nu_; ++i) {
+    for (int i = 0; i < nu_; ++i) {
         int idx = nv_ + 3 * nc_ + i;
-        H_(idx, idx) += 1e-6;
+        H_(idx, idx) += torque_weight_;
     }
 
     LOG(INFO) << "solve";
@@ -242,20 +253,11 @@ const Eigen::VectorXd& OperationalSpaceController::RunOSC() {
     // Get solution
     qp_->getPrimalSolution(x_.data());
     qacc_ = x_.topRows(nv_).transpose();
-    LOG(INFO) << "qacc: " << qacc_.transpose();
     // Extract solution components
     u_ = ApplyTorquePreScale() * x_.bottomRows(nu_);
-    LOG(INFO) << "u: " << u_.transpose();
     for (auto const& ee : ee_tasks_) {
         ee.second->lambda() = x_.middleRows(nv_ + 3 * ee.second->GetId(), 3);
-        LOG(INFO) << "lambda (" << ee.first << "): " << ee.second->lambda().transpose();
     }
-
-    // Joint track error
-    LOG(INFO) << "Joint track error";
-    LOG(INFO) << "e = " << -joint_track_task_->TaskErrorPD().transpose();
-    LOG(INFO) << "ddx = " << (At * qacc_ + joint_track_task_->dJdq()).transpose();
-
 
     return u_;
 }

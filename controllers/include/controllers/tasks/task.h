@@ -9,8 +9,8 @@
 
 class Task {
    public:
-    Task(int dim, int nv);
-    Task(int dim, int nv, f_casadi_cg callback);
+    Task(int dim, int nv, const std::string &name);
+    Task(int dim, int nv, const std::string &name, f_casadi_cg callback);
     ~Task() = default;
 
     /**
@@ -20,7 +20,12 @@ class Task {
     const int &dim() const { return dim_; }
 
     /**
-     * @brief Task      *
+     * @brief Name
+     */
+    const std::string &name() const { return name_; }
+    
+    /**
+     * @brief Task
      */
     const Eigen::VectorXd &x() const { return x_; }
     /**
@@ -66,8 +71,10 @@ class Task {
      * @brief Task weighting
      *
      */
-    const Eigen::VectorXd &weight() const { return w_; }
+    double weight() const { return w_; }
 
+    void SetTaskWeighting(double w) { w_ = w; }
+    
     void SetReference(const Eigen::VectorXd &r);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr);
     void SetReference(const Eigen::VectorXd &r, const Eigen::VectorXd &dr, const Eigen::VectorXd &ddr);
@@ -75,7 +82,6 @@ class Task {
     virtual void SetProportionalErrorGain(const Eigen::VectorXd &Kp) { Kp_ = Kp; }
     virtual void SetDerivativeErrorGain(const Eigen::VectorXd &Kd) { Kd_ = Kd; }
 
-    void SetTaskWeighting(const Eigen::VectorXd &w) { w_ = w; }
 
     /**
      * @brief Returns the error in the task (i.e. x - r)
@@ -106,6 +112,9 @@ class Task {
     int dim_;
     int nq_;
     int nv_;
+    std::string name_;
+
+    double w_;  // Task weighting
 
     Eigen::VectorXd x_;    // Task
     Eigen::VectorXd dx_;   // Task rate
@@ -117,8 +126,6 @@ class Task {
 
     Eigen::MatrixXd J_;     // Task jacobian
     Eigen::VectorXd dJdq_;  // Task jacobian time derivative with velocity
-
-    Eigen::VectorXd w_;  // Task weighting
 
     Eigen::VectorXd Kp_;  // Proportional gains for task-error computation
     Eigen::VectorXd Kd_;  // Derivative gains for task-error computation

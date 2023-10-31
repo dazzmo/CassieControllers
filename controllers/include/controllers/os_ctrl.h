@@ -20,20 +20,18 @@ class OperationalSpaceController : public Controller {
     ~OperationalSpaceController() = default;
 
     int RegisterTask(const char* name, f_casadi_cg callback);
-    int RegisterEndEffector(const char* name, f_casadi_cg callback);
-
-    int UpdateJointTrackWeighting(const Eigen::VectorXd& w);
-    int UpdateJointTrackPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
-    int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r);
-    int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r, const Eigen::VectorXd& qvel_r);
-
-    int UpdateJointLimitWeighting(const Eigen::VectorXd& w);
-    int UpdateJointLimitPDGains(const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
-
-    int UpdateEndEffectorTasks();
+    int RegisterEndEffectorTask(const char* name, f_casadi_cg callback);
 
     int SetContact(const char* name, double mu, const Eigen::Vector3d& normal);
     int RemoveContact(const char* name);
+
+    int AddJointTrackTask(double weight, const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
+    int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r);
+    int UpdateJointTrackReference(const Eigen::VectorXd& qpos_r, const Eigen::VectorXd& qvel_r);
+
+    int AddJointLimitsTask(double weight, const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
+
+    void SetTorqueWeight(double weight) { torque_weight_ = weight; }
 
     int SetupOSC();
     const Eigen::VectorXd& RunOSC();
@@ -97,8 +95,15 @@ class OperationalSpaceController : public Controller {
     Eigen::Ref<Eigen::VectorXd> DynamicsConstraintVector() { return dyn_b_; }
 
    private:
-    JointTrackTask* joint_track_task_;
-    JointLimitsTask* joint_limits_task_;
+    bool osc_setup_ = false;
+    bool use_joint_limits_ = false;
+    bool use_joint_track_ = false;
+
+    double torque_weight_ = 1.0;
+
+    JointTrackTask* joint_track_task_ = nullptr;
+    JointLimitsTask* joint_limits_task_ = nullptr;
+
     std::map<std::string, std::shared_ptr<Task>> tasks_;
     std::map<std::string, std::shared_ptr<EndEffectorTask>> ee_tasks_;
 

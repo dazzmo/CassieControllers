@@ -88,6 +88,10 @@ void MujocoSimulator::KeyboardCallbackImpl(GLFWwindow* window, int key, int scan
         mj_resetData(m_, d_);
         mj_forward(m_, d_);
     }
+    // quit window
+    if (act == GLFW_PRESS && key == GLFW_KEY_Q) {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
 }
 
 // mouse button callback

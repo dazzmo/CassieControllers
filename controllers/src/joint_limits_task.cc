@@ -1,6 +1,6 @@
 #include "controllers/tasks/joint_limits_task.h"
 
-JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv) {
+JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv, "joint limits") {
     nq_ = nq;
     beta_ = 0.5;
     zeta_ = Eigen::VectorXd::Zero(nq);

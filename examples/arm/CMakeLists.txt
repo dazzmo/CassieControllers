@@ -28,27 +28,14 @@ set_target_properties(arm_control PROPERTIES LINKER_LANGUAGE CXX)
 
 add_executable(arm_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
 target_link_libraries(arm_codegen PUBLIC 
-${pinocchio_LIBRARIES}
-casadi
-Eigen3::Eigen
+code_generator
 )
 target_include_directories(arm_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
 
-add_executable(arm_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
-target_link_libraries(arm_codegen PUBLIC 
-${pinocchio_LIBRARIES}
-casadi
-Eigen3::Eigen
-)
-target_include_directories(arm_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/arm.urdf" "${CMAKE_CURRENT_BINARY_DIR}/arm.urdf" SYMBOLIC)
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sim/arm.xml" "${CMAKE_CURRENT_BINARY_DIR}/arm.xml" SYMBOLIC)
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sim/scene.xml" "${CMAKE_CURRENT_BINARY_DIR}/scene.xml" SYMBOLIC)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/arm.urdf 
-${CMAKE_CURRENT_BINARY_DIR}/arm.urdf
-COPYONLY)
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/sim/scene.xml
-${CMAKE_CURRENT_BINARY_DIR}/scene.xml
-COPYONLY)
 
 add_executable(arm_simulator sim/simulate.cc)
-target_link_libraries(arm_simulator PUBLIC mujoco::mujoco glfw Eigen3::Eigen arm_control)
+target_link_libraries(arm_simulator PUBLIC mujoco_simulator Eigen3::Eigen arm_control)

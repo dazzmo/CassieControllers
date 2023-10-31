@@ -1,9 +1,12 @@
 #include "controllers/tasks/task.h"
 
-Task::Task(int dim, int nv) {
+Task::Task(int dim, int nv, const std::string &name) {
     dim_ = dim;
     nv_ = nv;
+    name_ = name;
     callback_ = nullptr;
+
+    w_ = 1.0;
 
     Kp_ = Eigen::VectorXd::Ones(dim);
     Kd_ = Eigen::VectorXd::Ones(dim);
@@ -11,9 +14,10 @@ Task::Task(int dim, int nv) {
     Resize(dim_, nv_);
 }
 
-Task::Task(int dim, int nv, f_casadi_cg callback) {
+Task::Task(int dim, int nv, const std::string &name, f_casadi_cg callback) {
     dim_ = dim;
     nv_ = nv;
+    name_ = name;
     callback_ = callback;
 
     Kp_ = Eigen::VectorXd::Ones(dim);
@@ -30,8 +34,6 @@ int Task::Resize(int dim, int nv) {
     r_ = Eigen::VectorXd::Zero(dim);
     dr_ = Eigen::VectorXd::Zero(dim);
     ddr_ = Eigen::VectorXd::Zero(dim);
-
-    w_ = Eigen::VectorXd::Zero(dim);
 
     J_ = Eigen::MatrixXd::Zero(dim, nv);
     dJdq_ = Eigen::VectorXd::Zero(dim);
@@ -64,14 +66,10 @@ int Task::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, b
     if (update_jacobians) {
         out[1] = J_.data();
         out[2] = dJdq_.data();
+        // Use callback
         callback_(in, out, NULL, NULL, 0);
         // Compute task velocity
         dx_ = J_ * qvel;
-
-        LOG(INFO) << "J: " << J_;
-        LOG(INFO) << "dJdq: " << dJdq_.transpose();
-        LOG(INFO) << "x: " << x_.transpose();
-        LOG(INFO) << "dx: " << dx_.transpose();
 
     } else {
         out[1] = nullptr;
@@ -83,12 +81,14 @@ int Task::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, b
 }
 
 void Task::PrintTaskData() {
-    LOG(INFO) << "Task: ";
-    LOG(INFO) << "x: " << x_.transpose();
-    LOG(INFO) << "r: " << r_.transpose();
-    LOG(INFO) << "dx: " << dx_.transpose();
-    LOG(INFO) << "dr: " << dr_.transpose();
-    LOG(INFO) << "e: " << TaskError().transpose();
-    LOG(INFO) << "de: " << TaskErrorDerivative().transpose();
-    LOG(INFO) << "e (PD): " << TaskErrorPD().transpose();
+    LOG(INFO) << "Task: " << name_ << '\n'
+              << "x: " << x_.transpose() << '\n'
+              << "r: " << r_.transpose() << '\n'
+              << "dx: " << dx_.transpose() << '\n'
+              << "dr: " << dr_.transpose() << '\n'
+              << "e: " << TaskError().transpose() << '\n'
+              << "de: " << TaskErrorDerivative().transpose() << '\n'
+              << "e (PD): " << TaskErrorPD().transpose() << '\n'
+              << "J: " << J_ << '\n'
+              << "dJdq: " << dJdq_ << '\n';
 }

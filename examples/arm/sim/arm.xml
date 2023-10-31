@@ -1,0 +1,27 @@
+<mujoco model="arm">
+    <compiler angle="radian" autolimits="true"/>
+    <size njmax="500" nconmax="100"/>
+    <default/>
+    <worldbody>
+      <body name="first_link" pos="0 0 2.5">
+        <inertial pos="0 0 -0.5" mass="1" diaginertia="0.02 0.02 0.002"/>
+        <joint name="shoulder" type="hinge" pos="0 0 0" axis="1 0 0" range="-3.1415 3.1415"/>
+        <geom size="0.05 0.5" pos="0 0 -0.5" type="cylinder" contype="0" conaffinity="0" group="1" density="0"/>
+        <body name="second_link" pos="0 0 -1">
+          <inertial pos="0 0 -0.5" mass="1" diaginertia="0.02 0.02 0.002"/>
+          <joint name="elbow" type="hinge" pos="0 0 0" axis="1 0 0" range="-3.1415 3.1415"/>
+          <geom size="0.05 0.5" pos="0 0 -0.5" type="cylinder" contype="0" conaffinity="0" group="1" density="0"/>
+          <body name="third_link" pos="0 0 -1">
+            <inertial pos="0 0 -0.5" mass="1" diaginertia="0.02 0.02 0.002"/>
+            <joint name="wrist" type="hinge" pos="0 0 0" axis="1 0 0" range="-3.1415 3.1415"/>
+            <geom size="0.05 0.5" pos="0 0 -0.5" type="cylinder" contype="0" conaffinity="0" group="1" density="0"/>
+          </body>
+        </body>
+      </body>
+    </worldbody>
+    <actuator>
+        <motor name='shoulder' joint='shoulder'/>
+        <motor name='elbow' joint='elbow'/>
+        <motor name='wrist' joint='wrist'/>
+    </actuator>
+  </mujoco>
