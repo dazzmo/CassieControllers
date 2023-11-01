@@ -5,14 +5,10 @@
 
 #include <eigen3/Eigen/Core>
 
-#include "controllers/tasks/code_generation_functions.h"
-
-typedef int (*f_cg)(const double **arg, double **res);
-
 class Task {
    public:
     Task(int dim, int nv, const std::string &name);
-    Task(int dim, int nv, const std::string &name, f_cg callback);
+    Task(int dim, int nv, const std::string &name, int (*callback)(const double**, double**));
     ~Task() = default;
 
     /**
@@ -133,7 +129,7 @@ class Task {
 
     // Codegen function pointer to compute task, task jacobian and
     // task jacobian time derivative - velocity product. Input convention is (q, v) and output is (x, J, dJdq)
-    f_cg callback_;
+    int (*callback_)(const double **, double **);
 
    private:
     int Resize(int ndim, int nv);

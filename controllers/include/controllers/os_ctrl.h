@@ -13,6 +13,7 @@
 #include "controllers/tasks/joint_limits_task.h"
 #include "controllers/tasks/joint_track_task.h"
 #include "controllers/tasks/task.h"
+#include "controllers/constraint.h"
 
 class OperationalSpaceController : public Controller {
    public:
@@ -25,8 +26,9 @@ class OperationalSpaceController : public Controller {
     OperationalSpaceController(int nq, int nv, int nu);
     ~OperationalSpaceController() = default;
 
-    int RegisterTask(const char* name, const int dim, f_cg callback);
-    int RegisterEndEffectorTask(const char* name, f_cg callback);
+    int AddHolonomicConstraint(const char* name, const int dim, int (*callback)(const double**, double**));
+    int AddTask(const char* name, const int dim, int (*callback)(const double**, double**));
+    int AddEndEffectorTask(const char* name, int (*callback)(const double**, double**));
 
     int SetContact(const char* name, double mu, const Eigen::Vector3d& normal);
     int RemoveContact(const char* name);

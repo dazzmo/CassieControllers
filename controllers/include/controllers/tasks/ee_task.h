@@ -8,7 +8,7 @@ class EndEffectorTask : public Task {
 
     bool inContact = false;
 
-    EndEffectorTask(int nv, const std::string &name, f_cg callback);
+    EndEffectorTask(int nv, const std::string &name, int (*callback)(const double **, double **));
     ~EndEffectorTask() = default;
 
     void SetId(const int& id) { id_ = id; }

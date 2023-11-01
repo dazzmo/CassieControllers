@@ -5,18 +5,38 @@ OperationalSpaceController::OperationalSpaceController(int nq, int nv, int nu) :
 }
 
 /**
- * @brief Registers a new task
+ * @brief Adds a new holnomic constraint to the system
  *
  * @param name
  * @param callback
  * @return int
  */
-int OperationalSpaceController::RegisterTask(const char* name, const int dim, f_cg callback) {
+int OperationalSpaceController::AddHolonomicConstraint(const char* name, const int dim, int (*callback)(const double**, double**)) {
+    tasks_[name] = std::shared_ptr<Task>(new Constraint(dim, nv_, name, callback));
+    return 0;
+}
+
+/**
+ * @brief Adds a new task
+ *
+ * @param name
+ * @param callback
+ * @return int
+ */
+int OperationalSpaceController::AddTask(const char* name, const int dim, int (*callback)(const double**, double**)) {
     tasks_[name] = std::shared_ptr<Task>(new Task(dim, nv_, name, callback));
     return 0;
 }
 
-int OperationalSpaceController::RegisterEndEffectorTask(const char* name, f_cg callback) {
+/**
+ * @brief Adds a three-dimensional end-effector task, where callback is a function with inputs
+ * (q, v) and outputs the task, its jacobian and its time derivative-velocity product (i.e. (x, J, dJdq))
+ *
+ * @param name
+ * @param callback
+ * @return int
+ */
+int OperationalSpaceController::AddEndEffectorTask(const char* name, int (*callback)(const double**, double**)) {
     ee_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(nv_, name, callback));
     ee_tasks_[name]->SetId(nc_);
     nc_++;
@@ -49,8 +69,17 @@ int OperationalSpaceController::UpdateJointTrackReference(const Eigen::VectorXd&
     return 0;
 }
 
+/**
+ * @brief Includes a task that encourages the state of the system to follow a provided trajectory in
+ * q and/or v.
+ *
+ * @param w
+ * @param Kp
+ * @param Kd
+ * @return int
+ */
 int OperationalSpaceController::AddJointTrackTask(double w,
-                                                  const Eigen::VectorXd& Kp, 
+                                                  const Eigen::VectorXd& Kp,
                                                   const Eigen::VectorXd& Kd) {
     if (joint_track_task_ == nullptr) {
         // Create joint limit avoidance task
@@ -73,7 +102,7 @@ int OperationalSpaceController::AddJointTrackTask(double w,
 }
 
 int OperationalSpaceController::AddJointLimitsTask(double w,
-                                                   const Eigen::VectorXd& Kp, 
+                                                   const Eigen::VectorXd& Kp,
                                                    const Eigen::VectorXd& Kd) {
     if (joint_limits_task_ != nullptr) {
         // Create joint track task
@@ -97,12 +126,14 @@ int OperationalSpaceController::AddJointLimitsTask(double w,
 }
 
 /**
+ *
  * @brief Sets up the Operational Space Controller (OSC) program by initialising the
  * necessary matrices and vectors for computation.
  *
+ * @param opt
  * @return int
  */
-int OperationalSpaceController::CreateOSC(const Options &opt) {
+int OperationalSpaceController::CreateOSC(const Options& opt) {
     LOG(INFO) << "starting";
     // Number of optimisation variables
     int nx = nv_ + 3 * nc_ + nu_;

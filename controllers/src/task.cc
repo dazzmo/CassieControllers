@@ -14,7 +14,7 @@ Task::Task(int dim, int nv, const std::string &name) {
     Resize(dim_, nv_);
 }
 
-Task::Task(int dim, int nv, const std::string &name, f_cg callback) {
+Task::Task(int dim, int nv, const std::string &name, int (*callback)(const double **, double **)) {
     dim_ = dim;
     nv_ = nv;
     name_ = name;
