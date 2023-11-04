@@ -1,4 +1,4 @@
-#include "controllers/tasks/ee_task.h"
+#include "controllers/osc/tasks/ee_task.h"
 
 EndEffectorTask::EndEffectorTask(int nv, const std::string &name, int (*callback)(const double **, double **)) : Task(3, nv, name, callback) {
     inContact = false;

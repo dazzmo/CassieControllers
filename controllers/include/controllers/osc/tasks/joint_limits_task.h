@@ -10,7 +10,7 @@
  *
  */
 
-#include "controllers/tasks/task.h"
+#include "controllers/osc/tasks/task.h"
 
 class JointLimitsTask : public Task {
    public:

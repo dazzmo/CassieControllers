@@ -1,4 +1,4 @@
-#include "controllers/tasks/joint_track_task.h"
+#include "controllers/osc/tasks/joint_track_task.h"
 
 JointTrackTask::JointTrackTask(int nq, int nv) : Task(nq, nv, "joint track", nullptr) {
 }

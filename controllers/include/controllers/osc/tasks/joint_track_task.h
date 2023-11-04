@@ -1,7 +1,7 @@
 #ifndef INCLUDE_CONTROLLERS_JOINT_TRACK_TASK_HPP
 #define INCLUDE_CONTROLLERS_JOINT_TRACK_TASK_HPP
 
-#include "controllers/tasks/task.h"
+#include "controllers/osc/tasks/task.h"
 
 class JointTrackTask : public Task {
    public:

@@ -18,11 +18,11 @@ int main(int argc, const char** argv) {
 
     // make controller
     const double freq = 2e2;
-    ArmOSC* c = new ArmOSC();
-    if (c->Init() != ControllerStatus::SUCCESS) {
-        mju_error("Could not initialise controller");
-    }
-    c->SetControlFrequency(freq);
+    // ArmOSC* c = new ArmOSC();
+    // if (c->Init() != ControllerStatus::SUCCESS) {
+    //     mju_error("Could not initialise controller");
+    // }
+    // c->SetControlFrequency(freq);
 
     mjtNum t_ctrl = sim.GetSimulatorTime();
     while (!sim.WindowShouldClose()) {
@@ -30,13 +30,13 @@ int main(int argc, const char** argv) {
         while (sim.GetSimulatorTime() - simstart < 1.0 / 60.0) {
             // Apply control at desired frequency
             if (sim.GetSimulatorTime() - t_ctrl > 1.0 / freq) {
-                c->MapMujocoState(sim.GetModelConfiguration(), sim.GetModelVelocity());
+                // c->MapMujocoState(sim.GetModelConfiguration(), sim.GetModelVelocity());
                 std::cout << "qacc (sim): ";
                 for (int i = 0; i < sim.GetModelNv(); i++) {
                     std::cout << *(sim.GetModelAcceleration() + i) << '\t';
                 }
                 std::cout << '\n';
-                std::cout << "u: " << c->ctrl().transpose() << '\n';
+                // std::cout << "u: " << c->ctrl().transpose() << '\n';
                 sim.PrintDynamicsCoefficients();
                 c->Update(sim.GetSimulatorTime());
                 t_ctrl = sim.GetSimulatorTime();

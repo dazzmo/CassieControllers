@@ -1,4 +1,4 @@
-#include "controllers/tasks/joint_limits_task.h"
+#include "controllers/osc/tasks/joint_limits_task.h"
 
 JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv, "joint limits") {
     nq_ = nq;

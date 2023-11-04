@@ -10,8 +10,8 @@ We require the following libraries to run the controllers and their simulations.
 * [Eigen](https://gitlab.com/libeigen/eigen) (at least v3.3)
 * [qpOASES](https://github.com/coin-or/qpOASES) (latest version on master before November 2023)
 
-For code generation of kinodynamic quantities of rigid-body systems described URDF files, we also require the installation of the following:
-* [Pinicchio](https://github.com/stack-of-tasks/pinocchio)
+For code generation of kinodynamic quantities of rigid-body systems described by URDF files, we also require the installation of the following:
+* [Pinocchio](https://github.com/stack-of-tasks/pinocchio)
 * [CasADi](https://github.com/casadi/casadi)
 
 If you are working in Linux, install all of these dependencies with the following code.
