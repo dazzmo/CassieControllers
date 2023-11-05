@@ -2,23 +2,10 @@
 
 using namespace controller;
 
-Controller::Controller(const DynamicModel &m) : d_() {
-    m_ = const_cast<DynamicModel *>(&m);
+Controller::Controller() : d_() {
     LOG(INFO) << "Controller constructor";
 }
 
-ReturnStatus Controller::Init() {
-    // Starting time
-    SetCurrentTime(0.0);
-
-    // Setup program (user-defined)
-    SetupController();
-
-    return ReturnStatus::SUCCESS;
-}
-
-void Controller::Update(double t) {
-    SetCurrentTime(t);
-    if (UpdateControl() != ReturnStatus::SUCCESS) {
-    };
+void Controller::AddModel(const DynamicModel &m) {
+    m_ = const_cast<DynamicModel *>(&m);
 }

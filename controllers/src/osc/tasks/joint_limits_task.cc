@@ -1,11 +1,12 @@
 #include "controllers/osc/tasks/joint_limits_task.h"
 
-JointLimitsTask::JointLimitsTask(int nq, int nv) : Task(2 * nq, nv, "joint limits") {
-    nq_ = nq;
+using namespace controller::osc;
+
+JointLimitsTask::JointLimitsTask(const std::string &name, const DynamicModel::Size &sz) : Task("joint limits", 2 * sz.nq, sz) {
     beta_ = 0.5;
-    zeta_ = Eigen::VectorXd::Zero(nq);
-    qpos_l_ = Eigen::VectorXd::Zero(nq);
-    qpos_u_ = Eigen::VectorXd::Zero(nq);
+    zeta_ = Vector::Zero(sz.nq);
+    ql_ = ConfigurationVector::Zero(sz.nq);
+    qu_ = ConfigurationVector::Zero(sz.nq);
 }
 
 /**
@@ -37,28 +38,32 @@ double JointLimitsTask::TransitionFunction(double q, double ql, double qu) {
     return zeta;
 }
 
-int JointLimitsTask::UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians) {
-    
+void JointLimitsTask::UpdateTask(const Vector &q, const Vector &v) {
     // Joint Limit and Velocity
-    for (int i = 0; i < nq_; i++) {
-        zeta_[i] = TransitionFunction(qpos[i], qpos_l_[i], qpos_u_[i]);
+    for (int i = 0; i < nq_; ++i) {
+        zeta_[i] = TransitionFunction(q[i], ql_[i], qu_[i]);
     }
     // Task for keeping from boundaries
-    x_.topRows(nq_) = (qpos_u_ - qpos).cwiseProduct(zeta_);
-    x_.bottomRows(nq_) = (qpos - qpos_l_).cwiseProduct(zeta_);
+    x_.topRows(nq_) = (qu_ - q).cwiseProduct(zeta_);
+    x_.bottomRows(nq_) = (q - ql_).cwiseProduct(zeta_);
 
     // Jacobian
-    if (update_jacobians) {
-        // Assess if near joint bound
-        for (int i = 0; i < nq_; i++) {
-            J_(i, i) = -zeta_[i];
-            J_(nq_ + i, i) = zeta_[i];
-        }
+    for (int i = 0; i < nq_; ++i) {
+        J_(i, i) = -zeta_[i];
+        J_(nq_ + i, i) = zeta_[i];
+        dJdq_[i] = 0.0;
+        dJdq_[nq_ + i] = 0.0;
     }
 
     // Compute task velocity
-    dx_.topRows(nq_) = -qvel.cwiseProduct(zeta_);
-    dx_.bottomRows(nq_) = qvel.cwiseProduct(zeta_);
+    dx_.topRows(nq_) = -v.cwiseProduct(zeta_);
+    dx_.bottomRows(nq_) = v.cwiseProduct(zeta_);
 
-    return 0;
+    // Compute error
+    e_ = x_;
+    de_ = dx_;
+
+    // Compute output
+    pd_out_.topRows(nq_) = Kp().asDiagonal() * e_.topRows(nq_) + Kd().asDiagonal() * de_.topRows(nq_);
+    pd_out_.bottomRows(nq_) = Kp().asDiagonal() * e_.bottomRows(nq_) + Kd().asDiagonal() * de_.bottomRows(nq_);
 }

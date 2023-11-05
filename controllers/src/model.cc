@@ -1,20 +1,9 @@
 #include "controllers/model.h"
 
-void DynamicModel::AddSite(const std::string &name) {
-    sites_[name] = new Site(sz_);
-}
-
-void DynamicModel::RemoveSite(const std::string &name) {
-    sites_.erase(name);
-}
+using namespace controller;
 
 void DynamicModel::UpdateModel(const ConfigurationVector &q, const TangentVector &v) {
-    // Compute  sites
-    for (auto c : sites_) {
-        ComputeSite(c.first, q, v, *c.second);
-    }
-
-    ComputeMassMatrix(q, M_);
-    ComputeBiasVector(q, v, h_);
-    ComputeActuationMap(q, B_);
+    ComputeMassMatrix(q, dynamics_.M);
+    ComputeBiasVector(q, v, dynamics_.h);
+    ComputeActuationMap(q, dynamics_.B);
 }

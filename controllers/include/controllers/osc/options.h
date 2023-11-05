@@ -9,7 +9,7 @@ namespace osc {
  *
  */
 struct Options {
-    Options() : use_nulconstraint_lspace_projector(true){};
+    Options() : use_constraint_nullspace_projector(true){};
 
     bool use_constraint_nullspace_projector;
 };

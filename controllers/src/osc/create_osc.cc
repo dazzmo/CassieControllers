@@ -2,9 +2,8 @@
 
 using namespace controller::osc;
 
-OperationalSpaceController::OperationalSpaceController(const DynamicModel& m) : Controller(m), start_idx_() {
+OperationalSpaceController::OperationalSpaceController() : Controller(), start_idx_() {
 }
-
 
 /**
  * @brief Adds a new task
@@ -13,8 +12,8 @@ OperationalSpaceController::OperationalSpaceController(const DynamicModel& m) : 
  * @param callback
  * @return int
  */
-void OperationalSpaceController::AddTask(const std::string& name, Dimension n) {
-    tasks_[name] = std::unique_ptr<Task>(new Task(dim, m_.nv, name, callback));
+void OperationalSpaceController::AddTask(const std::string& name, Dimension n, Task::TaskCallbackFunction callback) {
+    tasks_[name] = std::shared_ptr<Task>(new Task(name, n, m_->size(), callback));
 }
 
 /**
@@ -25,19 +24,18 @@ void OperationalSpaceController::AddTask(const std::string& name, Dimension n) {
  * @param callback
  * @return int
  */
-void OperationalSpaceController::AddEndEffectorTask(const std::string& name) {
-    ee_tasks_[name] = std::unique_ptr<EndEffectorTask>(new EndEffectorTask(m_.nv, name, callback));
-    ee_tasks_[name]->SetId(m_.nc);
-    m_.nc++;
+void OperationalSpaceController::AddEndEffectorTask(const std::string& name, Task::TaskCallbackFunction& callback) {
+    ee_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(name, m_->size(), callback));
+    // m_.nc++;
 }
 
-void OperationalSpaceController::SetContact(const std::string& name, double mu, const Eigen::Vector3d& normal) {
+void OperationalSpaceController::SetEndEffectorContact(const std::string& name, double mu, const Eigen::Vector3d& normal) {
     ee_tasks_[name]->inContact = true;
     ee_tasks_[name]->SetFrictionCoefficient(mu);
     ee_tasks_[name]->normal() = normal;
 }
 
-void OperationalSpaceController::RemoveContact(const std::string& name) {
+void OperationalSpaceController::RemoveEndEffectorContact(const std::string& name) {
     ee_tasks_[name]->inContact = false;
 }
 
@@ -63,15 +61,14 @@ void OperationalSpaceController::UpdateJointTrackReference(const Eigen::VectorXd
  * @return int
  */
 void OperationalSpaceController::AddJointTrackTask(double w,
-                                                  const Eigen::VectorXd& Kp,
-                                                  const Eigen::VectorXd& Kd) {
+                                                   const Eigen::VectorXd& Kp,
+                                                   const Eigen::VectorXd& Kd) {
     if (joint_track_task_ == nullptr) {
         // Create joint limit avoidance task
-        joint_track_task_ = new JointTrackTask(m_.nq, m_.nv);
+        joint_track_task_ = new JointTrackTask(m_->size());
 
         joint_track_task_->SetTaskWeighting(w);
-        joint_track_task_->SetProportionalErrorGain(Kp);
-        joint_track_task_->SetDerivativeErrorGain(Kd);
+        joint_track_task_->SetErrorGains(Kp, Kd);
 
         use_joint_track_ = true;
 
@@ -79,23 +76,21 @@ void OperationalSpaceController::AddJointTrackTask(double w,
         tasks_[joint_track_task_->name()] = std::shared_ptr<Task>(joint_track_task_);
         LOG(INFO) << "Joint track task added";
     } else {
-        std::runtime_error("AddJointTrackTask: tracking task already added!");
+        throw std::runtime_error("AddJointTrackTask: tracking task already added!");
     }
-
 }
 
 void OperationalSpaceController::AddJointLimitsTask(double w,
-                                                   const Eigen::VectorXd& Kp,
-                                                   const Eigen::VectorXd& Kd) {
+                                                    const Eigen::VectorXd& Kp,
+                                                    const Eigen::VectorXd& Kd) {
     if (joint_limits_task_ != nullptr) {
         // Create joint track task
-        joint_track_task_ = new JointTrackTask(m_.nq, m_.nv);
+        joint_track_task_ = new JointTrackTask(m_->size());
         joint_limits_task_->SetTaskWeighting(w);
-        joint_limits_task_->SetProportionalErrorGain(Kp);
-        joint_limits_task_->SetDerivativeErrorGain(Kd);
+        joint_limits_task_->SetErrorGains(Kp, Kd);
 
-        joint_limits_task_->SetUpperPositionLimit(m_.qpos_u);
-        joint_limits_task_->SetLowerPositionLimit(m_.qpos_l);
+        joint_limits_task_->SetUpperPositionLimit(m_->bounds().qu);
+        joint_limits_task_->SetLowerPositionLimit(m_->bounds().ql);
 
         use_joint_limits_ = true;
 
@@ -104,7 +99,6 @@ void OperationalSpaceController::AddJointLimitsTask(double w,
     } else {
         throw std::runtime_error("AddJointLimitsTask: limits task already added!");
     }
-
 }
 
 /**
@@ -127,11 +121,11 @@ void OperationalSpaceController::CreateOSC(const Options& opt) {
     opt_ = new Options(opt);
 
     // Number of optimisation variables
-    int nx = m_.nv + 3 * m_.nc + m_.nu;
+    int nx = m_->size().nq + 3 * m_->nc_ + m_->size().nu;
     // Number of equality constraints
-    int ng = m_.nv + 4 * m_.nc;
+    int ng = m_->size().nq + 4 * m_->nc_;
 
-    if (opt_->include_holonomic_constraint_forces) {
+    if (opt_->use_constraint_nullspace_projector) {
         nx += m_.ng;
         ng += m_.ng;
     }
@@ -139,7 +133,7 @@ void OperationalSpaceController::CreateOSC(const Options& opt) {
     // Set up indices
     start_idx_.qacc = 0;
     start_idx_.lambda_c = m_.nv;
-    if (opt_->include_holonomic_constraint_forces) {
+    if (opt_->use_constraint_nullspace_projector) {
         start_idx_.lambda_h = start_idx_.lambda_c + 3 * m_.nc;
         start_idx_.ctrl = start_idx_.lambda_h + m_.ng;
     } else {
@@ -188,5 +182,4 @@ void OperationalSpaceController::CreateOSC(const Options& opt) {
 
     osc_setup_ = true;
     LOG(INFO) << "finished";
-
 }

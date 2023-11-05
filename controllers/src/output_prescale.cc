@@ -1,6 +1,9 @@
-#include "OutputPrescales/output_prescale.h"
+#include "controllers/output_prescale.h"
 
-void OutputPrescale::StartTorqueRampUp(double tau) {
+using namespace controller;
+
+void OutputPrescale::StartRamp(const RampType &type) {
+    ramp_type_ = type;
     t_ramp_start_ = t_;
     ramp_tau_ = tau;
     u_prescale_type_ = TorquePreScale::RAMP_UP;

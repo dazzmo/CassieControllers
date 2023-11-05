@@ -1,6 +1,8 @@
 #include "controllers/osc/tasks/ee_task.h"
 
-EndEffectorTask::EndEffectorTask(int nv, const std::string &name, int (*callback)(const double **, double **)) : Task(3, nv, name, callback) {
+using namespace controller::osc;
+
+EndEffectorTask::EndEffectorTask(const std::string& name, const DynamicModel::Size& sz, Task::TaskCallbackFunction& callback) : Task(name, 3, sz, callback) {
     inContact = false;
     mu_ = 1.0;
     lambda_.setZero();

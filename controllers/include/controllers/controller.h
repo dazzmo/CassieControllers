@@ -14,8 +14,10 @@ namespace controller {
 
 class Controller {
    public:
-    Controller(const DynamicModel& model);
+    Controller();
     ~Controller() = default;
+
+    void AddModel(const DynamicModel& model);
 
     void SetCurrentTime(double t) { d_.time = t; }
     const double& CurrentTime() const { return d_.time; }
@@ -25,7 +27,8 @@ class Controller {
         d_.freq = freq;
     }
 
-    virtual void UpdateControl(Scalar time, const ConfigurationVector& qpos, const TangentVector& qvel) = 0;
+    virtual void UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v) = 0;
+    virtual void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {}
 
    protected:
     // Model data for controller

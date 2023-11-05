@@ -16,13 +16,8 @@ int main(int argc, const char** argv) {
     sim.LoadModel("./scene.xml");
     sim.Init();
 
-    // make controller
-    const double freq = 2e2;
-    // ArmOSC* c = new ArmOSC();
-    // if (c->Init() != ControllerStatus::SUCCESS) {
-    //     mju_error("Could not initialise controller");
-    // }
-    // c->SetControlFrequency(freq);
+    // Create controller
+    ArmOSC c();
 
     mjtNum t_ctrl = sim.GetSimulatorTime();
     while (!sim.WindowShouldClose()) {

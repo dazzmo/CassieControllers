@@ -12,33 +12,28 @@
 
 #include "controllers/osc/tasks/task.h"
 
+namespace controller {
+namespace osc {
+
 class JointLimitsTask : public Task {
    public:
-    JointLimitsTask(int nq, int nv);
+    JointLimitsTask(const std::string &name, const DynamicModel::Size &sz);
 
-    void SetUpperPositionLimit(const Eigen::VectorXd &qpos_u) { qpos_u_ = qpos_u; }
-    void SetLowerPositionLimit(const Eigen::VectorXd &qpos_l) { qpos_l_ = qpos_l; }
+    void SetUpperPositionLimit(const ConfigurationVector &qu) { qu_ = qu; }
+    void SetLowerPositionLimit(const ConfigurationVector &ql) { ql_ = ql; }
 
-    void SetProportionalErrorGain(const Eigen::VectorXd &Kp) {
-        LOG(INFO) << "Kp: " << Kp_.transpose();
-        Kp_.topRows(nq_) << Kp;
-        Kp_.bottomRows(nq_) << Kp;
-    }
-
-    void SetDerivativeErrorGain(const Eigen::VectorXd &Kd) {
-        Kd_.topRows(nq_) << Kd;
-        Kd_.bottomRows(nq_) << Kd;
-    }
-
-    int UpdateTask(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true);
+    void UpdateTask(const Vector &q, const Vector &v);
 
    private:
     double beta_ = 1.0;
-    Eigen::VectorXd zeta_;
-    Eigen::VectorXd qpos_l_;
-    Eigen::VectorXd qpos_u_;
+    Vector zeta_;
+    ConfigurationVector ql_;
+    ConfigurationVector qu_;
 
     double TransitionFunction(double q, double ql, double qu);
 };
+
+}  // namespace osc
+}  // namespace controller
 
 #endif /* INCLUDE_CONTROLLERS_JOINT_LIMITS_TASK_HPP */

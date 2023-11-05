@@ -47,34 +47,6 @@ class DynamicModel {
         ActuationVector u;
     };
 
-    struct Site {
-        Site(const Size &sz) {
-            x = Vector3::Zero();
-            J = Matrix::Zero(3, sz.nv);
-            dJdq = Vector3::Zero();
-            lambda = Vector3::Zero();
-        }
-
-        Vector3 x;
-        Matrix J;
-        Vector3 dJdq;
-        Vector3 lambda;
-    };
-
-    struct Constraint {
-        Constraint(Dimension n, const Size &sz) {
-            c = Vector::Zero(n);
-            J = Matrix::Zero(n, sz.nv);
-            dJdq = Vector::Zero(n);
-            lambda = Vector::Zero(n);
-        }
-
-        Vector c;
-        Matrix J;
-        Vector dJdq;
-        Vector lambda;
-    };
-
     struct Bounds {
         Bounds(const Size &sz) {
             ql = ConfigurationVector::Zero(sz.nq);
@@ -107,34 +79,20 @@ class DynamicModel {
                                    dynamics_(sz) {
     }
 
-    ~DynamicModel() {
-        for (auto &c : sites_) {
-            // Delete all contact points
-            c.second.release();
-        }
-    }
+    ~DynamicModel() {}
 
-    void AddSite(const std::string &name);
-    void RemoveSite(const std::string &name);
 
     void UpdateModel(const ConfigurationVector &q, const TangentVector &v);
 
     const Size &size() const { return sz_; }
+    const Bounds &bounds() const { return bounds_; }
     const State &state() const { return state_; }
     const Control &ctrl() const { return ctrl_; }
-    const Constraint &GetConstraint(const std::string &name) { return *constraints_[name]; }
-    const Site &GetSite(const std::string &name) { return *sites_[name]; }
 
    protected:
     virtual void ComputeMassMatrix(const ConfigurationVector &q, Matrix &M) = 0;
     virtual void ComputeBiasVector(const ConfigurationVector &q, const TangentVector &v, Vector &h) = 0;
     virtual void ComputeActuationMap(const ConfigurationVector &q, Matrix &B) = 0;
-    virtual void ComputeSite(const std::string &name,
-                             const ConfigurationVector &q, const ConfigurationVector &v,
-                             Site &site) = 0;
-    virtual void ComputeConstraint(const std::string &name,
-                                   const ConfigurationVector &q, const ConfigurationVector &v,
-                                   Constraint &constraint) = 0;
 
    private:
     // Size of dynamic model
@@ -150,8 +108,6 @@ class DynamicModel {
     Bounds bounds_;
     Dynamics dynamics_;
 
-    std::map<std::string, std::unique_ptr<Site>> sites_;
-    std::map<std::string, std::unique_ptr<Constraint>> constraints_;
 };
 
 }  // namespace controller

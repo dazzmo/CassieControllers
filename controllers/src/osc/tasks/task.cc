@@ -1,14 +1,26 @@
 #include "controllers/osc/tasks/task.h"
 using namespace controller::osc;
 
-Task::Task(const std::string &name, Dimension n, DynamicModel::Size &sz, TaskCallbackFunction &callback) {    
+Task::Task(const std::string &name, Dimension n, const DynamicModel::Size &sz) {
+    name_ = name;
+    callback_ = nullptr;
+    Resize(n, sz);
+}
+
+Task::Task(const std::string &name, Dimension n, const DynamicModel::Size &sz, TaskCallbackFunction callback) {
     name_ = name;
     callback_ = callback;
+    Resize(n, sz);
+}
+
+void Task::Resize(Dimension n, const DynamicModel::Size &sz) {
+    nq_ = sz.nq;
+    nv_ = sz.nv;
 
     w_ = 1.0;
 
-    Kp_ = Vector::Zero();
-    Kd_ = Vector::Zero();
+    Kp_ = Vector::Ones(n);
+    Kd_ = Vector::Ones(n);
 
     // Create vectors
     x_ = Vector::Zero(n);
@@ -23,7 +35,7 @@ Task::Task(const std::string &name, Dimension n, DynamicModel::Size &sz, TaskCal
     de_ = Vector::Zero(n);
     dde_ = Vector::Zero(n);
 
-    pd_out_ =  Vector::Zero(n);
+    pd_out_ = Vector::Zero(n);
 
     J_ = Matrix::Zero(n, sz.nv);
     dJdq_ = Vector::Zero(n);
@@ -48,7 +60,13 @@ void Task::SetReference(const Vector &r, const Vector &dr, const Vector &ddr) {
 }
 
 void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
-    callback_(q, v, x_, J_, dJdq_);
+    // Perform callback
+    if (callback_ != nullptr) {
+        callback_(q, v, x_, J_, dJdq_);
+    } else {
+        throw std::runtime_error("Task callback is null");
+    }
+
     // Update velocity
     dx_ = J_ * v;
     // TODO: Update acceleration also (need measurements through estimation)
@@ -63,4 +81,3 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     // Compute PD error
     pd_out_ = Kp_.asDiagonal() * e_ + Kd_.asDiagonal() * de_;
 }
-

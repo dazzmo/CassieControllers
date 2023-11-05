@@ -16,7 +16,8 @@ class Task {
     typedef void (*TaskCallbackFunction)(const Vector &q, const Vector &v,
                                          Vector &x, Matrix &J, Vector &dJdq);
 
-    Task(const std::string &name, Dimension n, DynamicModel::Size &sz, TaskCallbackFunction &callback);
+    Task(const std::string &name, Dimension n, const DynamicModel::Size &sz);
+    Task(const std::string &name, Dimension n, const DynamicModel::Size &sz, TaskCallbackFunction callback);
     ~Task() = default;
 
     /**
@@ -65,13 +66,25 @@ class Task {
      * @brief Task jacobian (ndim x nv)
      *
      */
-    const Eigen::MatrixXd &J() const { return J_; }
+    const Matrix &J() const { return J_; }
 
     /**
      * @brief Task jacobian time derivative with velocity (ndim x 1)
      *
      */
-    const Eigen::VectorXd &dJdq() const { return dJdq_; }
+    const Vector &dJdq() const { return dJdq_; }
+
+    /**
+     * @brief Proportional gains for error output
+     *
+     */
+    const Vector &Kp() const { return Kp_; }
+
+    /**
+     * @brief Derivative gains for error output
+     *
+     */
+    const Vector &Kd() const { return Kd_; }
 
     /**
      * @brief Task weighting
@@ -85,20 +98,24 @@ class Task {
     void SetReference(const Vector &r, const Vector &dr);
     void SetReference(const Vector &r, const Vector &dr, const Vector &ddr);
 
-    virtual void SetProportionalErrorGain(const Eigen::VectorXd &Kp) { Kp_ = Kp; }
-    virtual void SetDerivativeErrorGain(const Eigen::VectorXd &Kd) { Kd_ = Kd; }
+    void SetErrorGains(const Vector &Kp, const Vector &Kd) {
+        Kp_ = Kp;
+        Kd_ = Kd;
+    }
 
-    void PrintTaskData();
+    void SetErrorGains(const Vector &Kp) {
+        Kp_ = Kp;
+        Kd_.setZero();
+    }
+
+    // void PrintTaskData();
 
     void Update(const ConfigurationVector &q, const TangentVector &v);
 
    protected:
-    int dim_;
-    int nq_;
-    int nv_;
-    std::string name_;
-
-    double w_;  // Task weighting
+    Dimension dim_;
+    Dimension nq_;
+    Dimension nv_;
 
     Vector x_;    // Task
     Vector dx_;   // Task velocity
@@ -112,17 +129,22 @@ class Task {
     Vector de_;   // Error rate
     Vector dde_;  // Error acceleration
 
-    Vector pd_out_; // PD error metric
+    Vector pd_out_;  // PD error metric
 
-    Matrix J_;
-    Vector dJdq_;
+    Matrix J_;     // Task jacobian
+    Vector dJdq_;  // Task jacobian time derivative and velocity product
+
+   private:
+    std::string name_;
+
+    Scalar w_;  // Task weighting
 
     Vector Kp_;  // Proportional gains for task-error computation
     Vector Kd_;  // Derivative gains for task-error computation
 
-   private:
     TaskCallbackFunction callback_;
-    int Resize(int ndim, int nv);
+
+    void Resize(Dimension n, const DynamicModel::Size &sz);
 };
 
 }  // namespace osc

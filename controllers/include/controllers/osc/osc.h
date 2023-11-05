@@ -7,36 +7,34 @@
 #include <qpOASES.hpp>
 #include <utility>
 
-#include "controllers/constraint.h"
-#include "controllers/types.h"
+#include "controllers/acc_limits.h"
 #include "controllers/controller.h"
 #include "controllers/osc/options.h"
-#include "controllers/acc_limits.h"
 #include "controllers/osc/tasks/ee_task.h"
 #include "controllers/osc/tasks/joint_limits_task.h"
 #include "controllers/osc/tasks/joint_track_task.h"
 #include "controllers/osc/tasks/task.h"
+#include "controllers/types.h"
 
 namespace controller {
 namespace osc {
 
 class OperationalSpaceController : public Controller {
    public:
-
-    OperationalSpaceController(const DynamicModel &m);
+    OperationalSpaceController();
     ~OperationalSpaceController();
 
-    void AddTask(const std::string &name, Dimension n);
-    void AddEndEffectorTask(const std::string &name);
+    void AddTask(const std::string& name, Dimension n, Task::TaskCallbackFunction callback);
+    void AddEndEffectorTask(const std::string& name, Task::TaskCallbackFunction &callback);
 
-    void SetEndEffectorContact(const std::string &name, double mu, const Eigen::Vector3d& normal);
-    void RemoveEndEffectorContact(const std::string &name);
+    void SetEndEffectorContact(const std::string& name, double mu, const Eigen::Vector3d& normal);
+    void RemoveEndEffectorContact(const std::string& name);
 
-    void AddJointTrackTask(double weight, const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
-    void UpdateJointTrackReference(const ConfigurationVector& qpos_r);
-    void UpdateJointTrackReference(const ConfigurationVector& qpos_r, const TangentVector& qvel_r);
+    void AddJointTrackTask(double weight, const Vector& Kp, const Vector& Kd);
+    void UpdateJointTrackReference(const ConfigurationVector& q);
+    void UpdateJointTrackReference(const ConfigurationVector& q, const TangentVector& v);
 
-    void AddJointLimitsTask(double weight, const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd);
+    void AddJointLimitsTask(double weight, const Vector& Kp, const Vector& Kd);
 
     void SetTorqueWeight(double weight) { torque_weight_ = weight; }
 
@@ -61,30 +59,30 @@ class OperationalSpaceController : public Controller {
     struct QPData {
         QPData(int nx, int ng) {
             H = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(nx, nx);
-            g = Eigen::VectorXd::Zero(nx);
+            g = Vector::Zero(nx);
             A = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(ng, nx);
-            ubA = qpOASES::INFTY * Eigen::VectorXd::Ones(ng);
-            lbA = -qpOASES::INFTY * Eigen::VectorXd::Ones(ng);
-            ubx = qpOASES::INFTY * Eigen::VectorXd::Ones(nx);
-            lbx = -qpOASES::INFTY * Eigen::VectorXd::Ones(nx);
-            x = Eigen::VectorXd::Zero(nx);
+            ubA = qpOASES::INFTY * Vector::Ones(ng);
+            lbA = -qpOASES::INFTY * Vector::Ones(ng);
+            ubx = qpOASES::INFTY * Vector::Ones(nx);
+            lbx = -qpOASES::INFTY * Vector::Ones(nx);
+            x = Vector::Zero(nx);
         }
         // Solution vector
-        Eigen::VectorXd x;
+        Vector x;
         // QP Hessian matrix
         Eigen::Matrix<double, -1, -1, Eigen::RowMajor> H;
         // QP gradient vector
-        Eigen::VectorXd g;
+        Vector g;
         // QP constraint jacobian
         Eigen::Matrix<double, -1, -1, Eigen::RowMajor> A;
         // QP constraint lower bound
-        Eigen::VectorXd lbA;
+        Vector lbA;
         // QP constraint upper bound
-        Eigen::VectorXd ubA;
+        Vector ubA;
         // QP variables lower bound
-        Eigen::VectorXd lbx;
+        Vector lbx;
         // QP variables upper bound
-        Eigen::VectorXd ubx;
+        Vector ubx;
     };
 
     QPData* qp_data_;
@@ -99,26 +97,27 @@ class OperationalSpaceController : public Controller {
 
     struct OptimisationResult {
         OptimisationResult(int nv, int nc, int ng, int nu) {
-            qacc = Eigen::VectorXd::Zero(nv);
-            lambda_c = Eigen::VectorXd::Zero(3 * nc);
-            lambda_h = Eigen::VectorXd::Zero(ng);
-            ctrl = Eigen::VectorXd::Zero(nu);
+            qacc = Vector::Zero(nv);
+            lambda_c = Vector::Zero(3 * nc);
+            lambda_h = Vector::Zero(ng);
+            ctrl = Vector::Zero(nu);
         };
 
-        Eigen::VectorXd qacc;
-        Eigen::VectorXd lambda_c;
-        Eigen::VectorXd lambda_h;
-        Eigen::VectorXd ctrl;
+        Vector qacc;
+        Vector lambda_c;
+        Vector lambda_h;
+        Vector ctrl;
     };
 
     OptimisationResult* res_;
 
     struct StartingIndices {
         StartingIndices() : qacc(0), lambda_c(0), lambda_h(-1), ctrl(0){};
-        int qacc;
-        int lambda_c;
-        int lambda_h;
-        int ctrl;
+
+        Index qacc;
+        Index lambda_c;
+        Index lambda_h;
+        Index ctrl;
     };
 
     StartingIndices start_idx_;
@@ -128,9 +127,8 @@ class OperationalSpaceController : public Controller {
 
     Options* opt_;
 
-    std::map<std::string, std::unique_ptr<Task>> tasks_;
-    std::map<std::string, std::unique_ptr<Constraint>> constraints_;
-    std::map<std::string, std::unique_ptr<EndEffectorTask>> ee_tasks_;
+    std::map<std::string, std::shared_ptr<Task>> tasks_;
+    std::map<std::string, std::shared_ptr<EndEffectorTask>> ee_tasks_;
 };
 
 }  // namespace osc

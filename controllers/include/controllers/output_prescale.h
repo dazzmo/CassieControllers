@@ -1,22 +1,29 @@
 #ifndef INCLUDE_CONTROLLERS_OUTPUT_PRESCALE_HPP
 #define INCLUDE_CONTROLLERS_OUTPUT_PRESCALE_HPP
 
+#include "controllers/types.h"
+
+namespace controller {
+
 class OutputPrescale {
    public:
-    enum class PreScaleType {
+    enum class RampType {
+        NONE,
         RAMP_UP,
-        RAMP_DOWN,
-        UNITY
+        RAMP_DOWN
     };
 
+    void StartRamp(const RampType &type);
+
    private:
-    double ramp_tau_ = 1.0;
-    double t_ramp_start_ = 0.0;
+    Scalar ramp_tau_ = 1.0;
+    Scalar t_ramp_start_ = 0.0;
 
-    PreScaleType u_prescale_type_;
+    RampType ramp_type_;
 
-    double RampUp(void);
-    double RampDown(void);
+    Scalar RampUp(void);
+    Scalar RampDown(void);
 };
 
+}  // namespace controller
 #endif /* INCLUDE_CONTROLLERS_OUTPUT_PRESCALE_HPP */
