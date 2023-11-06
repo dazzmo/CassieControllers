@@ -2,25 +2,17 @@
 
 using namespace controller;
 
-void OutputPrescale::StartRamp(const RampType &type) {
+void OutputPrescale::StartRamp(Scalar time, Scalar tau, const RampType &type) {
     ramp_type_ = type;
-    t_ramp_start_ = t_;
-    ramp_tau_ = tau;
-    u_prescale_type_ = TorquePreScale::RAMP_UP;
+    t_ramp_start_ = time;
 }
 
-void OutputPrescale::StartTorqueRampDown(double tau) {
-    t_ramp_start_ = t_;
-    ramp_tau_ = tau;
-    u_prescale_type_ = TorquePreScale::RAMP_DOWN;
+Scalar OutputPrescale::RampUp(Scalar time, Scalar time_start) {
+    return 1.0 - exp(-ramp_tau_ * (time - time_start));
 }
 
-double OutputPrescale::RampUp(void) {
-    return 1.0 - exp(-ramp_tau_ * (t_ - t_ramp_start_));
-}
-
-double OutputPrescale::RampDown(void) {
-    return exp(-ramp_tau_ * (t_ - t_ramp_start_));
+Scalar OutputPrescale::RampDown(Scalar time, Scalar time_start) {
+    return exp(-ramp_tau_ * (time - time_start));
 }
 
 /**
@@ -28,21 +20,21 @@ double OutputPrescale::RampDown(void) {
  * applicable if the system needs to ramp up/down the values upon initialisation or
  * where a soft-stop is required.
  *
- * @return double
+ * @return Scalar
  */
-double OutputPrescale::ApplyTorquePreScale(void) {
-    double prescale_factor = 1.0;
-    switch (u_prescale_type_) {
-        case TorquePreScale::UNITY: {
+Scalar OutputPrescale::ApplyPrescale(Scalar time) {
+    Scalar prescale_factor = 1.0;
+    switch (ramp_type_) {
+        case RampType::NONE: {
             prescale_factor = 1.0;
             break;
         }
-        case TorquePreScale::RAMP_UP: {
-            prescale_factor = RampUp();
+        case RampType::RAMP_UP: {
+            prescale_factor = RampUp(time, t_ramp_start_);
             break;
         }
-        case TorquePreScale::RAMP_DOWN: {
-            prescale_factor = RampDown();
+        case RampType::RAMP_DOWN: {
+            prescale_factor = RampDown(time, t_ramp_start_);
             break;
         }
     }

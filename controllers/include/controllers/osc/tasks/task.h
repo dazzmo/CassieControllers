@@ -108,9 +108,30 @@ class Task {
         Kd_.setZero();
     }
 
+    /**
+     * @brief Returns the PD error e = Kp (x - r) + Kd (dx - dr)
+     *
+     * @return const Vector&
+     */
+    const Vector &ErrorOutputPD() const { return pd_out_; }
+
+    /**
+     * @brief Sets the starting index of this task within the task vector
+     * 
+     * @param idx 
+     */
+    void SetStartIndex(Index idx) { start_ = idx; }
+
+    /**
+     * @brief Starting index in task vector
+     *
+     * @return const Index
+     */
+    const Index start() const { return start_; }
+
     // void PrintTaskData();
 
-    void Update(const ConfigurationVector &q, const TangentVector &v);
+    virtual void Update(const ConfigurationVector &q, const TangentVector &v);
 
    protected:
     Dimension dim_;
@@ -129,13 +150,16 @@ class Task {
     Vector de_;   // Error rate
     Vector dde_;  // Error acceleration
 
-    Vector pd_out_;  // PD error metric
+    Vector pd_out_;  // PD error output
 
     Matrix J_;     // Task jacobian
     Vector dJdq_;  // Task jacobian time derivative and velocity product
 
    private:
     std::string name_;
+
+    // Starting index in task vector
+    Index start_;
 
     Scalar w_;  // Task weighting
 

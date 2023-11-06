@@ -9,6 +9,7 @@
 
 #include "controllers/acc_limits.h"
 #include "controllers/controller.h"
+#include "controllers/osc/model.h"
 #include "controllers/osc/options.h"
 #include "controllers/osc/tasks/ee_task.h"
 #include "controllers/osc/tasks/joint_limits_task.h"
@@ -21,20 +22,8 @@ namespace osc {
 
 class OperationalSpaceController : public Controller {
    public:
-    OperationalSpaceController();
-    ~OperationalSpaceController();
-
-    void AddTask(const std::string& name, Dimension n, Task::TaskCallbackFunction callback);
-    void AddEndEffectorTask(const std::string& name, Task::TaskCallbackFunction &callback);
-
-    void SetEndEffectorContact(const std::string& name, double mu, const Eigen::Vector3d& normal);
-    void RemoveEndEffectorContact(const std::string& name);
-
-    void AddJointTrackTask(double weight, const Vector& Kp, const Vector& Kd);
-    void UpdateJointTrackReference(const ConfigurationVector& q);
-    void UpdateJointTrackReference(const ConfigurationVector& q, const TangentVector& v);
-
-    void AddJointLimitsTask(double weight, const Vector& Kp, const Vector& Kd);
+    OperationalSpaceController(const Model& model);
+    ~OperationalSpaceController() {}
 
     void SetTorqueWeight(double weight) { torque_weight_ = weight; }
 
@@ -44,29 +33,44 @@ class OperationalSpaceController : public Controller {
     std::shared_ptr<Task> GetTask(const std::string& name) { return tasks_[name]; }
     std::map<std::string, std::shared_ptr<EndEffectorTask>>& GetEndEffectorTaskMap() { return ee_tasks_; }
 
+    const Model& GetModel() { return m_; }
+
    protected:
     // Null space projector for holonomic constraints
     Matrix N_;
     // Holonomic constraint jacobian
-    Matrix Jh_;
+    Matrix Jceq_;
     // Holonomic constraint jacobian derivative velocity product
-    Vector dJhdq_;
+    Vector dJceqdq_;
 
     // Quadratic programming
     qpOASES::Options qp_opt_;
     std::unique_ptr<qpOASES::SQProblem> qp_;
 
     struct QPData {
-        QPData(int nx, int ng) {
+        /**
+         * @brief Construct a new QPData object
+         *
+         * @param nx Number of variables in the problem
+         * @param nce Number of equality constraints in the problem
+         */
+        QPData(Dimension nx, Dimension nce) {
+            this->nx = nx;
+            this->nce = nce;
             H = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(nx, nx);
             g = Vector::Zero(nx);
-            A = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(ng, nx);
-            ubA = qpOASES::INFTY * Vector::Ones(ng);
-            lbA = -qpOASES::INFTY * Vector::Ones(ng);
+            A = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(nce, nx);
+            ubA = qpOASES::INFTY * Vector::Ones(nce);
+            lbA = -qpOASES::INFTY * Vector::Ones(nce);
             ubx = qpOASES::INFTY * Vector::Ones(nx);
             lbx = -qpOASES::INFTY * Vector::Ones(nx);
             x = Vector::Zero(nx);
         }
+        // Number of variables
+        Dimension nx;
+        // Number of equality constraints
+        Dimension nce;
+
         // Solution vector
         Vector x;
         // QP Hessian matrix
@@ -88,42 +92,72 @@ class OperationalSpaceController : public Controller {
     QPData* qp_data_;
 
    private:
+    Model& m_;
+
     bool osc_setup_ = false;
-    bool use_joint_limits_ = false;
-    bool use_joint_track_ = false;
     bool hot_start_ = false;
 
     double torque_weight_ = 1.0;
 
-    struct OptimisationResult {
-        OptimisationResult(int nv, int nc, int ng, int nu) {
-            qacc = Vector::Zero(nv);
-            lambda_c = Vector::Zero(3 * nc);
-            lambda_h = Vector::Zero(ng);
-            ctrl = Vector::Zero(nu);
-        };
+    struct OptimisationVariable {
+        OptimisationVariable(Index start, Dimension sz) {
+            this->start = start;
+            this->sz = sz;
+            vec = Vector::Zero(sz);
+        }
 
-        Vector qacc;
-        Vector lambda_c;
-        Vector lambda_h;
-        Vector ctrl;
+        OptimisationVariable() {
+            this->start = 0;
+            this->sz = 0;
+            vec = Vector::Zero(0);
+        }
+
+        /**
+         * @brief Inserts this variable directly after v in the optimisation
+         * vector
+         *
+         * @param v
+         */
+        void InsertAfter(const OptimisationVariable& v) {
+            this->start = v.start + v.sz;
+        }
+
+        Index start;
+        Dimension sz;
+        Vector vec;
     };
 
-    OptimisationResult* res_;
+    struct OptimisationVector {
+        OptimisationVector(const DynamicModel::Size& sz, Dimension nc, Dimension nceq, const Options& opt)
+            : qacc(0, sz.nv), lambda_c(0, 3 * nc), lambda_h(0, nceq), ctrl(0, sz.nu) {
+            // Add constraint forces explicitly or implicitly
+            if (opt.use_constraint_nullspace_projector) {
+                lambda_c.InsertAfter(qacc);
+                ctrl.InsertAfter(lambda_c);
+                // Clear lambda_h
+                lambda_h = OptimisationVariable();
+            } else {
+                lambda_c.InsertAfter(qacc);
+                lambda_h.InsertAfter(lambda_c);
+                ctrl.InsertAfter(lambda_h);
+            }
 
-    struct StartingIndices {
-        StartingIndices() : qacc(0), lambda_c(0), lambda_h(-1), ctrl(0){};
+            // Get overall vector size
+            this->sz = qacc.sz + lambda_c.sz + lambda_h.sz + ctrl.sz;
+        }
 
-        Index qacc;
-        Index lambda_c;
-        Index lambda_h;
-        Index ctrl;
+        Dimension sz;
+
+        OptimisationVariable qacc;
+        OptimisationVariable lambda_c;
+        OptimisationVariable lambda_h;
+        OptimisationVariable ctrl;
     };
 
-    StartingIndices start_idx_;
+    OptimisationVector* x_;
 
-    JointTrackTask* joint_track_task_ = nullptr;
-    JointLimitsTask* joint_limits_task_ = nullptr;
+    JointTrackTask* joint_track_task_;
+    JointLimitsTask* joint_limits_task_;
 
     Options* opt_;
 

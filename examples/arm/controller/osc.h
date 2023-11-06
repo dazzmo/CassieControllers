@@ -3,7 +3,7 @@
 
 #include <glog/logging.h>
 
-#include "controllers/model.h"
+#include "controllers/osc/model.h"
 #include "controllers/osc/osc.h"
 #include "eigen3/Eigen/Cholesky"
 #include "eigen3/Eigen/Dense"
@@ -19,12 +19,13 @@
 
 using namespace controller;
 
-class ArmModel : public DynamicModel {
+class ArmModel : public osc::Model {
    public:
-    ArmModel() : DynamicModel(DynamicModel::Size(ARM_MODEL_NQ, ARM_MODEL_NV, ARM_MODEL_NU)) {
+    ArmModel() : osc::Model(DynamicModel::Size(ARM_MODEL_NQ, ARM_MODEL_NV, ARM_MODEL_NU)) {
+        // Add tasks here
+        // AddTask("name", 1, ArmModel::WristAngleTask);
+        // GetTask("name")->SetErrorGains();
     }
-
-    int MapMujocoState(const double* q, const double* v);
 
     // Tasks
     static void TipPositionTask(const ConfigurationVector& q, const TangentVector& v,
@@ -40,6 +41,10 @@ class ArmModel : public DynamicModel {
         x << q[2] - 0.0;
         J << 0, 0, 1.0;
         dJdq << 0;
+    }
+
+    void UpdateTaskReferences() {
+        // GetTask("name")->SetReference();
     }
 
    protected:
@@ -62,39 +67,6 @@ class ArmModel : public DynamicModel {
         double* out[] = {B.data()};
         arm_actuation_matrix(in, out, NULL, NULL, 0);
     }
-};
-
-class ArmOSC : public controller::osc::OperationalSpaceController {
-   public:
-    ArmOSC() : controller::osc::OperationalSpaceController() {
-        // Create arm model
-        m_ = new ArmModel();
-        // Add model to controller
-        AddModel(*m_);
-
-        // Create tasks
-        AddTask("tip_position", 3, &ArmModel::TipPositionTask);
-        GetTask("tip_position")->SetTaskWeighting(1.0);
-        GetTask("tip_position")->SetErrorGains(Vector(1.0, 1.0, 1.0), Vector(0.0, 0.0, 0.0));
-
-        AddTask("wrist_angle", 1, &ArmModel::WristAngleTask);
-        GetTask("wrist_angle")->SetTaskWeighting(1.0);
-        GetTask("wrist_angle")->SetErrorGains(Vector(1.0), Vector(0.0));
-
-        // Create constraints
-
-        // Create controller
-        CreateOSC();
-    }
-
-    ~ArmOSC() { delete m_; }
-
-    void UpdateReferences(Scalar t, ConfigurationVector& q, TangentVector& v) {
-        GetTask("name")->SetReference(q);
-    }
-
-   private:
-    ArmModel* m_;
 };
 
 #endif /* CASSIE_CONTROLLER_OS_CTRL_20COPY_HPP */

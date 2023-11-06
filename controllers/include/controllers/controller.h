@@ -7,7 +7,6 @@
 #include <iostream>
 
 #include "controllers/data.h"
-#include "controllers/model.h"
 #include "controllers/types.h"
 
 namespace controller {
@@ -16,8 +15,6 @@ class Controller {
    public:
     Controller();
     ~Controller() = default;
-
-    void AddModel(const DynamicModel& model);
 
     void SetCurrentTime(double t) { d_.time = t; }
     const double& CurrentTime() const { return d_.time; }
@@ -31,8 +28,6 @@ class Controller {
     virtual void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {}
 
    protected:
-    // Model data for controller
-    DynamicModel* m_;
     // Controller data
     ControllerData d_;
 

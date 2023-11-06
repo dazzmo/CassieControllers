@@ -13,16 +13,18 @@ class OutputPrescale {
         RAMP_DOWN
     };
 
-    void StartRamp(const RampType &type);
+    void StartRamp(Scalar time, Scalar tau, const RampType &type);
+    Scalar ApplyPrescale(Scalar time);
 
    private:
+    Scalar t_ = 1.0;
     Scalar ramp_tau_ = 1.0;
     Scalar t_ramp_start_ = 0.0;
 
     RampType ramp_type_;
 
-    Scalar RampUp(void);
-    Scalar RampDown(void);
+    Scalar RampUp(Scalar time, Scalar time_start);
+    Scalar RampDown(Scalar time, Scalar time_start);
 };
 
 }  // namespace controller

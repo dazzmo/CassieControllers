@@ -53,11 +53,13 @@ class DynamicModel {
             qu = ConfigurationVector::Zero(sz.nq);
             vmax = TangentVector::Zero(sz.nv);
             amax = TangentVector::Zero(sz.nv);
+            umax = ActuationVector::Zero(sz.nu);
         }
         ConfigurationVector ql;
         ConfigurationVector qu;
         TangentVector vmax;
         TangentVector amax;
+        ActuationVector umax;
     };
 
     struct Dynamics {
@@ -81,13 +83,13 @@ class DynamicModel {
 
     ~DynamicModel() {}
 
-
     void UpdateModel(const ConfigurationVector &q, const TangentVector &v);
 
     const Size &size() const { return sz_; }
     const Bounds &bounds() const { return bounds_; }
     const State &state() const { return state_; }
     const Control &ctrl() const { return ctrl_; }
+    const Dynamics &dynamics() const { return dynamics_; }
 
    protected:
     virtual void ComputeMassMatrix(const ConfigurationVector &q, Matrix &M) = 0;
@@ -97,10 +99,8 @@ class DynamicModel {
    private:
     // Size of dynamic model
     Size sz_;
-    // Number of contact points
-    Dimension nc_;
-    // Number of constraints
-    Dimension ng_;
+    // Number of equality constraints
+    Dimension nceq_;
 
     State state_;
     State state_init_;
