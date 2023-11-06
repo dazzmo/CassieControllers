@@ -21,8 +21,8 @@ void ArmOSC::SetupController() {
     RegisterEndEffectorTask("tip", [](const double **arg, double **res) -> int { return arm_tip(arg, res, NULL, NULL, 0); });
     // Task gains (x-axis not required as system is in the y-z plane)
     Eigen::VectorXd Kp(3), Kd(3);
-    Kp << 0.0, 1e2, 1e2;
-    Kd << 0.0, 1e1, 1e1;
+    Kp << 0.0, 1e0, 1e0;
+    Kd << 0.0, 1e0, 1e0;
     GetEndEffectorTaskMap()["tip"]->SetTaskWeighting(1e1);
     GetEndEffectorTaskMap()["tip"]->SetProportionalErrorGain(Kp);
     GetEndEffectorTaskMap()["tip"]->SetDerivativeErrorGain(Kd);
