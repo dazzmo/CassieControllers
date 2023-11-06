@@ -110,6 +110,9 @@ class MujocoSimulator {
     double lastx_ = 0;
     double lasty_ = 0;
 
+    // Keyboard interaction
+    bool paused_ = true;
+
     // Private constructor to create only one instance
     MujocoSimulator(void) {}
 
