@@ -26,6 +26,7 @@ int main(int argc, const char** argv) {
     sim.LoadModel("./scene.xml");
     sim.Init();
 
+
     // Construct controller (frequency in Hz)
     const double freq = 2e2;
     ArmOSC* c = new ArmOSC();
@@ -33,6 +34,7 @@ int main(int argc, const char** argv) {
         mju_error("Could not initialise controller");
     }
     c->SetControlFrequency(freq);
+
 
     // Simulate the model
     mjtNum t_ctrl = sim.GetSimulatorTime();
@@ -49,12 +51,13 @@ int main(int argc, const char** argv) {
                 c->MapMujocoState(sim.GetModelConfiguration(), sim.GetModelVelocity());
 
                 // Print to terminal
+
                 std::cout << "qacc (sim): ";
                 for (int i = 0; i < sim.GetModelNv(); i++) {
                     std::cout << *(sim.GetModelAcceleration() + i) << '\t';
                 }
                 std::cout << '\n';
-                std::cout << "u: " << c->ctrl().transpose() << '\n';
+                // std::cout << "u: " << c->ctrl().transpose() << '\n';
                 sim.PrintDynamicsCoefficients();
 
                 // Update controller params

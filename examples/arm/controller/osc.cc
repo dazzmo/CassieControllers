@@ -17,6 +17,7 @@ void ArmOSC::SetupController() {
 
     // RegisterTask("wrist constraint", 1, arm_constraint);
     
+
     // We use a lambda function to pre-fill the constant requirements of CasADi's last three arguments
     RegisterEndEffectorTask("tip", [](const double **arg, double **res) -> int { return arm_tip(arg, res, NULL, NULL, 0); });
     // Task gains (x-axis not required as system is in the y-z plane)
