@@ -42,14 +42,14 @@ class DynamicModel {
 
     struct Bounds {
         Bounds(const Size &sz) {
-            ql = ConfigurationVector::Zero(sz.nq);
-            qu = ConfigurationVector::Zero(sz.nq);
+            qmin = ConfigurationVector::Zero(sz.nq);
+            qmax = ConfigurationVector::Zero(sz.nq);
             vmax = TangentVector::Zero(sz.nv);
             amax = TangentVector::Zero(sz.nv);
             umax = ActuationVector::Zero(sz.nu);
         }
-        ConfigurationVector ql;
-        ConfigurationVector qu;
+        ConfigurationVector qmin;
+        ConfigurationVector qmax;
         TangentVector vmax;
         TangentVector amax;
         ActuationVector umax;
@@ -68,7 +68,7 @@ class DynamicModel {
 
     DynamicModel(const Size &sz) : sz_(sz),
                                    state_(sz),
-                                   state_init_(sz),
+                                   initial_state_(sz),
                                    bounds_(sz),
                                    dynamics_(sz) {
     }
@@ -81,7 +81,7 @@ class DynamicModel {
     const Size &size() const { return sz_; }
     Bounds &bounds() { return bounds_; }
     State &state() { return state_; }
-    State &state_init() { return state_init_; }
+    State &state_init() { return initial_state_; }
     const Dynamics &dynamics() const { return dynamics_; }
 
    protected:
@@ -96,7 +96,7 @@ class DynamicModel {
     Dimension nceq_;
 
     State state_;
-    State state_init_;
+    State initial_state_;
     Bounds bounds_;
     Dynamics dynamics_;
 };

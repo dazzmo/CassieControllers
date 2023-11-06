@@ -19,8 +19,8 @@ class JointLimitsTask : public Task {
    public:
     JointLimitsTask(const std::string &name, const DynamicModel::Size &sz);
 
-    void SetUpperPositionLimit(const ConfigurationVector &qu) { qu_ = qu; }
-    void SetLowerPositionLimit(const ConfigurationVector &ql) { ql_ = ql; }
+    void SetUpperPositionLimit(const ConfigurationVector &qmax) { qu_ = qmax; }
+    void SetLowerPositionLimit(const ConfigurationVector &qmin) { ql_ = qmin; }
 
     void UpdateTask(const Vector &q, const Vector &v);
 
@@ -30,7 +30,7 @@ class JointLimitsTask : public Task {
     ConfigurationVector ql_;
     ConfigurationVector qu_;
 
-    double TransitionFunction(double q, double ql, double qu);
+    double TransitionFunction(double q, double qmin, double qmax);
 };
 
 }  // namespace osc

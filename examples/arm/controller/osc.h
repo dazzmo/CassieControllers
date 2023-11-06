@@ -24,8 +24,8 @@ class ArmModel : public osc::Model {
     ArmModel() : osc::Model(DynamicModel::Size(ARM_MODEL_NQ, ARM_MODEL_NV, ARM_MODEL_NU)) {
         // Model bounds
         state_init().q << 0.0, 0.0, 0.0;
-        bounds().ql << -M_PI, -M_PI, -M_PI;
-        bounds().qu << M_PI, M_PI, M_PI;
+        bounds().qmin << -M_PI, -M_PI, -M_PI;
+        bounds().qmax << M_PI, M_PI, M_PI;
         bounds().umax << 15.0, 15.0, 15.0;
         bounds().vmax.setConstant(1e1);
         bounds().amax.setConstant(1e20);

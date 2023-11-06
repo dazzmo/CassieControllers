@@ -14,22 +14,22 @@ JointLimitsTask::JointLimitsTask(const std::string &name, const DynamicModel::Si
  *  either of its limits. Transition rate is adjusted through beta.
  *
  * @param q
- * @param ql
- * @param qu
+ * @param qmin
+ * @param qmax
  * @return double
  */
-double JointLimitsTask::TransitionFunction(double q, double ql, double qu) {
+double JointLimitsTask::TransitionFunction(double q, double qmin, double qmax) {
     double zeta = 1.0;
-    double qu_tilde = qu - beta_;
-    double ql_tilde = ql + beta_;
+    double qu_tilde = qmax - beta_;
+    double ql_tilde = qmin + beta_;
 
-    if (q >= qu) {
+    if (q >= qmax) {
         zeta = 1.0;
-    } else if (qu_tilde < q && q < qu) {
+    } else if (qu_tilde < q && q < qmax) {
         zeta = 0.5 + 0.5 * sin(M_PI * (q - qu_tilde) / beta_ - M_PI_2);
     } else if (ql_tilde <= q && q <= qu_tilde) {
         zeta = 0.0;
-    } else if (ql < q && q < ql_tilde) {
+    } else if (qmin < q && q < ql_tilde) {
         zeta = 0.5 + 0.5 * sin(M_PI * (q - ql_tilde) / beta_ - M_PI_2);
     } else {
         zeta = 1.0;
