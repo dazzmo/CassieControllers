@@ -16,7 +16,6 @@ double time_in_seconds() {
 }
 
 int main(int argc, const char** argv) {
-
     google::InitGoogleLogging("simulate");
     FLAGS_logtostderr = 1;
 
@@ -26,46 +25,36 @@ int main(int argc, const char** argv) {
     sim.LoadModel("./scene.xml");
     sim.Init();
 
-
-    // Construct controller (frequency in Hz)
-    const double freq = 2e2;
-    ArmOSC* c = new ArmOSC();
-    if (c->Init() != ControllerStatus::SUCCESS) {
-        mju_error("Could not initialise controller");
-    }
-    c->SetControlFrequency(freq);
-
+    // Create controller
+    double freq = 100.0;
+    // Create OSC model
+    ArmModel arm;
+    // Create OSC controller for arm model
+    controller::osc::Options opt;
+    opt.include_constraint_forces = true;
+    controller::osc::OperationalSpaceController c(arm);
+    c.CreateOSC(opt);
 
     // Simulate the model
     mjtNum t_ctrl = sim.GetSimulatorTime();
     while (!sim.WindowShouldClose()) {
-
         // Run simulator at a reasonable frame rate in real time
         double simstart = time_in_seconds();
         while (time_in_seconds() - simstart < 1.0 / 60.0) {
-
             // Apply control at desired frequency within simulator
             if (sim.GetSimulatorTime() - t_ctrl > 1.0 / freq) {
+                // Update model state
+                c.GetModel().UpdateState(arm.size().nq, sim.GetModelConfiguration(),
+                                         arm.size().nv, sim.GetModelVelocity());
+                // Compute control based on updated model state
+                c.UpdateControl(sim.GetSimulatorTime(),
+                                c.GetModel().state().q, c.GetModel().state().v);
 
-                // Store physics state in controller
-                c->MapMujocoState(sim.GetModelConfiguration(), sim.GetModelVelocity());
-
-                // Print to terminal
-
-                std::cout << "qacc (sim): ";
-                for (int i = 0; i < sim.GetModelNv(); i++) {
-                    std::cout << *(sim.GetModelAcceleration() + i) << '\t';
-                }
-                std::cout << '\n';
-                // std::cout << "u: " << c->ctrl().transpose() << '\n';
-                sim.PrintDynamicsCoefficients();
-
-                // Update controller params
-                c->Update(sim.GetSimulatorTime());
                 t_ctrl = sim.GetSimulatorTime();
             }
 
-            sim.ApplyControl(c->ctrl().data(), c->nu());
+            LOG(INFO) << "u: " << c.ControlOutput().transpose();
+            sim.ApplyControl(c.ControlOutput().data(), c.GetModel().size().nu);
             sim.ForwardStep();
         }
         sim.UpdateSceneAndRender();

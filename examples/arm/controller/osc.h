@@ -22,9 +22,20 @@ using namespace controller;
 class ArmModel : public osc::Model {
    public:
     ArmModel() : osc::Model(DynamicModel::Size(ARM_MODEL_NQ, ARM_MODEL_NV, ARM_MODEL_NU)) {
+        // Model bounds
+        state_init().q << 0.0, 0.0, 0.0;
+        bounds().ql << -M_PI, -M_PI, -M_PI;
+        bounds().qu << M_PI, M_PI, M_PI;
+        bounds().umax << 15.0, 15.0, 15.0;
+        bounds().vmax.setConstant(1e1);
+        bounds().amax.setConstant(1e20);
+
         // Add tasks here
-        // AddTask("name", 1, ArmModel::WristAngleTask);
-        // GetTask("name")->SetErrorGains();
+        AddTask("tip", 3, &ArmModel::TipPositionTask);
+        GetTask("tip")->SetTaskWeighting(1.0);
+        // TODO: Make this cleaner
+        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(1e2, 1e2, 1e2),
+                                      Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
     }
 
     // Tasks
@@ -43,14 +54,15 @@ class ArmModel : public osc::Model {
         dJdq << 0;
     }
 
-    void UpdateTaskReferences() {
-        // GetTask("name")->SetReference();
+    // Function that gets called every time control is updated
+    void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
+        GetTask("tip")->SetReference(Vector3(0.0, 1.0, 1.0));
     }
 
    protected:
     // Dynamics
-
-    void ComputeMassMatrix(const ConfigurationVector& q, Matrix& M) {
+    void
+    ComputeMassMatrix(const ConfigurationVector& q, Matrix& M) {
         const double* in[] = {q.data(), NULL};
         double* out[] = {M.data()};
         arm_mass_matrix(in, out, NULL, NULL, 0);

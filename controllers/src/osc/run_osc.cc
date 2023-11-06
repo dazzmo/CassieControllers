@@ -7,7 +7,7 @@ using namespace controller::osc;
  * system at time t
  *
  */
-const ActuationVector& OperationalSpaceController::RunOSC() {
+void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
     if (!osc_setup_) {
         throw std::runtime_error("OSC has not been created! Call CreateOSC() after adding all tasks.");
     }
@@ -15,66 +15,81 @@ const ActuationVector& OperationalSpaceController::RunOSC() {
     // Constant component of the QP cost 0.5 x^T * H * x + g^T * x + c
     double cost_c = 0.0;
 
-    LOG(INFO) << "constraints";
-    int jac_idx = 0;
+    LOG(INFO) << "update";
 
     // Update model dynamics
-    m_.UpdateModel(m_.state().q, m_.state().v);
+    m_.UpdateModel(q, v);
+    // Update references
+    m_.UpdateReferences(time, q, v);
 
-    // Update constraints and insert into stacked Jacobian and vector TODO: Need to come up with a name for dJdq
+    LOG(INFO) << "constraints";
+
+    // Update constraints and insert into stacked Jacobian and vector
+    // TODO: Need to come up with a name for dJdq
     for (auto const& c : m_.GetConstraintMap()) {
         // Evaluate constraints from model
-        c.second->Update(m_.state().q, m_.state().v);
+        c.second->Update(q, v);
         // Add to constraint jacobian
         Jceq_.middleRows(c.second->start(), c.second->dim()) << c.second->J();
         dJceqdq_.middleRows(c.second->start(), c.second->dim()) << c.second->dJdq();
     }
 
-    if (opt_->use_constraint_nullspace_projector) {
-        // ==== Dynamics constraints ====
+    LOG(INFO) << "dynamics";
 
+    if (opt_->include_constraint_forces) {
+        // ==== Dynamics constraints ====
         // Inertia matrix
-        qp_data_->A.topRows(m_.size().nv).middleCols(0, m_.size().nv) << m_.dynamics().M;
+        qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz).middleCols(0, m_.size().nv) << m_.dynamics().M;
         // Friction constraint forces
+        LOG(INFO) << "ee";
         for (auto const& ee : m_.GetEndEffectorTaskMap()) {
-            qp_data_->A.topRows(m_.size().nv).middleCols(x_->lambda_c.start + 3 * ee.second->GetId(), 3) = -ee.second->J().transpose();
+            qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz).middleCols(x_->lambda_c.start + 3 * ee.second->GetId(), 3) = -ee.second->J().transpose();
         }
+        LOG(INFO) << "c";
         // Holonomic constraint forces
-        int con_idx = 0;
         for (auto const& c : m_.GetConstraintMap()) {
-            qp_data_->A.topRows(m_.size().nv).middleCols(x_->lambda_h.start + c.second->start(), c.second->dim()) = -c.second->J().transpose();
+            qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz).middleCols(x_->lambda_h.start + c.second->start(), c.second->dim()) = -c.second->J().transpose();
         }
         // Actuation
-        qp_data_->A.topRows(m_.size().nv).middleCols(x_->ctrl.start, m_.size().nu) = -m_.dynamics().B;
+        LOG(INFO) << "u";
+        qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz).middleCols(x_->ctrl.start, m_.size().nu) = -m_.dynamics().B;
         // Equality bounds
-        qp_data_->ubA.topRows(m_.size().nv) = -m_.dynamics().h;
-        qp_data_->lbA.topRows(m_.size().nv) = -m_.dynamics().h;
+        LOG(INFO) << "bounds";
+        qp_data_->ubA.middleRows(x_->qacc.start, x_->qacc.sz) = -m_.dynamics().h;
+        qp_data_->lbA.middleRows(x_->qacc.start, x_->qacc.sz) = -m_.dynamics().h;
 
         // ==== Holnomic equality constraints ====
-
-        qp_data_->A.bottomRows(m_.GetNumberOfConstraints()).middleCols(x_->lambda_h.start, m_.GetNumberOfConstraints()) << Jceq_;
-        qp_data_->ubA.bottomRows(m_.GetNumberOfConstraints()) << -dJceqdq_;
-        qp_data_->lbA.bottomRows(m_.GetNumberOfConstraints()) << -dJceqdq_;
+        LOG(INFO) << "constraints";
+        if (m_.GetNumberOfConstraints()) {
+            qp_data_->A.bottomRows(m_.GetNumberOfConstraints()).middleCols(x_->lambda_h.start, m_.GetNumberOfConstraints()) << Jceq_;
+            qp_data_->ubA.bottomRows(m_.GetNumberOfConstraints()) << -dJceqdq_;
+            qp_data_->lbA.bottomRows(m_.GetNumberOfConstraints()) << -dJceqdq_;
+        }
 
     } else {
         // ==== Projected dynamics constraints ====
+        if (m_.GetNumberOfConstraints()) {
+            Matrix invM = m_.dynamics().M;
+            Matrix JMJT = Jceq_ * invM * Jceq_.transpose();
+            Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
+            // Compute null space matrix
+            N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jceq_.transpose() * pinvJMJT * Jceq_ * invM;
+            // Equality bounds
+            qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h - Jceq_.transpose() * pinvJMJT * dJceqdq_;
+            qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
+        } else {
+            N_ = Matrix::Identity(m_.size().nv, m_.size().nv);
+            // Equality bounds
+            qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h;
+            qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
+        }
 
-        Matrix invM = m_.dynamics().M;
-        Matrix JMJT = Jceq_ * invM * Jceq_.transpose();
-        Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
-
-        // Compute null space matrix
-        N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jceq_.transpose() * pinvJMJT * Jceq_ * invM;
-
-        // If using explicit or implicit
-        for (auto const& ee : ee_tasks_) {
+        // End effector forces
+        for (auto const& ee : m_.GetEndEffectorTaskMap()) {
             qp_data_->A.topRows(m_.size().nv).middleCols(x_->lambda_c.start + 3 * ee.second->GetId(), 3) = -N_ * ee.second->J().transpose();
         }
         // Actuation
         qp_data_->A.topRows(m_.size().nv).middleCols(x_->ctrl.start, x_->ctrl.sz) = -N_ * m_.dynamics().B;
-        // Equality bounds
-        qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h - Jceq_.transpose() * pinvJMJT * dJceqdq_;
-        qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
     }
 
     // Reset cost
@@ -83,7 +98,9 @@ const ActuationVector& OperationalSpaceController::RunOSC() {
 
     LOG(INFO) << "regular tasks";
     for (auto const& task : m_.GetTaskMap()) {
-        task.second->Update(m_.state().q, m_.state().v);
+        LOG(INFO) << "update";
+        task.second->Update(q, v);
+        LOG(INFO) << "add to cost";
         double w = task.second->weight();
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
@@ -91,15 +108,15 @@ const ActuationVector& OperationalSpaceController::RunOSC() {
         Vector a = task.second->dJdq() + task.second->ErrorOutputPD();
 
         // Add to objective
-        qp_data_->H.topLeftCorner(m_.size().nv, m_.size().nv) += w * A.transpose() * A;
-        qp_data_->g.topRows(m_.size().nv) += 2.0 * w * A.transpose() * a;
+        qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += w * A.transpose() * A;
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * w * A.transpose() * a;
         cost_c += w * a.dot(a);
     }
 
     LOG(INFO) << "end effector tasks";
     for (auto const& task : m_.GetEndEffectorTaskMap()) {
         // Update the task
-        task.second->Update(m_.state().q, m_.state().v);
+        task.second->Update(q, v);
         double w = task.second->weight();
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
@@ -107,17 +124,17 @@ const ActuationVector& OperationalSpaceController::RunOSC() {
         Vector3 a = task.second->dJdq() + task.second->ErrorOutputPD();
 
         // Add to objective
-        qp_data_->H.topLeftCorner(m_.size().nv, m_.size().nv) += w * A.transpose() * A;
-        qp_data_->g.topRows(m_.size().nv) += 2.0 * w * A.transpose() * a;
+        qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += w * A.transpose() * A;
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * w * A.transpose() * a;
         cost_c += w * a.dot(a);
 
         // Contact
         if (task.second->inContact) {
-            qp_data_->ubx.middleRows(x_->lambda_c.start + 3 * task.second->GetId(), 3) << qpOASES::INFTY, qpOASES::INFTY, qpOASES::INFTY;
-            qp_data_->lbx.middleRows(x_->lambda_c.start + 3 * task.second->GetId(), 3) << -qpOASES::INFTY, -qpOASES::INFTY, qpOASES::ZERO;
+            qp_data_->ubx.middleRows(x_->lambda_c.start + task.second->start(), task.second->dim()) << qpOASES::INFTY, qpOASES::INFTY, qpOASES::INFTY;
+            qp_data_->lbx.middleRows(x_->lambda_c.start + task.second->start(), task.second->dim()) << -qpOASES::INFTY, -qpOASES::INFTY, qpOASES::ZERO;
         } else {
-            qp_data_->ubx.middleRows(x_->lambda_c.start + 3 * task.second->GetId(), 3) << qpOASES::ZERO, qpOASES::ZERO, qpOASES::ZERO;
-            qp_data_->lbx.middleRows(x_->lambda_c.start + 3 * task.second->GetId(), 3) << -qpOASES::ZERO, -qpOASES::ZERO, -qpOASES::ZERO;
+            qp_data_->ubx.middleRows(x_->lambda_c.start + task.second->start(), task.second->dim()) << qpOASES::ZERO, qpOASES::ZERO, qpOASES::ZERO;
+            qp_data_->lbx.middleRows(x_->lambda_c.start + task.second->start(), task.second->dim()) << -qpOASES::ZERO, -qpOASES::ZERO, -qpOASES::ZERO;
         }
     }
 
@@ -157,7 +174,7 @@ const ActuationVector& OperationalSpaceController::RunOSC() {
     x_->qacc.vec = qp_data_->x.middleRows(x_->qacc.start, x_->qacc.sz);
     x_->lambda_c.vec = qp_data_->x.middleRows(x_->lambda_c.start, x_->lambda_c.sz);
     x_->ctrl.vec = qp_data_->x.middleRows(x_->ctrl.start, x_->ctrl.sz);
-    if (opt_->use_constraint_nullspace_projector) {
+    if (opt_->include_constraint_forces) {
         x_->lambda_h.vec = qp_data_->x.middleRows(x_->lambda_h.start, x_->lambda_h.sz);
     }
 
@@ -167,12 +184,13 @@ const ActuationVector& OperationalSpaceController::RunOSC() {
     }
 
     // Constraint forces (if included in the optimisation)
-    if (opt_->use_constraint_nullspace_projector) {
-        int jac_idx = 0;
+    if (opt_->include_constraint_forces) {
         for (auto const& c : m_.GetConstraintMap()) {
             c.second->lambda() = qp_data_->x.middleRows(c.second->start(), c.second->dim());
         }
     }
 
-    return x_->ctrl;
+    // Set output signal for control
+    LOG(INFO) << "u (solved): " << u_.transpose();
+    u_ = x_->ctrl.vec;
 }

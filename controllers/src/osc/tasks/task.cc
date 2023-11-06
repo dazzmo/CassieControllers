@@ -14,6 +14,8 @@ Task::Task(const std::string &name, Dimension n, const DynamicModel::Size &sz, T
 }
 
 void Task::Resize(Dimension n, const DynamicModel::Size &sz) {
+    dim_ = n;
+    
     nq_ = sz.nq;
     nv_ = sz.nv;
 
@@ -67,14 +69,18 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
         throw std::runtime_error("Task callback is null");
     }
 
+    LOG(INFO) << "x: " << x_;
+    LOG(INFO) << "J: " << J_;
+    LOG(INFO) << "dJdq: " << dJdq_;
+
     // Update velocity
     dx_ = J_ * v;
     // TODO: Update acceleration also (need measurements through estimation)
     // ddx_ = J_ * a + dJdq_;
 
     // Compute errors
-    e_ = r_ - x_;
-    de_ = dr_ - dx_;
+    e_ = x_ - r_;
+    de_ = dx_ - dr_;
     // TODO: Accelerations
     // dde_ = ddr_ - ddx_;
 

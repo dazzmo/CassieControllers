@@ -38,8 +38,7 @@ class Model : public DynamicModel {
     const Dimension GetNumberOfContacts() const { return nc_; }
     const Dimension GetNumberOfConstraints() const { return nceq_; }
 
-    virtual void UpdateTaskReferences() {
-    }
+    virtual void UpdateReferences(Scalar time, const ConfigurationVector &q, const TangentVector &v) {}
 
    private:
     // Number of tasks

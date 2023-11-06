@@ -1,6 +1,6 @@
 #include "controllers/constraint.h"
 
-using namespace controller::osc;
+using namespace controller;
 
 Constraint::Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz) {
     name_ = name;
@@ -27,7 +27,7 @@ void Constraint::Resize(Dimension n, const DynamicModel::Size &sz) {
 void Constraint::Update(const ConfigurationVector &q, const TangentVector &v) {
     // Perform callback
     if (callback_ != nullptr) {
-        callback_(q, v, x_, J_, dJdq_);
+        callback_(q, v, c_, J_, dJdq_);
     } else {
         throw std::runtime_error("Constraint callback is null");
     }

@@ -57,7 +57,7 @@ int MujocoSimulator::ForwardStep() {
     return 0;
 }
 
-int MujocoSimulator::ApplyControl(double* ctrl, int nu) {
+int MujocoSimulator::ApplyControl(const double* ctrl, int nu) {
     mju_copy(d_->ctrl, ctrl, nu);
     return 0;
 }

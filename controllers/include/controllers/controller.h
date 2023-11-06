@@ -13,7 +13,7 @@ namespace controller {
 
 class Controller {
    public:
-    Controller();
+    Controller(Dimension nu);
     ~Controller() = default;
 
     void SetCurrentTime(double t) { d_.time = t; }
@@ -25,11 +25,14 @@ class Controller {
     }
 
     virtual void UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v) = 0;
-    virtual void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {}
+
+    const ActuationVector& ControlOutput() const { return u_; }
 
    protected:
     // Controller data
     ControllerData d_;
+    // Control output
+    ActuationVector u_;
 
    private:
 };

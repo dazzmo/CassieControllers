@@ -40,13 +40,6 @@ class DynamicModel {
         TangentVector a;
     };
 
-    struct Control {
-        Control(const Size &sz) {
-            u = ActuationVector::Zero(sz.nu);
-        }
-        ActuationVector u;
-    };
-
     struct Bounds {
         Bounds(const Size &sz) {
             ql = ConfigurationVector::Zero(sz.nq);
@@ -76,19 +69,19 @@ class DynamicModel {
     DynamicModel(const Size &sz) : sz_(sz),
                                    state_(sz),
                                    state_init_(sz),
-                                   ctrl_(sz),
                                    bounds_(sz),
                                    dynamics_(sz) {
     }
 
     ~DynamicModel() {}
 
+    virtual void UpdateState(Dimension nq, const Scalar *q, Dimension nv, const Scalar *v);
     void UpdateModel(const ConfigurationVector &q, const TangentVector &v);
 
     const Size &size() const { return sz_; }
-    const Bounds &bounds() const { return bounds_; }
-    const State &state() const { return state_; }
-    const Control &ctrl() const { return ctrl_; }
+    Bounds &bounds() { return bounds_; }
+    State &state() { return state_; }
+    State &state_init() { return state_init_; }
     const Dynamics &dynamics() const { return dynamics_; }
 
    protected:
@@ -104,10 +97,8 @@ class DynamicModel {
 
     State state_;
     State state_init_;
-    Control ctrl_;
     Bounds bounds_;
     Dynamics dynamics_;
-
 };
 
 }  // namespace controller

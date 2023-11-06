@@ -99,6 +99,10 @@ class Task {
     void SetReference(const Vector &r, const Vector &dr, const Vector &ddr);
 
     void SetErrorGains(const Vector &Kp, const Vector &Kd) {
+        LOG(INFO) << Kp.size();
+        LOG(INFO) << dim();
+        assert(Kp.size() == dim() && "Kp gains are the incorrect dimension");
+        assert(Kd.size() == dim() && "Kd gains are the incorrect dimension");
         Kp_ = Kp;
         Kd_ = Kd;
     }
@@ -117,8 +121,8 @@ class Task {
 
     /**
      * @brief Sets the starting index of this task within the task vector
-     * 
-     * @param idx 
+     *
+     * @param idx
      */
     void SetStartIndex(Index idx) { start_ = idx; }
 

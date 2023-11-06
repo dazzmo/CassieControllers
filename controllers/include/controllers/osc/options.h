@@ -9,9 +9,9 @@ namespace osc {
  *
  */
 struct Options {
-    Options() : use_constraint_nullspace_projector(true){};
+    Options() : include_constraint_forces(true){};
 
-    bool use_constraint_nullspace_projector;
+    bool include_constraint_forces;
 };
 
 }  // namespace osc

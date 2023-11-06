@@ -38,7 +38,7 @@ class MujocoSimulator {
     int Init();
     int LoadModel(const char* xml_file);
     int ForwardStep();
-    int ApplyControl(double* ctrl, int nu);
+    int ApplyControl(const double* ctrl, int nu);
     int UpdateSceneAndRender();
 
     int WindowShouldClose() {

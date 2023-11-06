@@ -12,10 +12,10 @@
 #include "controllers/osc/model.h"
 #include "controllers/osc/options.h"
 #include "controllers/osc/tasks/ee_task.h"
-#include "controllers/osc/tasks/joint_limits_task.h"
-#include "controllers/osc/tasks/joint_track_task.h"
 #include "controllers/osc/tasks/task.h"
 #include "controllers/types.h"
+#include "eigen3/Eigen/Core"
+#include "eigen3/Eigen/QR"
 
 namespace controller {
 namespace osc {
@@ -23,17 +23,18 @@ namespace osc {
 class OperationalSpaceController : public Controller {
    public:
     OperationalSpaceController(const Model& model);
-    ~OperationalSpaceController() {}
+    ~OperationalSpaceController() {
+        delete x_;
+        delete qp_data_;
+        delete opt_;
+    }
 
     void SetTorqueWeight(double weight) { torque_weight_ = weight; }
 
     void CreateOSC(const Options& opt = Options());
-    const ActuationVector& RunOSC();
+    void UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v);
 
-    std::shared_ptr<Task> GetTask(const std::string& name) { return tasks_[name]; }
-    std::map<std::string, std::shared_ptr<EndEffectorTask>>& GetEndEffectorTaskMap() { return ee_tasks_; }
-
-    const Model& GetModel() { return m_; }
+    Model& GetModel() { return m_; }
 
    protected:
     // Null space projector for holonomic constraints
@@ -52,16 +53,16 @@ class OperationalSpaceController : public Controller {
          * @brief Construct a new QPData object
          *
          * @param nx Number of variables in the problem
-         * @param nce Number of equality constraints in the problem
+         * @param nc Number of box-bounded constraints in the problem
          */
-        QPData(Dimension nx, Dimension nce) {
+        QPData(Dimension nx, Dimension nc) {
             this->nx = nx;
-            this->nce = nce;
+            this->nc = nc;
             H = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(nx, nx);
             g = Vector::Zero(nx);
-            A = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(nce, nx);
-            ubA = qpOASES::INFTY * Vector::Ones(nce);
-            lbA = -qpOASES::INFTY * Vector::Ones(nce);
+            A = Eigen::Matrix<double, -1, -1, Eigen::RowMajor>::Zero(nc, nx);
+            ubA = qpOASES::INFTY * Vector::Ones(nc);
+            lbA = -qpOASES::INFTY * Vector::Ones(nc);
             ubx = qpOASES::INFTY * Vector::Ones(nx);
             lbx = -qpOASES::INFTY * Vector::Ones(nx);
             x = Vector::Zero(nx);
@@ -69,7 +70,7 @@ class OperationalSpaceController : public Controller {
         // Number of variables
         Dimension nx;
         // Number of equality constraints
-        Dimension nce;
+        Dimension nc;
 
         // Solution vector
         Vector x;
@@ -99,14 +100,14 @@ class OperationalSpaceController : public Controller {
 
     double torque_weight_ = 1.0;
 
-    struct OptimisationVariable {
-        OptimisationVariable(Index start, Dimension sz) {
+    struct SubVector {
+        SubVector(Index start, Dimension sz) {
             this->start = start;
             this->sz = sz;
             vec = Vector::Zero(sz);
         }
 
-        OptimisationVariable() {
+        SubVector() {
             this->start = 0;
             this->sz = 0;
             vec = Vector::Zero(0);
@@ -118,7 +119,7 @@ class OperationalSpaceController : public Controller {
          *
          * @param v
          */
-        void InsertAfter(const OptimisationVariable& v) {
+        void InsertAfter(const SubVector& v) {
             this->start = v.start + v.sz;
         }
 
@@ -131,15 +132,15 @@ class OperationalSpaceController : public Controller {
         OptimisationVector(const DynamicModel::Size& sz, Dimension nc, Dimension nceq, const Options& opt)
             : qacc(0, sz.nv), lambda_c(0, 3 * nc), lambda_h(0, nceq), ctrl(0, sz.nu) {
             // Add constraint forces explicitly or implicitly
-            if (opt.use_constraint_nullspace_projector) {
-                lambda_c.InsertAfter(qacc);
-                ctrl.InsertAfter(lambda_c);
-                // Clear lambda_h
-                lambda_h = OptimisationVariable();
-            } else {
+            if (opt.include_constraint_forces) {
                 lambda_c.InsertAfter(qacc);
                 lambda_h.InsertAfter(lambda_c);
                 ctrl.InsertAfter(lambda_h);
+            } else {
+                lambda_c.InsertAfter(qacc);
+                ctrl.InsertAfter(lambda_c);
+                // Clear lambda_h
+                lambda_h = SubVector();
             }
 
             // Get overall vector size
@@ -148,21 +149,37 @@ class OperationalSpaceController : public Controller {
 
         Dimension sz;
 
-        OptimisationVariable qacc;
-        OptimisationVariable lambda_c;
-        OptimisationVariable lambda_h;
-        OptimisationVariable ctrl;
+        SubVector qacc;
+        SubVector lambda_c;
+        SubVector lambda_h;
+        SubVector ctrl;
+    };
+
+    struct ConstraintVector {
+        ConstraintVector(const DynamicModel::Size& sz, Dimension nc, Dimension nceq, const Options& opt)
+            : dyn(0, sz.nu), lambda_c(0, 3 * nc), lambda_h(0, nceq) {
+            lambda_c.InsertAfter(dyn);
+            // Add constraint forces explicitly or implicitly
+            if (opt.include_constraint_forces) {
+                lambda_h.InsertAfter(lambda_c);
+            } else {
+                lambda_h = SubVector();
+            }
+
+            // Get overall vector size
+            this->sz = dyn.sz + lambda_c.sz + lambda_h.sz;
+        }
+
+        Dimension sz;
+
+        SubVector dyn;
+        SubVector lambda_c;
+        SubVector lambda_h;
     };
 
     OptimisationVector* x_;
-
-    JointTrackTask* joint_track_task_;
-    JointLimitsTask* joint_limits_task_;
-
+    ConstraintVector* c_;
     Options* opt_;
-
-    std::map<std::string, std::shared_ptr<Task>> tasks_;
-    std::map<std::string, std::shared_ptr<EndEffectorTask>> ee_tasks_;
 };
 
 }  // namespace osc

@@ -13,7 +13,7 @@ namespace controller {
 class Constraint {
    public:
     typedef void (*ConstraintCallbackFunction)(const Vector &q, const Vector &v,
-                                               Vector &x, Matrix &J, Vector &dJdq);
+                                               Vector &c, Matrix &J, Vector &dJdq);
 
     Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz);
     Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz, ConstraintCallbackFunction callback);
@@ -84,9 +84,10 @@ class Constraint {
     Matrix J_;     // Constraint jacobian
     Vector dJdq_;  // Constraint jacobian time derivative and velocity product
 
-    Vector lambda_  // Constraint force
+    Vector lambda_;  // Constraint force
 
-        private : std::string name_;
+   private:
+    std::string name_;
 
     ConstraintCallbackFunction callback_;
 
