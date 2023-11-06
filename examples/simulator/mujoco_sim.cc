@@ -97,7 +97,7 @@ void MujocoSimulator::KeyboardCallbackImpl(GLFWwindow* window, int key, int scan
         paused_ = !paused_;
     }
     // quit window
-    if (act == GLFW_PRESS && key == GLFW_KEY_Q) {
+    if (act == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 }
