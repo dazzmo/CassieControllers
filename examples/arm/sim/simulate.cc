@@ -7,12 +7,15 @@
 #include "controller/osc.h"
 #include "mujoco_sim.h"
 
+// TODO: Not sure why but using real-time is not working well for the simulation, might
+// require further looking into.
+
 // Useful for tracking real-time visuals
 double time_in_seconds() {
     auto tp = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now());
     auto tmp = std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch());
     auto time_micro = tmp.count();
-    return time_micro / 1000000.0;
+    return time_micro * 1000000.0;
 }
 
 int main(int argc, const char** argv) {
@@ -38,15 +41,18 @@ int main(int argc, const char** argv) {
 
     // Simulate the model
     mjtNum t_ctrl = sim.GetSimulatorTime();
+    // mjtNum t_ctrl = time_in_seconds();
+
     while (!sim.WindowShouldClose()) {
         // Run simulator at a reasonable frame rate in real time
-        // double simstart = time_in_seconds();
         double simstart = sim.GetSimulatorTime();
-        // while (time_in_seconds() - simstart < 1.0 / 60.0) {
-
+        // double simstart = time_in_seconds();
         while (sim.GetSimulatorTime() - simstart < 1.0 / 60.0) {
+            // while (time_in_seconds() - simstart < 1.0 / 60.0) {
+
             // Apply control at desired frequency within simulator
             if (sim.GetSimulatorTime() - t_ctrl > 1.0 / freq) {
+                // if (time_in_seconds() - t_ctrl > 1.0 / freq) {
                 // Update model state
                 c.GetModel().UpdateState(arm.size().nq, sim.GetModelConfiguration(),
                                          arm.size().nv, sim.GetModelVelocity());
@@ -55,6 +61,7 @@ int main(int argc, const char** argv) {
                                 c.GetModel().state().q, c.GetModel().state().v);
 
                 t_ctrl = sim.GetSimulatorTime();
+                // t_ctrl = time_in_seconds();
             }
 
             LOG(INFO) << "u: " << c.ControlOutput().transpose();

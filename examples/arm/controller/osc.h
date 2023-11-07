@@ -32,6 +32,8 @@ class ArmModel : public osc::Model {
         bounds().amax.setConstant(1e20);
 
         // Add tasks here
+
+        //
         AddTask("tip", 3, &ArmModel::TipPositionTask);
         GetTask("tip")->SetTaskWeighting(1.0);
         // TODO: Make this cleaner
@@ -41,7 +43,7 @@ class ArmModel : public osc::Model {
         // Joint damping
         joint_track_task = new osc::JointTrackTask(this->size());
         GetTaskMap()["joint limit track"] = std::shared_ptr<controller::osc::Task>(joint_track_task);
-        GetTask("joint limit track")->SetTaskWeighting(1e-1);
+        GetTask("joint limit track")->SetTaskWeighting(1e1);
         GetTask("joint limit track")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 0.0, 0.0), Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
     }
 
