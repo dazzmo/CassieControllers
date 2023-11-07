@@ -34,13 +34,17 @@ int main(int argc, const char** argv) {
     opt.include_constraint_forces = true;
     controller::osc::OperationalSpaceController c(arm);
     c.CreateOSC(opt);
+    c.SetTorqueWeight(1e-6);
 
     // Simulate the model
     mjtNum t_ctrl = sim.GetSimulatorTime();
     while (!sim.WindowShouldClose()) {
         // Run simulator at a reasonable frame rate in real time
-        double simstart = time_in_seconds();
-        while (time_in_seconds() - simstart < 1.0 / 60.0) {
+        // double simstart = time_in_seconds();
+        double simstart = sim.GetSimulatorTime();
+        // while (time_in_seconds() - simstart < 1.0 / 60.0) {
+
+        while (sim.GetSimulatorTime() - simstart < 1.0 / 60.0) {
             // Apply control at desired frequency within simulator
             if (sim.GetSimulatorTime() - t_ctrl > 1.0 / freq) {
                 // Update model state

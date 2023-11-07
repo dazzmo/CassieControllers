@@ -111,7 +111,7 @@ class MujocoSimulator {
     double lasty_ = 0;
 
     // Keyboard interaction
-    bool paused_ = true;
+    bool paused_ = false;
 
     // Private constructor to create only one instance
     MujocoSimulator(void) {}

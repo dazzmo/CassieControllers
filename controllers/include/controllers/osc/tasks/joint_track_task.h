@@ -9,7 +9,7 @@ namespace osc {
 class JointTrackTask : public Task {
    public:
     JointTrackTask(const DynamicModel::Size &sz);
-    void UpdateTask(const Vector &q, const Vector &v);
+    void Update(const Vector &q, const Vector &v);
 
    private:
 };

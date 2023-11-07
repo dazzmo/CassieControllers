@@ -5,7 +5,7 @@ using namespace controller::osc;
 JointTrackTask::JointTrackTask(const DynamicModel::Size &sz) : Task("joint track", sz.nq, sz) {
 }
 
-void JointTrackTask::UpdateTask(const Vector &q, const Vector &v) {
+void JointTrackTask::Update(const Vector &q, const Vector &v) {
     // Task for tracking joint trajectory
     x_ = q;
 

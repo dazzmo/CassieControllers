@@ -69,6 +69,8 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
         throw std::runtime_error("Task callback is null");
     }
 
+    LOG(INFO) << "q: " << q;
+    LOG(INFO) << "v: " << v;
     LOG(INFO) << "x: " << x_;
     LOG(INFO) << "J: " << J_;
     LOG(INFO) << "dJdq: " << dJdq_;

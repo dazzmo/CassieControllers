@@ -5,6 +5,7 @@
 
 #include "controllers/osc/model.h"
 #include "controllers/osc/osc.h"
+#include "controllers/osc/tasks/joint_track_task.h"
 #include "eigen3/Eigen/Cholesky"
 #include "eigen3/Eigen/Dense"
 #include "model/cg/arm_actuation_matrix.h"
@@ -34,10 +35,22 @@ class ArmModel : public osc::Model {
         AddTask("tip", 3, &ArmModel::TipPositionTask);
         GetTask("tip")->SetTaskWeighting(1.0);
         // TODO: Make this cleaner
-        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(1e2, 1e2, 1e2),
-                                      Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
+        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 1e2, 1e2),
+                                      Eigen::Vector<double, 3>(0.0, 1e0, 1e0));
+
+        // Joint damping
+        joint_track_task = new osc::JointTrackTask(this->size());
+        GetTaskMap()["joint limit track"] = std::shared_ptr<controller::osc::Task>(joint_track_task);
+        GetTask("joint limit track")->SetTaskWeighting(1e-1);
+        GetTask("joint limit track")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 0.0, 0.0), Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
     }
 
+    // Function that gets called every time control is updated
+    void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
+        GetTask("tip")->SetReference(Vector3(0.0, 1.0, 1.0));
+        GetTask("joint limit track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
+    }
+    
     // Tasks
     static void TipPositionTask(const ConfigurationVector& q, const TangentVector& v,
                                 Vector& x, Matrix& J, Vector& dJdq) {
@@ -54,10 +67,6 @@ class ArmModel : public osc::Model {
         dJdq << 0;
     }
 
-    // Function that gets called every time control is updated
-    void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        GetTask("tip")->SetReference(Vector3(0.0, 1.0, 1.0));
-    }
 
    protected:
     // Dynamics
@@ -79,6 +88,8 @@ class ArmModel : public osc::Model {
         double* out[] = {B.data()};
         arm_actuation_matrix(in, out, NULL, NULL, 0);
     }
+
+    osc::JointTrackTask* joint_track_task;
 };
 
 #endif /* CASSIE_CONTROLLER_OS_CTRL_20COPY_HPP */

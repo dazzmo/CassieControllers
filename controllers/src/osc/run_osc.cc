@@ -98,9 +98,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     LOG(INFO) << "regular tasks";
     for (auto const& task : m_.GetTaskMap()) {
-        LOG(INFO) << "update";
         task.second->Update(q, v);
-        LOG(INFO) << "add to cost";
         double w = task.second->weight();
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
