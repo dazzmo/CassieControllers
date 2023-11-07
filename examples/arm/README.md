@@ -1,6 +1,6 @@
 # 3 DoF Arm
 ## Arm Simulation
-To run the simulation with the controller, enter the directory that contains the arm_simulator exectutable (e.g. /build/examples/arm/) and run the following:
+To run the simulation with the controller, enter the directory that contains the arm_simulator executable (e.g. /build/examples/arm/) and run the following:
 `./arm_simulator`
 
 ## Arm Code Generation
@@ -12,12 +12,12 @@ To generate code for the model, enter the directory of the arm_codegen executabl
 This example presents the new design for creating OSC controllers. We create control laws that solve the following program at each instance
 
 $$
-\begin{aligned}
-u \in \arg\min_{\ddot{q},\,u,\,\lambda_c} &\quad \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2\\
+\begin{align}
+u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2\\
 \textrm{s.t.} \quad & M(q) \ddot{q} + h(q,\dot{q}) = B(q) u + J_c^T \lambda_c\\
 & \lambda_c \in \mathcal{F}_c\\
-& u_{\min} \le u \le u_{\max}\\
-\end{aligned}
+& u\_{\min} \le u \le u\_{\max}\\
+\end{align}
 $$
 
 Where our desired task accelerations $\ddot{x}_d$ are encoded as PD outputs from the task error
