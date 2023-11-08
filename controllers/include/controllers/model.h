@@ -93,7 +93,7 @@ class DynamicModel {
     // Size of dynamic model
     Size sz_;
     // Number of equality constraints
-    Dimension nceq_;
+    Dimension nconstraints_;
 
     State state_;
     State initial_state_;

@@ -19,16 +19,16 @@ class JointLimitsTask : public Task {
    public:
     JointLimitsTask(const std::string &name, const DynamicModel::Size &sz);
 
-    void SetUpperPositionLimit(const ConfigurationVector &qmax) { qu_ = qmax; }
-    void SetLowerPositionLimit(const ConfigurationVector &qmin) { ql_ = qmin; }
+    void SetUpperPositionLimit(const ConfigurationVector &qmax) { qmax_ = qmax; }
+    void SetLowerPositionLimit(const ConfigurationVector &qmin) { qmin_ = qmin; }
 
     void UpdateTask(const Vector &q, const Vector &v);
 
    private:
     double beta_ = 1.0;
     Vector zeta_;
-    ConfigurationVector ql_;
-    ConfigurationVector qu_;
+    ConfigurationVector qmin_;
+    ConfigurationVector qmax_;
 
     double TransitionFunction(double q, double qmin, double qmax);
 };

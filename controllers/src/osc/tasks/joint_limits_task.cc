@@ -5,8 +5,8 @@ using namespace controller::osc;
 JointLimitsTask::JointLimitsTask(const std::string &name, const DynamicModel::Size &sz) : Task("joint limits", 2 * sz.nq, sz) {
     beta_ = 0.5;
     zeta_ = Vector::Zero(sz.nq);
-    ql_ = ConfigurationVector::Zero(sz.nq);
-    qu_ = ConfigurationVector::Zero(sz.nq);
+    qmin_ = ConfigurationVector::Zero(sz.nq);
+    qmax_ = ConfigurationVector::Zero(sz.nq);
 }
 
 /**
@@ -20,17 +20,17 @@ JointLimitsTask::JointLimitsTask(const std::string &name, const DynamicModel::Si
  */
 double JointLimitsTask::TransitionFunction(double q, double qmin, double qmax) {
     double zeta = 1.0;
-    double qu_tilde = qmax - beta_;
-    double ql_tilde = qmin + beta_;
+    double qmax_tilde = qmax - beta_;
+    double qmin_tilde = qmin + beta_;
 
     if (q >= qmax) {
         zeta = 1.0;
-    } else if (qu_tilde < q && q < qmax) {
-        zeta = 0.5 + 0.5 * sin(M_PI * (q - qu_tilde) / beta_ - M_PI_2);
-    } else if (ql_tilde <= q && q <= qu_tilde) {
+    } else if (qmax_tilde < q && q < qmax) {
+        zeta = 0.5 + 0.5 * sin(M_PI * (q - qmax_tilde) / beta_ - M_PI_2);
+    } else if (qmin_tilde <= q && q <= qmax_tilde) {
         zeta = 0.0;
-    } else if (qmin < q && q < ql_tilde) {
-        zeta = 0.5 + 0.5 * sin(M_PI * (q - ql_tilde) / beta_ - M_PI_2);
+    } else if (qmin < q && q < qmin_tilde) {
+        zeta = 0.5 + 0.5 * sin(M_PI * (q - qmin_tilde) / beta_ - M_PI_2);
     } else {
         zeta = 1.0;
     }
@@ -41,11 +41,11 @@ double JointLimitsTask::TransitionFunction(double q, double qmin, double qmax) {
 void JointLimitsTask::UpdateTask(const Vector &q, const Vector &v) {
     // Joint Limit and Velocity
     for (int i = 0; i < nq_; ++i) {
-        zeta_[i] = TransitionFunction(q[i], ql_[i], qu_[i]);
+        zeta_[i] = TransitionFunction(q[i], qmin_[i], qmax_[i]);
     }
     // Task for keeping from boundaries
-    x_.topRows(nq_) = (qu_ - q).cwiseProduct(zeta_);
-    x_.bottomRows(nq_) = (q - ql_).cwiseProduct(zeta_);
+    x_.topRows(nq_) = (qmax_ - q).cwiseProduct(zeta_);
+    x_.bottomRows(nq_) = (q - qmin_).cwiseProduct(zeta_);
 
     // Jacobian
     for (int i = 0; i < nq_; ++i) {

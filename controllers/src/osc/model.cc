@@ -3,9 +3,9 @@
 using namespace controller::osc;
 
 Model::Model(const DynamicModel::Size &sz) : DynamicModel(sz) {
-    nt_ = 0;
-    nc_ = 0;
-    nceq_ = 0;
+    ntasks_ = 0;
+    ncontacts_ = 0;
+    nconstraints_ = 0;
 }
 
 /**
@@ -19,7 +19,7 @@ void Model::AddTask(const std::string &name, Dimension n, Task::TaskCallbackFunc
     tasks_[name] = std::shared_ptr<Task>(new Task(name, n, this->size(), callback));
     // Add position to task vector
     tasks_[name]->SetStartIndex(nt_);
-    nt_ += n;
+    ntasks_ += n;
 }
 
 /**
@@ -32,11 +32,11 @@ void Model::AddTask(const std::string &name, Dimension n, Task::TaskCallbackFunc
  */
 void Model::AddEndEffectorTask(const std::string &name, Task::TaskCallbackFunction callback) {
     // Add task to map
-    ee_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(name, this->size(), callback));
+    end_effector_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(name, this->size(), callback));
     // Add position to end-effector task vector
-    tasks_[name]->SetStartIndex(3 * nc_);
+    tasks_[name]->SetStartIndex(3 * ncontacts_);
     // Increase number of contact points
-    nc_ += 1;
+    ncontacts_ += 1;
 }
 
 /**
@@ -52,5 +52,5 @@ void Model::AddConstraint(const std::string &name, Dimension n, Constraint::Cons
     // Add position to constraint vector
     constraints_[name]->SetStartIndex(nceq_);
     // Increase number of constraints problem
-    nceq_ += n;
+    nconstraints_ += n;
 }

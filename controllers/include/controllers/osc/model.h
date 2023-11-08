@@ -29,27 +29,27 @@ class Model : public DynamicModel {
 
     std::shared_ptr<Constraint> GetConstraint(const std::string &name) { return constraints_[name]; }
     std::shared_ptr<Task> GetTask(const std::string &name) { return tasks_[name]; }
-    std::shared_ptr<EndEffectorTask> GetEndEffectorTask(const std::string &name) { return ee_tasks_[name]; }
+    std::shared_ptr<EndEffectorTask> GetEndEffectorTask(const std::string &name) { return end_effector_tasks_[name]; }
 
     std::map<std::string, std::shared_ptr<Constraint>> &GetConstraintMap() { return constraints_; }
     std::map<std::string, std::shared_ptr<Task>> &GetTaskMap() { return tasks_; }
-    std::map<std::string, std::shared_ptr<EndEffectorTask>> &GetEndEffectorTaskMap() { return ee_tasks_; }
+    std::map<std::string, std::shared_ptr<EndEffectorTask>> &GetEndEffectorTaskMap() { return end_effector_tasks_; }
 
-    const Dimension GetNumberOfContacts() const { return nc_; }
-    const Dimension GetNumberOfConstraints() const { return nceq_; }
+    const Dimension GetNumberOfContacts() const { return ncontacts_; }
+    const Dimension GetNumberOfConstraints() const { return nconstraints_; }
 
     virtual void UpdateReferences(Scalar time, const ConfigurationVector &q, const TangentVector &v) {}
 
    private:
     // Number of tasks
-    Dimension nt_;
+    Dimension ntasks_;
     // Number of contact points
-    Dimension nc_;
+    Dimension ncontacts_;
     // Number of equality constraints
-    Dimension nceq_;
+    Dimension nconstraints_;
 
     std::map<std::string, std::shared_ptr<Task>> tasks_;
-    std::map<std::string, std::shared_ptr<EndEffectorTask>> ee_tasks_;
+    std::map<std::string, std::shared_ptr<EndEffectorTask>> end_effector_tasks_;
     std::map<std::string, std::shared_ptr<Constraint>> constraints_;
 };
 

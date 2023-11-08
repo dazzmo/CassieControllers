@@ -66,25 +66,15 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     if (callback_ != nullptr) {
         callback_(q, v, x_, J_, dJdq_);
     } else {
-        throw std::runtime_error("Task callback is null");
+        throw std::runtime_error("Task callback for " + name_ + "is null!");
     }
-
-    LOG(INFO) << "q: " << q;
-    LOG(INFO) << "v: " << v;
-    LOG(INFO) << "x: " << x_;
-    LOG(INFO) << "J: " << J_;
-    LOG(INFO) << "dJdq: " << dJdq_;
 
     // Update velocity
     dx_ = J_ * v;
-    // TODO: Update acceleration also (need measurements through estimation)
-    // ddx_ = J_ * a + dJdq_;
 
     // Compute errors
     e_ = x_ - r_;
     de_ = dx_ - dr_;
-    // TODO: Accelerations
-    // dde_ = ddr_ - ddx_;
 
     // Compute PD error
     pd_out_ = Kp_.asDiagonal() * e_ + Kd_.asDiagonal() * de_;

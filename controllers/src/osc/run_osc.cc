@@ -142,9 +142,9 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     }
 
     LOG(INFO) << "solve";
-    int nWSR = 1000;
-
+    // Pre-multiply H by 2 to account for the expected form in qpOASES as 0.5 * x^T * H * x
     qp_data_->H *= 2.0;
+    // qpOASES return status
     qpOASES::returnValue status = qpOASES::SUCCESSFUL_RETURN;
 
     if (!hot_start_) {
@@ -152,12 +152,12 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         status = qp_->init(qp_data_->H.data(), qp_data_->g.data(), qp_data_->A.data(),
                            qp_data_->lbx.data(), qp_data_->ubx.data(),
                            qp_data_->lbA.data(), qp_data_->ubA.data(),
-                           nWSR);
+                           opt_->max_number_working_set_recalculations);
     } else {
         status = qp_->hotstart(qp_data_->H.data(), qp_data_->g.data(), qp_data_->A.data(),
                                qp_data_->lbx.data(), qp_data_->ubx.data(),
                                qp_data_->lbA.data(), qp_data_->ubA.data(),
-                               nWSR);
+                               opt_->max_number_working_set_recalculations);
     }
 
     if (status != qpOASES::returnValue::SUCCESSFUL_RETURN) {

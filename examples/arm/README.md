@@ -13,7 +13,7 @@ This example presents the new design for creating OSC controllers. We create con
 
 $$
 \begin{align}
-u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2\\
+u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2 + w_{u} || u ||^2\\
 \textrm{s.t.} \quad & M(q) \ddot{q} + h(q,\dot{q}) = B(q) u + J_c^T \lambda_c\\
 & \lambda_c \in \mathcal{F}_c\\
 & u\_{\min} \le u \le u\_{\max}\\
@@ -50,3 +50,5 @@ After calling `AddTask`, it is added to the `TaskMap` similarly to our first met
 We also have a `UpdateReferences` function that can be implemented that is called every time the controller updates, this way, references for the tasks can be updated. You could also modify the weights and other task parameters here if need be (this might require a name change for this function).
 
 Similarly to the addition of tasks, we can also do the same for holonomic constraints and end-effector tasks that can switch in and out of contact. Constraints are currently under development, where the controller will either consider the associated constraint forces explictly in the above program or implictly by null-space projection (see `/src/osc/run_osc.cc`). End-effector tasks are very similar to the addition and handling of normal tasks, with the exception that if they're under contact, they can be specified to remain still and experience non-zero constraint force (see `/include/osc/tasks/ee_task.h` and `/src/osc/tasks/ee_task.cc`).
+
+To modify the weighting of the control output $u$ (i.e. $w_u$), this is adjusted by the OSC controller class, by setting the weight through the member function `SetTorqueWeight(<weight>)`.
