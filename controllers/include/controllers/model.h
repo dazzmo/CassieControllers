@@ -34,12 +34,10 @@ class DynamicModel {
             q = ConfigurationVector::Zero(sz.nq);
             v = TangentVector::Zero(sz.nv);
             a = TangentVector::Zero(sz.nv);
-            u = ActuationVector::Zero(sz.nu);
         }
         ConfigurationVector q;
         TangentVector v;
         TangentVector a;
-        ActuationVector u;
     };
 
     struct Bounds {
