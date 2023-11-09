@@ -1,17 +1,17 @@
-#include "controllers/tasks/acc_limits.h"
+#include "controllers/acc_limits.h"
 
 int GetAccelerationLimitsFromPositionLimits(
     const double q, const double v,
-    const double ql, const double qu,
+    const double qmin, const double qmax,
     double *al, double *au,
     const int n, const double dt) {
     std::cout << "GetAccelerationLimitsFromPositionLimits" << '\n';
 
     double aM1 = -(1.0 / dt) * v;
-    double aM2 = -0.5 * pow(v, 2) / (qu - q);
-    double aM3 = 2.0 * (qu - q - dt * v) / pow(dt, 2);
-    double am2 = 0.5 * pow(v, 2) / (q - ql);
-    double am3 = 2.0 * (ql - q - dt * v) / pow(dt, 2);
+    double aM2 = -0.5 * pow(v, 2) / (qmax - q);
+    double aM3 = 2.0 * (qmax - q - dt * v) / pow(dt, 2);
+    double am2 = 0.5 * pow(v, 2) / (q - qmin);
+    double am3 = 2.0 * (qmin - q - dt * v) / pow(dt, 2);
 
     if (v >= 0) {
         *al = am3;
@@ -34,17 +34,17 @@ int GetAccelerationLimitsFromPositionLimits(
 
 int GetAccelerationLimitsFromViability(
     const double q, const double v,
-    const double ql, const double qu,
+    const double qmin, const double qmax,
     const double amax,
     double *al, double *au,
     const int nq, const int nv, const double dt) {
 
     double a = pow(dt, 2);
     double b = dt * (2.0 * v + dt * amax);
-    double c = pow(v, 2) - 2.0 * amax * (qu - q - dt * v);
+    double c = pow(v, 2) - 2.0 * amax * (qmax - q - dt * v);
 
     double d = 2.0 * dt * v - pow(dt, 2) * amax;
-    double e = pow(v, 2) - 2.0 * amax * (q + dt * v - ql);
+    double e = pow(v, 2) - 2.0 * amax * (q + dt * v - qmin);
 
     double a1 = -(1.0 / dt) * v;
 
@@ -68,20 +68,20 @@ int GetAccelerationLimitsFromViability(
 
 int GetAccelerationLimits(
     const Eigen::VectorXd &q, const Eigen::VectorXd &v,
-    const Eigen::VectorXd &ql, const Eigen::VectorXd &qu,
+    const Eigen::VectorXd &qmin, const Eigen::VectorXd &qmax,
     const Eigen::VectorXd &vmax, const Eigen::VectorXd &amax,
     Eigen::VectorXd &al, Eigen::VectorXd &au,
     const int nq, const int nv, const double dt) {
     double qacc_l[4], qacc_u[4];
 
     for (int i = 0; i < nv; ++i) {
-        GetAccelerationLimitsFromPositionLimits(q[i], v[i], ql[i], qu[i],
+        GetAccelerationLimitsFromPositionLimits(q[i], v[i], qmin[i], qmax[i],
                                                 qacc_l, qacc_u,
                                                 nv, dt);
         qacc_l[1] = (-vmax[i] - v[i]) / dt;
         qacc_u[1] = (vmax[i] - v[i]) / dt;
 
-        GetAccelerationLimitsFromViability(q[i], v[i], ql[i], qu[i], amax[i],
+        GetAccelerationLimitsFromViability(q[i], v[i], qmin[i], qmax[i], amax[i],
                                            qacc_l + 2, qacc_u + 2,
                                            nq, nv, dt);
 

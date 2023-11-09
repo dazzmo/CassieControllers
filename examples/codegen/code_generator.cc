@@ -76,15 +76,15 @@ int CodeGenerator::GenerateEndEffectorData(const std::string &name,
     pinocchio::getFrameJacobian(*model_, *data_, model_->getFrameId(name), pinocchio::LOCAL_WORLD_ALIGNED, J);
     pinocchio::MotionTpl<ADScalar> a = pinocchio::getFrameAcceleration(*model_, *data_, model_->getFrameId(name), pinocchio::LOCAL_WORLD_ALIGNED);
     // Create function
-    casadi::SX cs_p, cs_J, cs_dJdq;
+    casadi::SX cs_p, cs_J, cs_Jdot_qdot;
     pinocchio::casadi::copy(data_->oMf[model_->getFrameId(name)].translation(), cs_p);
     pinocchio::casadi::copy(J.topRows(3), cs_J);
-    pinocchio::casadi::copy(a.linear(), cs_dJdq);
+    pinocchio::casadi::copy(a.linear(), cs_Jdot_qdot);
 
     // Generate code
     GenerateCode(name,
                  casadi::SXVector{q_sx_, v_sx_},
-                 casadi::SXVector{densify(cs_p), densify(cs_J), densify(cs_dJdq)});
+                 casadi::SXVector{densify(cs_p), densify(cs_J), densify(cs_Jdot_qdot)});
 
     return 0;
 }

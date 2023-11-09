@@ -1,18 +1,26 @@
-#ifndef INCLUDE_CONTROLLERS_CONSTRAINT_HPP
-#define INCLUDE_CONTROLLERS_CONSTRAINT_HPP
+#ifndef INCLUDE_CONTROLLERS_Constraint_HPP
+#define INCLUDE_CONTROLLERS_Constraint_HPP
 
 #include <glog/logging.h>
 
 #include <eigen3/Eigen/Core>
 
+#include "controllers/model.h"
+#include "controllers/types.h"
+
+namespace controller {
+
 class Constraint {
    public:
-    Constraint(int dim, int nv, const std::string &name);
-    Constraint(int dim, int nv, const std::string &name, int (*callback)(const double **, double **));
+    typedef void (*ConstraintCallbackFunction)(const Vector &q, const Vector &v,
+                                               Vector &c, Matrix &J, Vector &Jdot_qdot);
+
+    Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz);
+    Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz, ConstraintCallbackFunction callback);
     ~Constraint() = default;
 
     /**
-     * @brief Dimension of the constraint
+     * @brief Dimension of the Constraint
      *
      */
     const int &dim() const { return dim_; }
@@ -25,38 +33,67 @@ class Constraint {
     /**
      * @brief Constraint
      */
-    const Eigen::VectorXd &c() const { return c_; }
+    const Vector &c() const { return c_; }
 
     /**
      * @brief Constraint jacobian (ndim x nv)
      *
      */
-    const Eigen::MatrixXd &J() const { return J_; }
+    const Matrix &J() const { return J_; }
 
     /**
      * @brief Constraint jacobian time derivative with velocity (ndim x 1)
      *
      */
-    const Eigen::VectorXd &dJdq() const { return dJdq_; }
+    const Vector &Jdot_qdot() const { return Jdot_qdot_; }
 
-    void PrintConstraintData();
+    /**
+     * @brief Constraint forces
+     *
+     * @return const Vector&
+     */
+    const Vector &lambda() const { return lambda_; }
 
-    virtual int UpdateConstraint(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians = true);
+    /**
+     * @brief Constraint forces
+     *
+     * @return Vector&
+     */
+    Vector &lambda() { return lambda_; }
+
+    void SetStartIndex(Index idx) { start_ = idx; }
+
+    /**
+     * @brief Starting index in constraint vector
+     *
+     * @return const Index
+     */
+    const Index start() const { return start_; }
+
+    virtual void Update(const ConfigurationVector &q, const TangentVector &v);
 
    protected:
-    int dim_;
-    int nq_;
-    int nv_;
-    std::string name_;
+    Dimension dim_;
+    Dimension nq_;
+    Dimension nv_;
 
-    Eigen::VectorXd c_;     // Constraint
-    Eigen::MatrixXd J_;     // Constraint jacobian
-    Eigen::VectorXd dJdq_;  // Constraint jacobian time derivative with velocity
+    // Indexing
+    Index start_;
 
-    int (*callback_)(const double **, double **);
+    Vector c_;     // Constraint
+    Matrix J_;     // Constraint jacobian
+    Vector Jdot_qdot_;  // Constraint jacobian time derivative and velocity product
+
+    Vector lambda_;  // Constraint force
 
    private:
-    int Resize(int ndim, int nv);
+    std::string name_;
+
+    ConstraintCallbackFunction callback_;
+
+    void Resize(Dimension n, const DynamicModel::Size &sz);
 };
 
-#endif /* INCLUDE_CONTROLLERS_CONSTRAINT_HPP */
+}  // namespace controller
+
+#endif /* INCLUDE_CONTROLLERS_Constraint_HPP */

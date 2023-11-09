@@ -1,55 +1,34 @@
 #include "controllers/constraint.h"
 
-Constraint::Constraint(int dim, int nv, const std::string &name) {
-    dim_ = dim;
-    nv_ = nv;
+using namespace controller;
+
+Constraint::Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz) {
     name_ = name;
     callback_ = nullptr;
-
-    Resize(dim_, nv_);
+    Resize(n, sz);
 }
 
-Constraint::Constraint(int dim, int nv, const std::string &name, int (*callback)(const double **, double **)) {
-    dim_ = dim;
-    nv_ = nv;
+Constraint::Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz, ConstraintCallbackFunction callback) {
     name_ = name;
     callback_ = callback;
-
-    Resize(dim_, nv_);
+    Resize(n, sz);
 }
 
-int Constraint::Resize(int dim, int nv) {
-    c_ = Eigen::VectorXd::Zero(dim);
-    J_ = Eigen::MatrixXd::Zero(dim, nv);
-    dJdq_ = Eigen::VectorXd::Zero(dim);
+void Constraint::Resize(Dimension n, const DynamicModel::Size &sz) {
+    nq_ = sz.nq;
+    nv_ = sz.nv;
 
-    return 0;
+    // Create vectors
+    c_ = Vector::Zero(n);
+    J_ = Matrix::Zero(n, sz.nv);
+    Jdot_qdot_ = Vector::Zero(n);
 }
 
-int Constraint::UpdateConstraint(const Eigen::VectorXd &qpos, const Eigen::VectorXd &qvel, bool update_jacobians) {
-    const double *in[] = {qpos.data(), qvel.data()};
-    double *out[3];
-    out[0] = c_.data();
-    if (update_jacobians) {
-        out[1] = J_.data();
-        out[2] = dJdq_.data();
-        // Use callback
-        callback_(in, out);
-        // Compute Constraint velocity
-        dx_ = J_ * qvel;
-
+void Constraint::Update(const ConfigurationVector &q, const TangentVector &v) {
+    // Perform callback
+    if (callback_ != nullptr) {
+        callback_(q, v, c_, J_, Jdot_qdot_);
     } else {
-        out[1] = nullptr;
-        out[2] = nullptr;
-        callback_(in, out);
+        throw std::runtime_error("Constraint callback is null");
     }
-
-    return 0;
-}
-
-void Constraint::PrintConstraintData() {
-    LOG(INFO) << "Constraint: " << name_ << '\n'
-              << "c: " << x_.transpose() << '\n'
-              << "J: " << J_ << '\n'
-              << "dJdq: " << dJdq_ << '\n';
 }

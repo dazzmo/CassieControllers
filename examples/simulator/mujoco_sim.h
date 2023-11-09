@@ -38,7 +38,7 @@ class MujocoSimulator {
     int Init();
     int LoadModel(const char* xml_file);
     int ForwardStep();
-    int ApplyControl(double* ctrl, int nu);
+    int ApplyControl(const double* ctrl, int nu);
     int UpdateSceneAndRender();
 
     int WindowShouldClose() {
@@ -109,6 +109,9 @@ class MujocoSimulator {
     bool button_right_ = false;
     double lastx_ = 0;
     double lasty_ = 0;
+
+    // Keyboard interaction
+    bool paused_ = true;
 
     // Private constructor to create only one instance
     MujocoSimulator(void) {}
