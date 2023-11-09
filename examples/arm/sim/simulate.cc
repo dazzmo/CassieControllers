@@ -7,9 +7,6 @@
 #include "controller/osc.h"
 #include "mujoco_sim.h"
 
-// TODO: Not sure why but using real-time is not working well for the simulation, might
-// require further looking into.
-
 // Useful for tracking real-time visuals
 double RealTimeSeconds() {
     auto tp = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now());
