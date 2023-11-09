@@ -14,7 +14,7 @@ namespace osc {
 class Task {
    public:
     typedef void (*TaskCallbackFunction)(const Vector &q, const Vector &v,
-                                         Vector &x, Matrix &J, Vector &dJdq);
+                                         Vector &x, Matrix &J, Vector &Jdot_qdot);
 
     Task(const std::string &name, Dimension n, const DynamicModel::Size &sz);
     Task(const std::string &name, Dimension n, const DynamicModel::Size &sz, TaskCallbackFunction callback);
@@ -72,7 +72,7 @@ class Task {
      * @brief Task jacobian time derivative with velocity (ndim x 1)
      *
      */
-    const Vector &dJdq() const { return dJdq_; }
+    const Vector &Jdot_qdot() const { return Jdot_qdot_; }
 
     /**
      * @brief Proportional gains for error output
@@ -157,7 +157,7 @@ class Task {
     Vector pd_out_;  // PD error output
 
     Matrix J_;     // Task jacobian
-    Vector dJdq_;  // Task jacobian time derivative and velocity product
+    Vector Jdot_qdot_;  // Task jacobian time derivative and velocity product
 
    private:
     std::string name_;

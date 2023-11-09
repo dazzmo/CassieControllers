@@ -27,17 +27,15 @@ class ArmModel : public osc::Model {
         state_init().q << 0.0, 0.0, 0.0;
         bounds().qmin << -M_PI, -M_PI, -M_PI;
         bounds().qmax << M_PI, M_PI, M_PI;
-        bounds().umax << 15.0, 15.0, 15.0;
+        bounds().umax << 20.0, 20.0, 20.0;
         bounds().vmax.setConstant(1e1);
         bounds().amax.setConstant(1e20);
 
         // Add tasks here
 
-        //
         AddTask("tip", 3, &ArmModel::TipPositionTask);
         GetTask("tip")->SetTaskWeighting(1.0);
-        // TODO: Make this cleaner
-        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 1e2, 1e2),
+        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 1e2, 1e2), 
                                       Eigen::Vector<double, 3>(0.0, 1e0, 1e0));
 
         // Joint damping
@@ -49,24 +47,24 @@ class ArmModel : public osc::Model {
 
     // Function that gets called every time control is updated
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        GetTask("tip")->SetReference(Vector3(0.0, 1.0, 1.0));
+        GetTask("tip")->SetReference(Vector3(0.0, -1.0, 1.0));
         GetTask("joint limit track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
     }
     
     // Tasks
     static void TipPositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                Vector& x, Matrix& J, Vector& dJdq) {
+                                Vector& x, Matrix& J, Vector& Jdot_qdot) {
         const double* in[] = {q.data(), v.data()};
-        double* out[] = {x.data(), J.data(), dJdq.data()};
+        double* out[] = {x.data(), J.data(), Jdot_qdot.data()};
         arm_tip(in, out, NULL, NULL, 0);
     }
 
     // Constraints
     static void WristAngleTask(const ConfigurationVector& q, const TangentVector& v,
-                               Vector& x, Matrix& J, Vector& dJdq) {
+                               Vector& x, Matrix& J, Vector& Jdot_qdot) {
         x << q[2] - 0.0;
         J << 0, 0, 1.0;
-        dJdq << 0;
+        Jdot_qdot << 0;
     }
 
 

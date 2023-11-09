@@ -40,7 +40,7 @@ void Task::Resize(Dimension n, const DynamicModel::Size &sz) {
     pd_out_ = Vector::Zero(n);
 
     J_ = Matrix::Zero(n, sz.nv);
-    dJdq_ = Vector::Zero(n);
+    Jdot_qdot_ = Vector::Zero(n);
 }
 
 void Task::SetReference(const Vector &r) {
@@ -64,7 +64,7 @@ void Task::SetReference(const Vector &r, const Vector &dr, const Vector &ddr) {
 void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     // Perform callback
     if (callback_ != nullptr) {
-        callback_(q, v, x_, J_, dJdq_);
+        callback_(q, v, x_, J_, Jdot_qdot_);
     } else {
         throw std::runtime_error("Task callback for " + name_ + "is null!");
     }

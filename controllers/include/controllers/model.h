@@ -34,10 +34,12 @@ class DynamicModel {
             q = ConfigurationVector::Zero(sz.nq);
             v = TangentVector::Zero(sz.nv);
             a = TangentVector::Zero(sz.nv);
+            u = ActuationVector::Zero(sz.nu);
         }
         ConfigurationVector q;
         TangentVector v;
         TangentVector a;
+        ActuationVector u;
     };
 
     struct Bounds {
@@ -92,8 +94,6 @@ class DynamicModel {
    private:
     // Size of dynamic model
     Size sz_;
-    // Number of equality constraints
-    Dimension nconstraints_;
 
     State state_;
     State initial_state_;

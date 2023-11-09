@@ -51,8 +51,8 @@ void JointLimitsTask::UpdateTask(const Vector &q, const Vector &v) {
     for (int i = 0; i < nq_; ++i) {
         J_(i, i) = -zeta_[i];
         J_(nq_ + i, i) = zeta_[i];
-        dJdq_[i] = 0.0;
-        dJdq_[nq_ + i] = 0.0;
+        Jdot_qdot_[i] = 0.0;
+        Jdot_qdot_[nq_ + i] = 0.0;
     }
 
     // Compute task velocity

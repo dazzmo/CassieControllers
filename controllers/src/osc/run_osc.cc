@@ -24,14 +24,13 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     LOG(INFO) << "constraints";
 
-    // Update constraints and insert into stacked Jacobian and vector
-    // TODO: Need to come up with a name for dJdq
+    // Update constraints and insert into stacked Jacobian and Jdot_qdot
     for (auto const& c : m_.GetConstraintMap()) {
         // Evaluate constraints from model
         c.second->Update(q, v);
         // Add to constraint jacobian
         Jceq_.middleRows(c.second->start(), c.second->dim()) << c.second->J();
-        dJceqdq_.middleRows(c.second->start(), c.second->dim()) << c.second->dJdq();
+        dJceqdq_.middleRows(c.second->start(), c.second->dim()) << c.second->Jdot_qdot();
     }
 
     LOG(INFO) << "dynamics";
@@ -103,7 +102,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
         // Task constant vector
-        Vector a = task.second->dJdq() + task.second->ErrorOutputPD();
+        Vector a = task.second->Jdot_qdot() + task.second->ErrorOutputPD();
 
         // Add to objective
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += w * A.transpose() * A;
@@ -119,7 +118,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
         // Task constant vector
-        Vector3 a = task.second->dJdq() + task.second->ErrorOutputPD();
+        Vector3 a = task.second->Jdot_qdot() + task.second->ErrorOutputPD();
 
         // Add to objective
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += w * A.transpose() * A;
@@ -142,6 +141,8 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     }
 
     LOG(INFO) << "solve";
+    // Set maximum number of working set recalculations
+    int nWSR = opt_->max_number_working_set_recalculations;
     // Pre-multiply H by 2 to account for the expected form in qpOASES as 0.5 * x^T * H * x
     qp_data_->H *= 2.0;
     // qpOASES return status
@@ -152,12 +153,12 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         status = qp_->init(qp_data_->H.data(), qp_data_->g.data(), qp_data_->A.data(),
                            qp_data_->lbx.data(), qp_data_->ubx.data(),
                            qp_data_->lbA.data(), qp_data_->ubA.data(),
-                           opt_->max_number_working_set_recalculations);
+                           nWSR);
     } else {
         status = qp_->hotstart(qp_data_->H.data(), qp_data_->g.data(), qp_data_->A.data(),
                                qp_data_->lbx.data(), qp_data_->ubx.data(),
                                qp_data_->lbA.data(), qp_data_->ubA.data(),
-                               opt_->max_number_working_set_recalculations);
+                               nWSR);
     }
 
     if (status != qpOASES::returnValue::SUCCESSFUL_RETURN) {

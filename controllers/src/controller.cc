@@ -2,7 +2,7 @@
 
 using namespace controller;
 
-Controller::Controller(Dimension nu) : d_() {
+Controller::Controller(Dimension nu, const Options& opt) {
     LOG(INFO) << "Controller constructor";
     u_ = ActuationVector::Zero(nu);
 }

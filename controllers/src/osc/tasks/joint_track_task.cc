@@ -12,7 +12,7 @@ void JointTrackTask::Update(const Vector &q, const Vector &v) {
     // Jacobian
     for (int i = 0; i < nv_; ++i) {
         J_(i, i) = 1.0;
-        dJdq_[i] = 0.0;
+        Jdot_qdot_[i] = 0.0;
     }
 
 

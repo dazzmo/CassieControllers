@@ -21,13 +21,13 @@ void Constraint::Resize(Dimension n, const DynamicModel::Size &sz) {
     // Create vectors
     c_ = Vector::Zero(n);
     J_ = Matrix::Zero(n, sz.nv);
-    dJdq_ = Vector::Zero(n);
+    Jdot_qdot_ = Vector::Zero(n);
 }
 
 void Constraint::Update(const ConfigurationVector &q, const TangentVector &v) {
     // Perform callback
     if (callback_ != nullptr) {
-        callback_(q, v, c_, J_, dJdq_);
+        callback_(q, v, c_, J_, Jdot_qdot_);
     } else {
         throw std::runtime_error("Constraint callback is null");
     }

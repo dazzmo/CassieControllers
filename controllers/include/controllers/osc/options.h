@@ -12,7 +12,7 @@ namespace osc {
  */
 struct Options {
     Options() : include_constraint_forces(true),
-                max_number_working_set_recalculations(500){
+                max_number_working_set_recalculations(1000){
 
                 };
 
