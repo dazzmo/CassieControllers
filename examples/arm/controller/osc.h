@@ -34,14 +34,14 @@ class ArmModel : public osc::Model {
         // Add tasks here
 
         AddTask("tip", 3, &ArmModel::TipPositionTask);
-        GetTask("tip")->SetTaskWeighting(1.0);
-        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 1e2, 1e2), 
+        GetTask("tip")->SetTaskWeightDiagonal(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
+        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 1e2, 1e2),
                                       Eigen::Vector<double, 3>(0.0, 1e0, 1e0));
 
         // Joint damping
         joint_track_task = new osc::JointTrackTask(this->size());
         GetTaskMap()["joint limit track"] = std::shared_ptr<controller::osc::Task>(joint_track_task);
-        GetTask("joint limit track")->SetTaskWeighting(1e1);
+        GetTask("joint limit track")->SetTaskWeightDiagonal(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
         GetTask("joint limit track")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 0.0, 0.0), Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
     }
 
@@ -50,23 +50,22 @@ class ArmModel : public osc::Model {
         GetTask("tip")->SetReference(Vector3(0.0, -1.0, 1.0));
         GetTask("joint limit track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
     }
-    
+
     // Tasks
     static void TipPositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                Vector& x, Matrix& J, Vector& Jdot_qdot) {
+                                Vector& x, Matrix& J, Vector& dJdq_v) {
         const double* in[] = {q.data(), v.data()};
-        double* out[] = {x.data(), J.data(), Jdot_qdot.data()};
+        double* out[] = {x.data(), J.data(), dJdq_v.data()};
         arm_tip(in, out, NULL, NULL, 0);
     }
 
     // Constraints
     static void WristAngleTask(const ConfigurationVector& q, const TangentVector& v,
-                               Vector& x, Matrix& J, Vector& Jdot_qdot) {
+                               Vector& x, Matrix& J, Vector& dJdq_v) {
         x << q[2] - 0.0;
         J << 0, 0, 1.0;
-        Jdot_qdot << 0;
+        dJdq_v << 0;
     }
-
 
    protected:
     // Dynamics

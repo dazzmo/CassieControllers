@@ -43,7 +43,7 @@ class CassieLegOSC : public OperationalSpaceController {
     double c_;
     Eigen::MatrixXd N_;
     Eigen::MatrixXd J_;
-    Eigen::VectorXd Jdot_qdot_;
+    Eigen::VectorXd dJdq_v_;
     Eigen::MatrixXd JMJT_;
     Eigen::MatrixXd M_;
     Eigen::MatrixXd Minv_;

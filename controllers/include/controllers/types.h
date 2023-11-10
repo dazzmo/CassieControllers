@@ -20,6 +20,7 @@ typedef Eigen::VectorX<Scalar> Vector;
 typedef Eigen::Vector3<Scalar> Vector3;
 
 typedef Eigen::MatrixX<Scalar> Matrix;
+typedef Eigen::DiagonalMatrix<Scalar, Eigen::Dynamic> DiagonalMatrix;
 typedef Eigen::Matrix3<Scalar> Matrix3;
 
 }  // namespace controller

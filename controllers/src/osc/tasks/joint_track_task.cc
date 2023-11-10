@@ -3,6 +3,8 @@
 using namespace controller::osc;
 
 JointTrackTask::JointTrackTask(const DynamicModel::Size &sz) : Task("joint track", sz.nq, sz) {
+    nq_ = sz.nq;
+    nv_ = sz.nv;
 }
 
 void JointTrackTask::Update(const Vector &q, const Vector &v) {
@@ -12,9 +14,8 @@ void JointTrackTask::Update(const Vector &q, const Vector &v) {
     // Jacobian
     for (int i = 0; i < nv_; ++i) {
         J_(i, i) = 1.0;
-        Jdot_qdot_[i] = 0.0;
+        dJdq_v_[i] = 0.0;
     }
-
 
     // Compute task velocity
     dx_ = v;
@@ -24,5 +25,5 @@ void JointTrackTask::Update(const Vector &q, const Vector &v) {
     de_ = dx_ - dr_;
 
     // Output
-    pd_out_ = Kp().asDiagonal() * e_ + Kd().asDiagonal() * de_;
+    pd_out_ = Kp() * e_ + Kd() * de_;
 }

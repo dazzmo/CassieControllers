@@ -1,4 +1,4 @@
-#include "controllers/osc/tasks/ee_task.h"
+#include "controllers/osc/tasks/end_effector_task.h"
 
 using namespace controller::osc;
 

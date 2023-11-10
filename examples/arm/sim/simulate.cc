@@ -12,7 +12,7 @@ double RealTimeSeconds() {
     auto tp = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now());
     auto tmp = std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch());
     auto time_micro = tmp.count();
-    return time_micro / 1000000.0;
+    return time_micro / 1e6;
 }
 
 int main(int argc, const char** argv) {
@@ -31,10 +31,9 @@ int main(int argc, const char** argv) {
     ArmModel arm;
     // Create OSC controller for arm model
     controller::osc::Options opt;
-    opt.include_constraint_forces = true;
-    controller::osc::OperationalSpaceController c(arm);
-    c.CreateOSC(opt);
-    c.SetTorqueWeight(1e-0);
+    controller::osc::OperationalSpaceController c(arm, opt);
+    c.Init();
+    c.SetControlWeighting(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
 
     // Simulate the model
     double t_ctrl = sim.GetSimulatorTime();

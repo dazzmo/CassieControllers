@@ -133,19 +133,19 @@ int main(int argc, char* argv[]) {
         dJdt.setZero();
         pinocchio::getFrameJacobian(ad_model, ad_data, ad_model.getFrameId(site.name), pinocchio::LOCAL_WORLD_ALIGNED, J);
         pinocchio::getFrameJacobianTimeVariation(ad_model, ad_data, ad_model.getFrameId(site.name), pinocchio::LOCAL_WORLD_ALIGNED, dJdt);
-        ADData::Vector3 Jdot_qdot = dJdt.topRows(3) * v_ad;
+        ADData::Vector3 dJdq_v = dJdt.topRows(3) * v_ad;
 
         // Create function
-        casadi::SX cs_p, cs_J, cs_Jdot_qdot;
+        casadi::SX cs_p, cs_J, cs_dJdq_v;
         pinocchio::casadi::copy(ad_data.oMf[ad_model.getFrameId(site.name)].translation(), cs_p);
         pinocchio::casadi::copy(J.topRows(3), cs_J);
-        pinocchio::casadi::copy(dJdt.topRows(3), cs_Jdot_qdot);
+        pinocchio::casadi::copy(dJdt.topRows(3), cs_dJdq_v);
         cs_J = casadi::SX::densify(cs_J);
-        cs_Jdot_qdot = casadi::SX::densify(cs_Jdot_qdot);
+        cs_dJdq_v = casadi::SX::densify(cs_dJdq_v);
 
         casadi::Function fp(model.name + "_" + site.name,
                             casadi::SXVector{cs_q, cs_v},
-                            casadi::SXVector{cs_p, cs_J, cs_Jdot_qdot});
+                            casadi::SXVector{cs_p, cs_J, cs_dJdq_v});
 
         // Generate code
         casadi::CodeGenerator cg_p(model.name + "_" + site.name, opts);
@@ -171,12 +171,12 @@ int main(int argc, char* argv[]) {
 
     casadi::SX gamma = -mtimes(transpose(cs_J), mtimes(casadi::SX::pinv(JMJT), mtimes(dJdt_achilles, cs_v)));
 
-    casadi::SX M, h, B, x_com, J_com, Jdot_qdot_com;
+    casadi::SX M, h, B, x_com, J_com, dJdq_v_com;
     pinocchio::casadi::copy(ad_data.M, M);
     pinocchio::casadi::copy(ad_data.tau, h);
     pinocchio::casadi::copy(ad_data.com[0], x_com);
     pinocchio::casadi::copy(ad_data.Jcom, J_com);
-    pinocchio::casadi::copy(ad_data.acom[0], Jdot_qdot_com);
+    pinocchio::casadi::copy(ad_data.acom[0], dJdq_v_com);
 
     // Spring deflection
     casadi::SX spring_forces = casadi::SX::zeros(model.nv);
@@ -220,7 +220,7 @@ int main(int argc, char* argv[]) {
         casadi::Function(model.name + "_nullspace_projector", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(N), densify(gamma)}),
         casadi::Function(model.name + "_spring_forces", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(spring_forces)}),
         casadi::Function(model.name + "_actuation_matrix", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(B)}),
-        casadi::Function(model.name + "_centre_of_mass", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{x_com, densify(J_com), Jdot_qdot_com})};
+        casadi::Function(model.name + "_centre_of_mass", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{x_com, densify(J_com), dJdq_v_com})};
 
     for (casadi::Function& fun : functions) {
         casadi::CodeGenerator cg(fun.name(), opts);

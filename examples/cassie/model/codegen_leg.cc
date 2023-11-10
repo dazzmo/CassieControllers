@@ -180,14 +180,14 @@ int main(int argc, char* argv[]) {
         pinocchio::getFrameJacobian(ad_model, ad_data, ad_model.getFrameId(site.name), pinocchio::LOCAL_WORLD_ALIGNED, J);
         pinocchio::MotionTpl<ADScalar> a = pinocchio::getFrameAcceleration(ad_model, ad_data, ad_model.getFrameId(site.name), pinocchio::LOCAL_WORLD_ALIGNED);
         // Create function
-        casadi::SX cs_p, cs_J, cs_Jdot_qdot;
+        casadi::SX cs_p, cs_J, cs_dJdq_v;
         pinocchio::casadi::copy(ad_data.oMf[ad_model.getFrameId(site.name)].translation(), cs_p);
         pinocchio::casadi::copy(J.topRows(3), cs_J);
-        pinocchio::casadi::copy(a.linear(), cs_Jdot_qdot);
+        pinocchio::casadi::copy(a.linear(), cs_dJdq_v);
 
         functions.push_back(casadi::Function(model.name + "_" + site.name,
                                              casadi::SXVector{cs_q, cs_v},
-                                             casadi::SXVector{densify(cs_p), densify(cs_J), densify(cs_Jdot_qdot)}));
+                                             casadi::SXVector{densify(cs_p), densify(cs_J), densify(cs_dJdq_v)}));
     }
 
     casadi::Dict opts;

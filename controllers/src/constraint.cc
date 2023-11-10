@@ -15,19 +15,16 @@ Constraint::Constraint(const std::string &name, Dimension n, const DynamicModel:
 }
 
 void Constraint::Resize(Dimension n, const DynamicModel::Size &sz) {
-    nq_ = sz.nq;
-    nv_ = sz.nv;
-
     // Create vectors
     c_ = Vector::Zero(n);
     J_ = Matrix::Zero(n, sz.nv);
-    Jdot_qdot_ = Vector::Zero(n);
+    dJdq_v_ = Vector::Zero(n);
 }
 
 void Constraint::Update(const ConfigurationVector &q, const TangentVector &v) {
     // Perform callback
     if (callback_ != nullptr) {
-        callback_(q, v, c_, J_, Jdot_qdot_);
+        callback_(q, v, c_, J_, dJdq_v_);
     } else {
         throw std::runtime_error("Constraint callback is null");
     }

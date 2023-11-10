@@ -5,7 +5,7 @@ void CassieLegOSC::SetupController() {
 
     M_ = Eigen::MatrixXd::Zero(CASSIE_LEG_NV, CASSIE_LEG_NV);
     J_ = Eigen::MatrixXd::Zero(1, CASSIE_LEG_NV);
-    Jdot_qdot_ = Eigen::VectorXd::Zero(1, 1);
+    dJdq_v_ = Eigen::VectorXd::Zero(1, 1);
     JMJT_ = Eigen::MatrixXd::Zero(1, 1);
     B_ = Eigen::MatrixXd::Zero(CASSIE_LEG_NV, CASSIE_LEG_NU);
     N_ = Eigen::MatrixXd::Zero(CASSIE_LEG_NV, CASSIE_LEG_NV);
@@ -83,7 +83,7 @@ void CassieLegOSC::UpdateDynamics() {
     cassie_mass_matrix(in, out, NULL, NULL, 0);
     out[0] = &c_;
     out[1] = J_.data();
-    out[2] = Jdot_qdot_.data();
+    out[2] = dJdq_v_.data();
     cassie_heel_spring_constraint(in, out, NULL, NULL, 0);
     out[0] = B_.data();
     cassie_actuation(in, out, NULL, NULL, 0);
@@ -99,7 +99,7 @@ void CassieLegOSC::UpdateDynamics() {
     for (const auto &ee : GetEndEffectorTaskMap()) {
         DynamicsLambdaJacobian().middleCols(3 * ee.second->GetId(), 3) = -N_ * ee.second->J().transpose();
     }
-    DynamicsConstraintVector() = N_ * (h_spring_ - h_) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * Jdot_qdot_;
+    DynamicsConstraintVector() = N_ * (h_spring_ - h_) - J_.transpose() * JMJT_.completeOrthogonalDecomposition().pseudoInverse() * dJdq_v_;
 
     LOG(INFO) << "UpdateDynamics finished";
 }
@@ -112,12 +112,12 @@ void CassieLegOSC::UpdateDynamics() {
  */
 int CassieLegOSC::HeelSpringDeflection() {
     Eigen::MatrixXd J(1, 1);
-    Eigen::VectorXd e(1), Jdot_qdot(1);
+    Eigen::VectorXd e(1), dJdq_v(1);
     Eigen::VectorXd hs(1);
     Eigen::VectorXd qj = qpos();
 
     const double *in[] = {qj.data()};
-    double *out[3] = {e.data(), J.data(), Jdot_qdot.data()};
+    double *out[3] = {e.data(), J.data(), dJdq_v.data()};
 
     std::cout << "qj: " << qj.transpose() << std::endl;
 
