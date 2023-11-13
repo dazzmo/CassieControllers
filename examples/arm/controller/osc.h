@@ -40,15 +40,15 @@ class ArmModel : public osc::Model {
 
         // Joint damping
         joint_track_task = new osc::JointTrackTask(this->size());
-        GetTaskMap()["joint limit track"] = std::shared_ptr<controller::osc::Task>(joint_track_task);
-        GetTask("joint limit track")->SetTaskWeightDiagonal(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
-        GetTask("joint limit track")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 0.0, 0.0), Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
+        AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task));
+        GetTask("joint track")->SetTaskWeightDiagonal(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
+        GetTask("joint track")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 0.0, 0.0), Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
     }
 
     // Function that gets called every time control is updated
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
         GetTask("tip")->SetReference(Vector3(0.0, -1.0, 1.0));
-        GetTask("joint limit track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
+        GetTask("joint track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
     }
 
     // Tasks

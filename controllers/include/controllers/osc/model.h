@@ -26,7 +26,9 @@ class Model : public DynamicModel {
     void AddHolonomicConstraint(const std::string &name, Dimension n, Constraint::ConstraintCallbackFunction callback);
     void AddProjectedConstraint(const std::string &name, Dimension n, Constraint::ConstraintCallbackFunction callback);
     void AddEndEffectorTask(const std::string &name, Task::TaskCallbackFunction callback);
+    
     void AddTask(const std::string &name, Dimension n, Task::TaskCallbackFunction callback);
+    void AddTask(const std::string &name, const std::shared_ptr<Task> &task);
 
     std::shared_ptr<Constraint> GetHolonomicConstraint(const std::string &name) { return holonomic_constraints_[name]; }
     std::shared_ptr<Constraint> GetProjectedConstraint(const std::string &name) { return projected_constraints_[name]; }

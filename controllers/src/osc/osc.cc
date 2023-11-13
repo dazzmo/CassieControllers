@@ -114,7 +114,11 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         }
     }
 
-    // ==== Projected dynamics constraints ====
+    // ==== Dynamics constraints ====
+    // Mass matrix
+    qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz)
+        .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M;
+    
     if (ncp > 0) {
         Matrix invM = m_.dynamics().M;
         Matrix JMJT = Jcp_ * invM * Jcp_.transpose();
@@ -204,17 +208,20 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     int nWSR = opt_.max_number_working_set_recalculations;
     // Pre-multiply H by 2 to account for the expected form in qpOASES as 0.5 * x^T * H * x
     qp_data_->H *= 2.0;
+
     // qpOASES return status
     qpOASES::returnValue status = qpOASES::SUCCESSFUL_RETURN;
 
     if (!hot_start_) {
         hot_start_ = true;
-        status = qp_->init(qp_data_->H.data(), qp_data_->g.data(), qp_data_->A.data(),
+        status = qp_->init(qp_data_->H.data(), qp_data_->g.data(),
+                           qp_data_->A.data(),
                            qp_data_->lbx.data(), qp_data_->ubx.data(),
                            qp_data_->lbA.data(), qp_data_->ubA.data(),
                            nWSR);
     } else {
-        status = qp_->hotstart(qp_data_->H.data(), qp_data_->g.data(), qp_data_->A.data(),
+        status = qp_->hotstart(qp_data_->H.data(), qp_data_->g.data(),
+                               qp_data_->A.data(),
                                qp_data_->lbx.data(), qp_data_->ubx.data(),
                                qp_data_->lbA.data(), qp_data_->ubA.data(),
                                nWSR);
@@ -226,13 +233,13 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     }
 
     // Get solution
-    // qp_data_->cost += qp_->getObjective();
     qp_->getPrimalSolution(qp_data_->x.data());
+    // qp_data_->cost += qp_->get
 
     // Extract solution components
     x_->Extract(qp_data_->x);
     c_->Extract(qp_data_->x);
 
-    LOG(INFO) << "u (solved): " << u_.transpose();
-    u_ = x_->ctrl.vec;
+    LOG(INFO) << "u (solved): " << x_->ctrl.vec.transpose();
+    u_ = ApplyPrescale(time) * x_->ctrl.vec;
 }

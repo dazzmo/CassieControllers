@@ -25,36 +25,43 @@ int main(int argc, const char** argv) {
     sim.LoadModel("./scene.xml");
     sim.Init();
 
-    // Create controller
-    double freq = 100.0;
     // Create OSC model
     ArmModel arm;
     // Create OSC controller for arm model
     controller::osc::Options opt;
+    opt.frequency = 500.0;
     controller::osc::OperationalSpaceController c(arm, opt);
     c.Init();
-    c.SetControlWeighting(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
+    c.SetControlWeighting(Eigen::Vector<double, 3>(1e-2, 1e-2, 1e-2));
 
     // Simulate the model
     double t_ctrl = sim.GetSimulatorTime();
 
+    double sim_time = 0.0, real_time = 0.0;
+    c.StartRamp(0.0, 1e-1, OutputPrescale::RampType::RAMP_UP);
+
     while (!sim.WindowShouldClose()) {
         // Run simulator at a reasonable frame rate in real time
-        double simstart = RealTimeSeconds();
-        while (RealTimeSeconds() - simstart < 1.0 / 60.0) {
-            // Apply control at desired frequency within simulator
-            if (sim.GetSimulatorTime() - t_ctrl > 1.0 / freq) {
-                // Update model state
-                c.GetModel().UpdateState(arm.size().nq, sim.GetModelConfiguration(),
-                                         arm.size().nv, sim.GetModelVelocity());
-                // Compute control based on updated model state
-                c.UpdateControl(sim.GetSimulatorTime(),
-                                c.GetModel().state().q, c.GetModel().state().v);
+        double sim_start = sim.GetSimulatorTime();
+        double real_start = RealTimeSeconds();
+        while (RealTimeSeconds() - real_start < 1.0 / 60.0) {
+            // Compute simulation up to next frame in real-time
+            if (sim.GetSimulatorTime() - sim_start < 1.0 / 60.0) {
+                // Apply control at desired frequency within simulator
+                if (sim.GetSimulatorTime() - t_ctrl > 1.0 / opt.frequency) {
+                    // Update model state
+                    c.GetModel().UpdateState(arm.size().nq, sim.GetModelConfiguration(),
+                                             arm.size().nv, sim.GetModelVelocity());
+                    // Compute control based on updated model state
+                    c.UpdateControl(sim.GetSimulatorTime(),
+                                    c.GetModel().state().q, c.GetModel().state().v);
 
-                t_ctrl = sim.GetSimulatorTime();
+                    t_ctrl = sim.GetSimulatorTime();
+                }
+                // Zero-order hold on control signal
+                sim.ApplyControl(c.ControlOutput().data(), c.GetModel().size().nu);
+                sim.ForwardStep();
             }
-            sim.ApplyControl(c.ControlOutput().data(), c.GetModel().size().nu);
-            sim.ForwardStep();
         }
         sim.UpdateSceneAndRender();
     }

@@ -7,11 +7,12 @@
 #include <iostream>
 
 #include "controllers/options.h"
+#include "controllers/output_prescale.h"
 #include "controllers/types.h"
 
 namespace controller {
 
-class Controller {
+class Controller : public OutputPrescale {
    public:
     Controller(Dimension nu, const Options& opt = Options());
     ~Controller() = default;

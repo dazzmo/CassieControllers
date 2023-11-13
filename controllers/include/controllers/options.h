@@ -7,7 +7,7 @@
 namespace controller {
 
 struct Options {
-    // Controller frequency
+    // Controller frequency (Hz)
     Scalar frequency;
 };
 

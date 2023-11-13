@@ -24,6 +24,19 @@ void Model::AddTask(const std::string &name, Dimension n, Task::TaskCallbackFunc
 }
 
 /**
+ * @brief Adds a new task
+ * 
+ * @param name 
+ * @param task 
+ */
+void Model::AddTask(const std::string &name, const std::shared_ptr<Task> &task) {
+    tasks_[name] = task;
+    // Add position to task vector
+    tasks_[name]->SetStartIndex(ntasks_);
+    ntasks_ += task->dim();
+}
+
+/**
  * @brief Adds a three-dimensional end-effector task, where callback is a function with inputs
  * (q, v) and outputs the task, its jacobian and its time derivative-velocity product (i.e. (x, J, dJdq_v))
  *
