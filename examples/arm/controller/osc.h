@@ -1,10 +1,9 @@
-#ifndef CASSIE_CONTROLLER_OS_CTRL_HPP
-#define CASSIE_CONTROLLER_OS_CTRL_HPP
+#ifndef CASSIE_CONTROLLER_OSC_HPP
+#define CASSIE_CONTROLLER_OSC_HPP
 
 #include <glog/logging.h>
 
 #include "controllers/osc/model.h"
-#include "controllers/osc/osc.h"
 #include "controllers/osc/tasks/joint_track_task.h"
 #include "eigen3/Eigen/Cholesky"
 #include "eigen3/Eigen/Dense"
@@ -24,7 +23,7 @@ class ArmModel : public osc::Model {
    public:
     ArmModel() : osc::Model(DynamicModel::Size(ARM_MODEL_NQ, ARM_MODEL_NV, ARM_MODEL_NU)) {
         // Model bounds
-        state_init().q << 0.0, 0.0, 0.0;
+        initial_state().q << 0.0, 0.0, 0.0;
         bounds().qmin << -M_PI, -M_PI, -M_PI;
         bounds().qmax << M_PI, M_PI, M_PI;
         bounds().umax << 20.0, 20.0, 20.0;
@@ -53,18 +52,18 @@ class ArmModel : public osc::Model {
 
     // Tasks
     static void TipPositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                Vector& x, Matrix& J, Vector& dJdq_v) {
+                                Vector& x, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
-        double* out[] = {x.data(), J.data(), dJdq_v.data()};
+        double* out[] = {x.data(), J.data(), dJdt_v.data()};
         arm_tip(in, out, NULL, NULL, 0);
     }
 
     // Constraints
     static void WristAngleTask(const ConfigurationVector& q, const TangentVector& v,
-                               Vector& x, Matrix& J, Vector& dJdq_v) {
+                               Vector& x, Matrix& J, Vector& dJdt_v) {
         x << q[2] - 0.0;
         J << 0, 0, 1.0;
-        dJdq_v << 0;
+        dJdt_v << 0;
     }
 
    protected:
@@ -91,4 +90,4 @@ class ArmModel : public osc::Model {
     osc::JointTrackTask* joint_track_task;
 };
 
-#endif /* CASSIE_CONTROLLER_OS_CTRL_20COPY_HPP */
+#endif /* CASSIE_CONTROLLER_OSC_HPP */

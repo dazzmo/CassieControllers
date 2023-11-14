@@ -9,6 +9,10 @@ OperationalSpaceController::OperationalSpaceController(const Model& model, const
     c_ = nullptr;
     qp_data_ = nullptr;
     qp_ = nullptr;
+
+    // Initialise any weights
+    Wu_.resize(m_.size().nu);
+    Wu_.diagonal().setZero();
 }
 
 /**
@@ -41,6 +45,7 @@ void OperationalSpaceController::Init() {
     qp_data_ = new optimisation::QPOASESData(x_->sz, c_->sz);
     qp_ = std::unique_ptr<qpOASES::SQProblem>(new qpOASES::SQProblem(x_->sz, c_->sz));
     qp_->setHessianType(qpOASES::HessianType::HST_POSDEF);
+    qp_->setPrintLevel(opt_.qpoases_print_level);
 
     // Create projected constraint jacobian
     int ncp = m_.GetNumberOfProjectedConstraints();
@@ -88,29 +93,29 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // Number of holonomic constraints in problem
     Dimension nch = m_.GetNumberOfHolonomicConstraints();
 
-    // Construct projected constraints Jacobian and dJdq_v
+    // Construct projected constraints Jacobian and dJdt_v
     if (ncp > 0) {
         for (auto const& c : m_.GetProjectedConstraintMap()) {
             // Evaluate constraints from model
             c.second->Update(q, v);
             // Add to constraint jacobian
             Jcp_.middleRows(c.second->start(), c.second->dim()) << c.second->J();
-            dJcpdq_v_.middleRows(c.second->start(), c.second->dim()) << c.second->dJdq_v();
+            dJcpdq_v_.middleRows(c.second->start(), c.second->dim()) << c.second->dJdt_v();
         }
     }
 
-    // Construct holonomic constraints Jacobian and dJdq_v
+    // Construct holonomic constraints Jacobian and dJdt_v
     if (nch > 0) {
         for (auto const& c : m_.GetHolonomicConstraintMap()) {
             // Evaluate constraints from model
             c.second->Update(q, v);
-            // Add to constraints
+            // Add to constraints (J qacc + dJdt_v)
             qp_data_->A.bottomRows(nch)
                 .middleRows(c.second->start(), c.second->dim())
-                .middleCols(x_->lambda_h.start, nch) = c.second->J();
+                .middleCols(x_->qacc.start, x_->qacc.sz) = c.second->J();
 
-            qp_data_->ubA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdq_v();
-            qp_data_->lbA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdq_v();
+            qp_data_->ubA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v();
+            qp_data_->lbA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v();
         }
     }
 
@@ -118,7 +123,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // Mass matrix
     qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz)
         .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M;
-    
+
     if (ncp > 0) {
         Matrix invM = m_.dynamics().M;
         Matrix JMJT = Jcp_ * invM * Jcp_.transpose();
@@ -161,11 +166,11 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
         // Task constant vector
-        Vector a = task.second->dJdq_v() + task.second->ErrorOutputPD();
+        Vector a = task.second->dJdt_v() + task.second->ErrorOutputPD();
 
         // Add to objective
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * W * A.transpose() * a;
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * A.transpose() * W * a;
         qp_data_->cost += (W * a).dot(a);
     }
 
@@ -178,11 +183,11 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
         // Task constant vector
-        Vector3 a = task.second->dJdq_v() + task.second->ErrorOutputPD();
+        Vector3 a = task.second->dJdt_v() + task.second->ErrorOutputPD();
 
         // Add to objective
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * W * A.transpose() * a;
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * A.transpose() * W * a;
         qp_data_->cost += (W * a).dot(a);
 
         // Contact
@@ -240,6 +245,5 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     x_->Extract(qp_data_->x);
     c_->Extract(qp_data_->x);
 
-    LOG(INFO) << "u (solved): " << x_->ctrl.vec.transpose();
     u_ = ApplyPrescale(time) * x_->ctrl.vec;
 }

@@ -30,7 +30,10 @@ class OperationalSpaceController : public Controller {
         delete qp_data_;
     }
 
-    void SetControlWeighting(const Vector& W) { Wu_.diagonal() = W; }
+    void SetControlWeighting(const Vector& W) { 
+        assert(W.size() == m_.size().nu && "Weighting diagonal is not correct length");
+        Wu_.diagonal() = W; 
+        }
 
     void Init();
     void UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v);
@@ -102,7 +105,7 @@ class OperationalSpaceController : public Controller {
      */
     struct ConstraintVector {
         ConstraintVector(const DynamicModel::Size& sz, Dimension ncontact, Dimension nconstraint)
-            : dynamics(0, sz.nu),
+            : dynamics(0, sz.nv),
               friction_cones(0, 4 * ncontact),
               constraint_forces(0, nconstraint) {
             friction_cones.InsertAfter(dynamics);

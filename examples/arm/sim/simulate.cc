@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "controller/osc.h"
+#include "controllers/osc/osc.h"
 #include "mujoco_sim.h"
 
 // Useful for tracking real-time visuals

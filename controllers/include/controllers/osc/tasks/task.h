@@ -14,7 +14,7 @@ namespace osc {
 class Task {
    public:
     typedef void (*TaskCallbackFunction)(const Vector &q, const Vector &v,
-                                         Vector &x, Matrix &J, Vector &dJdq_v);
+                                         Vector &x, Matrix &J, Vector &dJdt_v);
 
     Task(const std::string &name, Dimension n, const DynamicModel::Size &sz);
     Task(const std::string &name, Dimension n, const DynamicModel::Size &sz, TaskCallbackFunction callback);
@@ -72,7 +72,7 @@ class Task {
      * @brief Task jacobian time derivative with velocity (ndim x 1)
      *
      */
-    const Vector &dJdq_v() const { return dJdq_v_; }
+    const Vector &dJdt_v() const { return dJdt_v_; }
 
     /**
      * @brief Proportional gains for error output
@@ -90,17 +90,15 @@ class Task {
      * @brief Set the diagonal of the Kp matrix for error output calculation
      * 
      * @param Kp_vec 
-     * @return Vector& 
      */
-    Vector &SetKpGains(const Vector &Kp_vec) { Kp_.diagonal() = Kp_vec; }
+    void SetKpGains(const Vector &Kp_vec) { Kp_.diagonal() = Kp_vec; }
 
     /**
      * @brief Set the diagonal of the Kp matrix for error output calculation
      * 
      * @param Kd_vec 
-     * @return Vector& 
      */
-    Vector &SetKdGains(const Vector &Kd_vec) { Kd_.diagonal() = Kd_vec; }
+    void SetKdGains(const Vector &Kd_vec) { Kd_.diagonal() = Kd_vec; }
 
     /**
      * @brief Diagonal matrix for task weight matrix
@@ -163,7 +161,7 @@ class Task {
     Vector pd_out_;  // PD error output
 
     Matrix J_;       // Task jacobian
-    Vector dJdq_v_;  // Task jacobian time derivative and velocity product
+    Vector dJdt_v_;  // Task jacobian time derivative and velocity product
 
    private:
     std::string name_;

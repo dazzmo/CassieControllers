@@ -14,7 +14,7 @@ void JointTrackTask::Update(const Vector &q, const Vector &v) {
     // Jacobian
     for (int i = 0; i < nv_; ++i) {
         J_(i, i) = 1.0;
-        dJdq_v_[i] = 0.0;
+        dJdt_v_[i] = 0.0;
     }
 
     // Compute task velocity

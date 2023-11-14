@@ -38,7 +38,7 @@ void Model::AddTask(const std::string &name, const std::shared_ptr<Task> &task) 
 
 /**
  * @brief Adds a three-dimensional end-effector task, where callback is a function with inputs
- * (q, v) and outputs the task, its jacobian and its time derivative-velocity product (i.e. (x, J, dJdq_v))
+ * (q, v) and outputs the task, its jacobian and its time derivative-velocity product (i.e. (x, J, dJdt_v))
  *
  * @param name
  * @param callback
@@ -48,7 +48,7 @@ void Model::AddEndEffectorTask(const std::string &name, Task::TaskCallbackFuncti
     // Add task to map
     end_effector_tasks_[name] = std::shared_ptr<EndEffectorTask>(new EndEffectorTask(name, this->size(), callback));
     // Add position to end-effector task vector
-    tasks_[name]->SetStartIndex(3 * ncontacts_);
+    end_effector_tasks_[name]->SetStartIndex(3 * ncontacts_);
     // Increase number of contact points
     ncontacts_ += 1;
 }
