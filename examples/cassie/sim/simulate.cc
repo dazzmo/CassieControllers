@@ -30,11 +30,11 @@ int main(int argc, const char** argv) {
     CassieLegOSC leg;
     // Create OSC controller for leg model
     controller::osc::Options opt;
-    opt.frequency = 2000.0;
+    opt.frequency = 500.0;
     opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
     controller::osc::OperationalSpaceController c(leg, opt);
     c.Init();
-    c.SetControlWeighting(Eigen::Vector<double, 5>(1e0, 1e-6, 1e-6, 1e-6, 1e-6));
+    c.SetControlWeighting(Eigen::Vector<double, 5>(1e-6, 1e-6, 1e-6, 1e-6, 1e-6));
 
     // Simulate the model
     double t_ctrl = sim.GetSimulatorTime();
@@ -60,6 +60,7 @@ int main(int argc, const char** argv) {
                                     c.GetModel().state().v);
 
                     t_ctrl = sim.GetSimulatorTime();
+                    LOG(INFO) << "u: " << c.ControlOutput().transpose();
                 }
                 // Zero-order hold on control signal
                 sim.ApplyControl(c.ControlOutput().data(), c.GetModel().size().nu);

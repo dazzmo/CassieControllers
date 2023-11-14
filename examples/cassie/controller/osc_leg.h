@@ -16,6 +16,7 @@
 #include "model/cg/leg/cassie_spring_forces.h"
 // OSC model include
 #include "controllers/osc/model.h"
+#include "controllers/osc/tasks/joint_limits_task.h"
 #include "controllers/osc/tasks/joint_track_task.h"
 
 #define CASSIE_LEG_NQ (8)
@@ -40,6 +41,22 @@ class CassieLegOSC : public osc::Model {
         GetTask("ankle")->SetKpGains(Vector3(1e2, 1e2, 1e2));
         GetTask("ankle")->SetKdGains(Vector3(1e0, 1e0, 1e0));
 
+        // Joint damping
+        joint_track_task_ = new osc::JointTrackTask(this->size());
+        AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task_));
+        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
+        GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e3, 1e3, 1e3, 1e3, 0.0, 1e3, 0.0, 1e3));
+        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
+
+        // Joint limits
+        // joint_limits_task_ = new osc::JointLimitsTask(this->size());
+        // joint_limits_task_->SetLowerPositionLimit(bounds().qmin);
+        // joint_limits_task_->SetUpperPositionLimit(bounds().qmax);
+        // AddTask("joint limits", std::shared_ptr<controller::osc::Task>(joint_limits_task_));
+        // GetTask("joint limits")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
+        // GetTask("joint limits")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
+        // GetTask("joint limits")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
+
         // Add constraint
         AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
     }
@@ -47,8 +64,13 @@ class CassieLegOSC : public osc::Model {
 
     // Function that gets called every time control is updated
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        // GetTask("tip")->SetReference(Vector3(0.0, 1.0, -1.0));
-        // GetTask("joint track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
+        GetTask("ankle")->SetReference(Vector3(0.0, 0.2, -0.5));
+        // Compute IK for leg
+        ConfigurationVector qd = q;
+        InverseKinematics(qd, Vector3(0, 0.2, -0.5), q);
+        LOG(INFO) << "qd: " << qd.transpose();
+        LOG(INFO) << "qa: " << q.transpose();
+        GetTask("joint track")->SetReference(qd);
     }
 
     void UpdateState(Dimension nq, const Scalar* q, Dimension nv, const Scalar* v);
@@ -94,6 +116,8 @@ class CassieLegOSC : public osc::Model {
 
    private:
     bool ik_restart_ = true;
+    controller::osc::JointTrackTask* joint_track_task_;
+    controller::osc::JointLimitsTask* joint_limits_task_;
 };
 
 #endif /* CASSIE_CONTROLLER_OSC_LEG_HPP */

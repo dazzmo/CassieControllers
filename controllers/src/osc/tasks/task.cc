@@ -66,7 +66,7 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     if (callback_ != nullptr) {
         callback_(q, v, x_, J_, dJdt_v_);
     } else {
-        throw std::runtime_error("Task callback for " + name_ + "is null!");
+        throw std::runtime_error("Task callback for " + name_ + " is null!");
     }
 
     // Update velocity

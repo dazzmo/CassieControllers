@@ -3,7 +3,7 @@
 using namespace controller;
 using namespace controller::osc;
 
-JointLimitsTask::JointLimitsTask(const std::string &name, const DynamicModel::Size &sz) : Task("joint limits", 2 * sz.nq, sz) {
+JointLimitsTask::JointLimitsTask(const DynamicModel::Size &sz) : Task("joint limits", 2 * sz.nq, sz) {
     beta_ = 0.5;
 
     nq_ = sz.nq;
@@ -43,7 +43,7 @@ Scalar JointLimitsTask::TransitionFunction(Scalar q, Scalar qmin, Scalar qmax) {
     return zeta;
 }
 
-void JointLimitsTask::UpdateTask(const Vector &q, const Vector &v) {
+void JointLimitsTask::Update(const Vector &q, const Vector &v) {
     // Joint Limit and Velocity
     for (int i = 0; i < nq_; ++i) {
         zeta_[i] = TransitionFunction(q[i], qmin_[i], qmax_[i]);
