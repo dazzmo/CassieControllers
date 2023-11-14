@@ -20,9 +20,9 @@ void Task::Resize(Dimension n, const DynamicModel::Size &sz) {
     W_.diagonal().setConstant(1.0);
 
     Kp_.resize(n);
-    Kp_.diagonal() = Vector::Ones(n);
+    Kp_.diagonal() = Vector::Zero(n);
     Kd_.resize(n);
-    Kd_.diagonal() = Vector::Ones(n);
+    Kd_.diagonal() = Vector::Zero(n);
 
     // Create vectors
     x_ = Vector::Zero(n);

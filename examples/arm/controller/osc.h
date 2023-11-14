@@ -29,25 +29,25 @@ class ArmModel : public osc::Model {
         bounds().qmax << M_PI, M_PI, M_PI;
         bounds().umax << 20.0, 20.0, 20.0;
         bounds().vmax.setConstant(1e1);
-        bounds().amax.setConstant(1e20);
+        bounds().amax.setConstant(1e6);
 
         // Add tasks here
 
         AddTask("tip", 3, &ArmModel::TipPositionTask);
-        GetTask("tip")->SetTaskWeightDiagonal(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
-        GetTask("tip")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 1e2, 1e2),
-                                      Eigen::Vector<double, 3>(0.0, 1e0, 1e0));
+        GetTask("tip")->SetTaskWeightMatrix(Vector3(1.0, 1.0, 1.0));
+        GetTask("tip")->SetKpGains(Vector3(0.0, 1e2, 1e2));
+        GetTask("tip")->SetKdGains(Vector3(0.0, 1e1, 1e1));
 
         // Joint damping
         joint_track_task = new osc::JointTrackTask(this->size());
         AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task));
-        GetTask("joint track")->SetTaskWeightDiagonal(Eigen::Vector<double, 3>(1.0, 1.0, 1.0));
-        GetTask("joint track")->SetErrorGains(Eigen::Vector<double, 3>(0.0, 0.0, 0.0), Eigen::Vector<double, 3>(1e1, 1e1, 1e1));
+        GetTask("joint track")->SetTaskWeightMatrix(Vector3(1.0, 1.0, 1.0));
+        GetTask("joint track")->SetKdGains(Vector3(1.0, 1.0, 1.0));
     }
 
     // Function that gets called every time control is updated
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        GetTask("tip")->SetReference(Vector3(0.0, -1.0, 1.0));
+        GetTask("tip")->SetReference(Vector3(0.0, 1.0, -1.0));
         GetTask("joint track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
     }
 

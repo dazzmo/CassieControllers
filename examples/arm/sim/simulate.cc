@@ -32,13 +32,13 @@ int main(int argc, const char** argv) {
     opt.frequency = 500.0;
     controller::osc::OperationalSpaceController c(arm, opt);
     c.Init();
-    c.SetControlWeighting(Eigen::Vector<double, 3>(1e-2, 1e-2, 1e-2));
+    c.SetControlWeighting(Eigen::Vector<double, 3>(1e0, 1e-6, 1e-6));
 
     // Simulate the model
     double t_ctrl = sim.GetSimulatorTime();
 
     double sim_time = 0.0, real_time = 0.0;
-    c.StartRamp(0.0, 1e-1, OutputPrescale::RampType::RAMP_UP);
+    c.StartRamp(0.0, 5e-1, OutputPrescale::RampType::RAMP_UP);
 
     while (!sim.WindowShouldClose()) {
         // Run simulator at a reasonable frame rate in real time

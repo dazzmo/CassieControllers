@@ -87,6 +87,22 @@ class Task {
     const DiagonalMatrix &Kd() const { return Kd_; }
 
     /**
+     * @brief Set the diagonal of the Kp matrix for error output calculation
+     * 
+     * @param Kp_vec 
+     * @return Vector& 
+     */
+    Vector &SetKpGains(const Vector &Kp_vec) { Kp_.diagonal() = Kp_vec; }
+
+    /**
+     * @brief Set the diagonal of the Kp matrix for error output calculation
+     * 
+     * @param Kd_vec 
+     * @return Vector& 
+     */
+    Vector &SetKdGains(const Vector &Kd_vec) { Kd_.diagonal() = Kd_vec; }
+
+    /**
      * @brief Diagonal matrix for task weight matrix
      *
      * @return const DiagonalMatrix&
@@ -94,30 +110,15 @@ class Task {
     const DiagonalMatrix &TaskWeightMatrix() const { return W_; }
 
     /**
-     * @brief Diagonal of task weight matrix W for scaling.
-     *
-     * @return const Vector&
+     * @brief Sets the diagonal of the weighting matrix W
+     * 
+     * @param W 
      */
-    const Vector &TaskWeightMatrixDiagonal() const { return W_.diagonal(); }
-
-    void SetTaskWeightDiagonal(const Vector &w) { W_.diagonal() = w; }
+    void SetTaskWeightMatrix(const Vector &W_vec) { W_.diagonal() = W_vec; }
 
     void SetReference(const Vector &r);
     void SetReference(const Vector &r, const Vector &dr);
     void SetReference(const Vector &r, const Vector &dr, const Vector &ddr);
-
-    void SetErrorGains(const Vector &Kp, const Vector &Kd) {
-        assert(Kp.size() == dim() && "Kp gains are the incorrect dimension");
-        assert(Kd.size() == dim() && "Kd gains are the incorrect dimension");
-
-        Kp_.diagonal() = Kp;
-        Kd_.diagonal() = Kd;
-    }
-
-    void SetErrorGains(const Vector &Kp) {
-        Kp_.diagonal() = Kp;
-        Kd_.diagonal().setZero();
-    }
 
     /**
      * @brief Returns the PD error e = Kp (x - r) + Kd (dx - dr)
