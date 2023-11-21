@@ -26,8 +26,9 @@ int main(int argc, const char** argv) {
     sim.LoadModel("./agility_cassie/scene.xml");
     sim.Init();
 
-    // // Create OSC model
+    // Create OSC model
     CassieLegOSC leg;
+    
     // Create OSC controller for leg model
     controller::osc::Options opt;
     opt.frequency = 500.0;
@@ -40,7 +41,7 @@ int main(int argc, const char** argv) {
     double t_ctrl = sim.GetSimulatorTime();
 
     double sim_time = 0.0, real_time = 0.0;
-    c.StartRamp(0.0, 5e-1, OutputPrescale::RampType::RAMP_UP);
+    // c.StartRamp(0.0, 5e-1, OutputPrescale::RampType::RAMP_UP);
 
     while (!sim.WindowShouldClose()) {
         // Run simulator at a reasonable frame rate in real time

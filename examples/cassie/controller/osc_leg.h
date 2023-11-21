@@ -28,25 +28,28 @@ using namespace controller;
 class CassieLegOSC : public osc::Model {
    public:
     CassieLegOSC() : osc::Model(DynamicModel::Size(CASSIE_LEG_NQ, CASSIE_LEG_NV, CASSIE_LEG_NU)) {
+
+        // hip roll, hip yaw, hip pitch, knee, shin, tarsus, heel spring, toe
         initial_state().q << 0.00449956, 0, 0.497301, -1.1997, 0, 1.42671, 0.0, -1.59681;
         bounds().qmin << -0.3927, -0.3927, -0.8727, -2.8623, -0.3, 0.75, -0.3, -2.4435;
         bounds().qmax << 0.3927, 0.3927, 1.3963, -0.95, 0.3, 3.0, 0.3, -0.5236;
-        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9;
+        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9; // TODO: This is without gear ratio. Is ok?
         bounds().vmax.setConstant(1e1);
         bounds().amax.setConstant(1e20);
 
         // Add ankle tracking task
+        // TODO: Choose weights
         AddTask("ankle", 3, &CassieLegOSC::AnklePositionTask);
-        GetTask("ankle")->SetTaskWeightMatrix(Vector3(1.0, 1.0, 1.0));
-        GetTask("ankle")->SetKpGains(Vector3(1e2, 1e2, 1e2));
-        GetTask("ankle")->SetKdGains(Vector3(1e0, 1e0, 1e0));
+        GetTask("ankle")->SetTaskWeightMatrix(Vector3(1e-5, 1e-5, 1e-5));
+        GetTask("ankle")->SetKpGains(Vector3(0, 0, 0));
+        GetTask("ankle")->SetKdGains(Vector3(0, 0, 0));
 
-        // Joint damping
+        // Joint damping (NO CONTROL ON TOES CURRENTLY)
         joint_track_task_ = new osc::JointTrackTask(this->size());
         AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task_));
         GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
-        GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e3, 1e3, 1e3, 1e3, 0.0, 1e3, 0.0, 1e3));
-        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
+        GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(100, 100, 100, 200, 0.0, 200, 0.0, 0));
+        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(2, 2, 1e0, 2, 5, 0, 5, 0));
 
         // Joint limits
         // joint_limits_task_ = new osc::JointLimitsTask(this->size());
