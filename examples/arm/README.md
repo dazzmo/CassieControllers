@@ -13,19 +13,19 @@ This example presents the new design for creating OSC controllers. We create con
 
 $$
 \begin{aligned}
-u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2 + w_{u} || u ||^2\\
-\textrm{s.t.} \quad & M(q) \ddot{q} + h(q,\dot{q}) = B(q) u + J_c^T \lambda_c\\
+u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2 + w_u || u ||^2 \\
+\text{s.t.} \quad & M(q) \ddot{q} + h(q,\dot{q}) = B(q) u + J_c^T \lambda_c\\
 & \lambda_c \in \mathcal{F}_c\\
 & u\_{\min} \le u \le u\_{\max}\\
 \end{aligned}
 $$
 
-Where our desired task accelerations $\ddot{x}_d$ are encoded as PD outputs from the task error
+where our desired task accelerations $\ddot{x}_d$ are encoded as PD outputs from the task error
 
 $$e_i = x_i - r_i$$
 
 such that
-$$\ddot{x}_d = K_p e_i + K_d \dot{e}_i$$
+$$\ddot{x}_d = K_p e_i + K_d \dot{e}_i.$$
 
 We adopt a model-based approach such that all information such as dynamics, kinematics, tasks and constraints are contained by a single `Model` class. In the OSC namespace, this is given by the class `controller::osc::Model` (in `/include/controllers/osc/model.h`). Controllers are then constructed by passing a reference to a `Model` instance, no further additions are required as all is handled by the `Model` class (see `/examples/arm/sim/simulate.cc`).
 
