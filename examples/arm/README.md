@@ -12,12 +12,12 @@ To generate code for the model, enter the directory of the arm_codegen executabl
 This example presents the new design for creating OSC controllers. We create control laws that solve the following program at each instance
 
 $$
-\begin{align}
+\begin{aligned}
 u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2 + w_{u} || u ||^2\\
 \textrm{s.t.} \quad & M(q) \ddot{q} + h(q,\dot{q}) = B(q) u + J_c^T \lambda_c\\
 & \lambda_c \in \mathcal{F}_c\\
 & u\_{\min} \le u \le u\_{\max}\\
-\end{align}
+\end{aligned}
 $$
 
 Where our desired task accelerations $\ddot{x}_d$ are encoded as PD outputs from the task error
