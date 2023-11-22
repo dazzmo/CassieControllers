@@ -11,8 +11,8 @@ We require the following libraries to run the controllers and their simulations.
 * [qpOASES](https://github.com/coin-or/qpOASES) (latest version on master before November 2023)
 
 For code generation of kinodynamic quantities of rigid-body systems described by URDF files, we also require the installation of the following:
-* [Pinocchio](https://github.com/stack-of-tasks/pinocchio)
 * [CasADi](https://github.com/casadi/casadi)
+* [Pinocchio](https://github.com/stack-of-tasks/pinocchio)
 
 If you are working in Linux, install all of these dependencies with the following code.
 
@@ -24,3 +24,7 @@ If you are working in Linux, install all of these dependencies with the followin
 When building qpOASES, you will need to ensure it builds a shared libary (which is not the default). Change the `cmake ..` step to
 
     cmake .. -DBUILD_SHARED_LIBS=ON
+
+Similarly, when building Pinocchio, you most likely won't need the python bindings (which have a number of extra dependencies). We recommend building with:
+
+    cmake .. -DBUILD_PYTHON_INTERFACE=OFF
