@@ -5,8 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(mujoco REQUIRED)
+find_package(glfw3 REQUIRED) #TODO: Only do this for mac?
 
-file(GLOB_RECURSE SRC
+file(GLOB_RECURSE SRC #TODO: Don't use GLOB, write out file path
     ${CMAKE_CURRENT_SOURCE_DIR}/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cc
 )
