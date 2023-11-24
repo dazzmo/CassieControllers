@@ -18,8 +18,12 @@ file(GLOB_RECURSE SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc
 )
 
-# TODO: Figure out why we need path to qpOASES
+# Not finding qpOASES on mac
 add_library(controllers SHARED ${INCLUDE} ${SRC})
-target_link_libraries(controllers PUBLIC Eigen3::Eigen glog::glog /usr/local/lib/libqpOASES.dylib)
+if (APPLE)
+    target_link_libraries(controllers PUBLIC Eigen3::Eigen glog::glog /usr/local/lib/libqpOASES.dylib)
+elseif (UNIX)
+    target_link_libraries(controllers PUBLIC Eigen3::Eigen glog::glog qpOASES)
+endif ()
 target_include_directories(controllers PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 set_target_properties(controllers PROPERTIES LINKER_LANGUAGE CXX)
