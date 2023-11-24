@@ -4,12 +4,12 @@ int main() {
     
     
     // Create simulator and load model
-    CassieSimulator& sim = CassieSimulator::getInstance();
+    CassieSimulator& sim = CassieSimulator::getInstance(); // TODO: This line broken :(
     sim.LoadModel("./agility_cassie/scene.xml");
     sim.Init();
 
     // Set the initial pose for Cassie
-    // sim.ResetModel();
+    sim.ResetModel();
 
     // Simulate the model
     double real_start;
