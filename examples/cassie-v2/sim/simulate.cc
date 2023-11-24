@@ -1,19 +1,15 @@
-#include <glog/logging.h>
-
-#include <iostream>
-
 #include "simulate.h"
-#include "mujoco_sim.h"
 
 int main() {
     
     
     // Create simulator and load model
-    MujocoSimulator& sim = MujocoSimulator::getInstance();
+    CassieSimulator& sim = CassieSimulator::getInstance();
     sim.LoadModel("./agility_cassie/scene.xml");
     sim.Init();
 
-    // TODO: Set the initial pose for Cassie
+    // Set the initial pose for Cassie
+    // sim.ResetModel();
 
     // Simulate the model
     double real_start;

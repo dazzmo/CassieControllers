@@ -89,7 +89,7 @@ int MujocoSimulator::UpdateSceneAndRender() {
 void MujocoSimulator::KeyboardCallbackImpl(GLFWwindow* window, int key, int scancode, int act, int mods) {
     // backspace: reset simulation
     if (act == GLFW_PRESS && key == GLFW_KEY_BACKSPACE) {
-        mj_resetData(m_, d_);
+        ResetModel();
         mj_forward(m_, d_);
     }
     // space: pause/unpause simulation

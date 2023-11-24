@@ -14,6 +14,7 @@ using namespace std::placeholders;
 
 class MujocoSimulator {
    public:
+   MujocoSimulator() {}
     ~MujocoSimulator() {
         // free visualization storage
         mjv_freeScene(&scn_);
@@ -79,11 +80,25 @@ class MujocoSimulator {
      */
     const double GetSimulatorTime() { return d_->time; };
 
+    /**
+     * @brief Resets the model to its default configuration
+     *
+     * @return int
+     */
+    int ResetModel() {
+        mj_resetData(m_, d_);
+        return 0;
+    };
+
     void PrintDynamicsCoefficients() {
         double M[m_->nv * m_->nv];
         mj_fullM(m_, M, d_->qM);
         mju_printMat(M, m_->nv, m_->nv);
     };
+
+    // Give user access to model and data structs
+    mjModel* m_;      // MuJoCo model
+    mjData* d_;       // MuJoCo data
 
    private:
     // Determines if the system has been iniitalised
@@ -96,8 +111,6 @@ class MujocoSimulator {
     GLFWwindow* window_;
 
     // MuJoCo data structures
-    mjModel* m_;      // MuJoCo model
-    mjData* d_;       // MuJoCo data
     mjvCamera cam_;   // abstract camera
     mjvOption opt_;   // visualization options
     mjvScene scn_;    // abstract scene

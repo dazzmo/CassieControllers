@@ -49,7 +49,7 @@ find_package(glog REQUIRED)
 # COPYONLY)
 
 add_executable(cassie_stand_sim sim/simulate.cc)
-target_link_libraries(cassie_stand_sim PUBLIC mujoco_simulator glog::glog)
-# target_link_libraries(cassie_stand_sim PUBLIC mujoco_simulator Eigen3::Eigen cassie_control)
+target_link_libraries(cassie_stand_sim PUBLIC mujoco_simulator)
+# target_link_libraries(cassie_stand_sim PUBLIC mujoco_simulator Eigen3::Eigen cassie_control glog::glog)
 
 file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sim/agility_cassie" "${CMAKE_CURRENT_BINARY_DIR}/agility_cassie" SYMBOLIC)
