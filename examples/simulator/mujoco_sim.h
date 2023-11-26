@@ -14,7 +14,6 @@ using namespace std::placeholders;
 
 class MujocoSimulator {
    public:
-   MujocoSimulator() {}
     ~MujocoSimulator() {
         // free visualization storage
         mjv_freeScene(&scn_);
@@ -79,16 +78,6 @@ class MujocoSimulator {
      * @return const double
      */
     const double GetSimulatorTime() { return d_->time; };
-
-    /**
-     * @brief Resets the model to its default configuration
-     *
-     * @return int
-     */
-    int ResetModel() {
-        mj_resetData(m_, d_);
-        return 0;
-    };
 
     void PrintDynamicsCoefficients() {
         double M[m_->nv * m_->nv];
