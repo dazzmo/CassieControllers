@@ -1,15 +1,14 @@
 #include "simulate.h"
 
 int main() {
-    
-    
+
     // Create simulator and load model
-    CassieSimulator& sim = CassieSimulator::getInstance(); // TODO: This line broken :(
-    sim.LoadModel("./agility_cassie/scene.xml");
+    MujocoSimulator& sim = MujocoSimulator::getInstance();
+    sim.LoadModel("agility_cassie/scene.xml");
     sim.Init();
 
     // Set the initial pose for Cassie
-    sim.ResetModel();
+    init_cassie_model(sim);
 
     // Simulate the model
     double real_start;
