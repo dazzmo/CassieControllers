@@ -4,7 +4,7 @@ int main() {
 
     // Create simulator and load model
     MujocoSimulator& sim = MujocoSimulator::getInstance();
-    sim.LoadModel("agility_cassie/scene.xml");
+    sim.LoadModel("./agility_cassie/scene.xml");
     sim.Init();
 
     // Set the initial pose for Cassie
