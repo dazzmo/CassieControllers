@@ -99,13 +99,13 @@ int main(int argc, char* argv[]) {
 
     pinocchio::framesForwardKinematics(ad_model, ad_data, q_ad);
 
-    // If using stiff model
-    casadi::SX cl_stiff = casadi::SX::zeros(3);
-    cl_stiff(0) = cs_q(model.joints[model.getJointId("LeftAchillesSpring")].idx_q());
-    cl_stiff(1) = cs_q(model.joints[model.getJointId("LeftShinPitch")].idx_q());
-    cl_stiff(2) = cs_q(model.joints[model.getJointId("LeftKneePitch")].idx_q()) -
-                  cs_q(model.joints[model.getJointId("LeftTarsusPitch")].idx_q()) +
-                  13 * M_PI / 180.0;
+    // // If using stiff model
+    // casadi::SX cl_stiff = casadi::SX::zeros(3);
+    // cl_stiff(0) = cs_q(model.joints[model.getJointId("LeftAchillesSpring")].idx_q());
+    // cl_stiff(1) = cs_q(model.joints[model.getJointId("LeftShinPitch")].idx_q());
+    // cl_stiff(2) = cs_q(model.joints[model.getJointId("LeftKneePitch")].idx_q()) -
+    //               cs_q(model.joints[model.getJointId("LeftTarsusPitch")].idx_q()) +
+    //               13 * M_PI / 180.0;
 
     // If using spring model
     const double length = 0.5012;
@@ -114,14 +114,15 @@ int main(int argc, char* argv[]) {
     ADData::Vector3 dl = ad_data.oMf[ad_model.getFrameId("achilles_socket")].translation() -
                          ad_data.oMf[ad_model.getFrameId("heel_tip")].translation();
     casadi::SX cl = dl.squaredNorm() - length * length;
+
     // Get jacobian of constraint and time derivative
     casadi::SX Jcl = jacobian(cl, cs_q);
     casadi::SX Hcl = hessian(cl, cs_q);
     casadi::SX dJcldt = jacobian(mtimes(Jcl, cs_v), cs_q);
 
-    // Estimation for heel spring deflection
-    casadi::SX q_hs = cs_q(model.joints[model.getJointId("LeftAchillesSpring")].idx_q());
-    casadi::SX g_cl_hs = jacobian(cl, q_hs);
+    // // Estimation for heel spring deflection
+    // casadi::SX q_hs = cs_q(model.joints[model.getJointId("LeftAchillesSpring")].idx_q());
+    // casadi::SX g_cl_hs = jacobian(cl, q_hs);
 
     // Compute mass matrix and bias forces
     Eigen::Matrix<ADScalar, -1, -1> M(model.nv, model.nv);
