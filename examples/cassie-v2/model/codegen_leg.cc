@@ -11,6 +11,8 @@
 #include "pinocchio/parsers/sample-models.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
+// TODO: Read all the constants from a .yaml file or something
+
 struct BodySite {
     std::string name;
     std::string parent_joint;
@@ -190,7 +192,6 @@ int main(int argc, char* argv[]) {
 
     // Spring dynamics parameters from:
     // https://github.com/jpreher/cassie_description/blob/master/MATLAB/Cassie_v4.m#L193
-    // TODO: Check that these are actually similar to our own Cassie!
     ADScalar spring_forces = ADScalar::zeros(model.nv);
     double k_knee_stiffness = 2300.0;
     double k_heel_stiffness = 2000.0;
@@ -209,7 +210,7 @@ int main(int argc, char* argv[]) {
     spring_forces(model.joints[model.getJointId("LeftAchillesSpring")].idx_v()) = k_heel_stiffness * (q_heel) + b_heel_damping * (v_heel);
 
     // Create the actuation/torque coefficient matrix
-    // TODO: This is just the gear ratios again, don't hard-code it twice
+    // TODO: This is just the gear ratios again, we shouldn't hard-code it twice
     ADScalar B = ADScalar::zeros(model.nv, 5);
     B(model.joints[model.getJointId("LeftHipRoll")].idx_v(), 0) = 25.0;
     B(model.joints[model.getJointId("LeftHipYaw")].idx_v(), 1) = 25.0;
