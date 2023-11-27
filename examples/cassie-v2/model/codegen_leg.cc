@@ -7,7 +7,6 @@ int main(int argc, char* argv[]) {
     cg.SetCodeGenerationDestination(argv[1]);
 
     // Create reference frames
-
     // Sole of foot frame (https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model)
     // TODO: Double-check the order (ZYX vs. XYZ)
     Eigen::AngleAxisd rollAngle(0.0, Eigen::Vector3d::UnitX());
@@ -73,6 +72,9 @@ int main(int argc, char* argv[]) {
     // dJdt = dJdq * dqdt by chain rule
     casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetTangentVectorSX()), cg.GetConfigurationVectorSX());
 
+    cg.GenerateCode("achilles_rod_constraint", {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()},
+                    {densify(cl), densify(Jcl), densify(mtimes(dJcldt, cg.GetTangentVectorSX())), densify(Hcl)});
+
     // Bias vector
     CodeGenerator::TangentVectorAD h = pinocchio::rnea<CodeGenerator::ADScalar>(model, data,
                                                                                 cg.GetConfigurationVector(),
@@ -98,6 +100,44 @@ int main(int argc, char* argv[]) {
     spring_forces(model.joints[model.getJointId("LeftShinPitch")].idx_v()) = k_knee_stiffness * (q_knee) + b_knee_damping * (v_knee);
     spring_forces(model.joints[model.getJointId("LeftAchillesSpring")].idx_v()) = k_heel_stiffness * (q_heel) + b_heel_damping * (v_heel);
 
+    // Add spring forces to bias vector
+    h += spring_forces;
+
+    // Damping forces
+    CodeGenerator::TangentVectorAD damping(model.nv);
+    damping.setConstant(1.0);  // TODO: Provide better estimate of these terms
+    h += damping;
+
+    casadi::SX h_sx;
+    pinocchio::casadi::copy(h, h_sx);
+    cg.GenerateCode("bias_vector", {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()}, {h_sx});
+
+    // Actuation matrix
+    casadi::SX B = casadi::SX::zeros(model.nv, 5);
+    B(model.joints[model.getJointId("LeftHipRoll")].idx_v(), 0) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipRoll")].idx_v()];
+    B(model.joints[model.getJointId("LeftHipYaw")].idx_v(), 1) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipYaw")].idx_v()];
+    B(model.joints[model.getJointId("LeftHipPitch")].idx_v(), 2) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipPitch")].idx_v()];
+    B(model.joints[model.getJointId("LeftKneePitch")].idx_v(), 3) = model.rotorGearRatio[model.joints[model.getJointId("LeftKneePitch")].idx_v()];
+    B(model.joints[model.getJointId("LeftFootPitch")].idx_v(), 4) = model.rotorGearRatio[model.joints[model.getJointId("LeftFootPitch")].idx_v()];
+
+    cg.GenerateCode("actuation_map", {cg.GetConfigurationVectorSX()}, {B});
+
+    // Generate end-effector data
+    // https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model
+    cg.GenerateEndEffectorData("foot_front",
+                               "LeftFootPitch", "foot",
+                               Eigen::Vector3d(0.09, 0.0, 0.0),
+                               Eigen::Matrix3d::Identity());
+
+    cg.GenerateEndEffectorData("foot_back",
+                               "LeftFootPitch", "foot",
+                               Eigen::Vector3d(-0.09, 0.0, 0.0),
+                               Eigen::Matrix3d::Identity());
+
+    cg.GenerateEndEffectorData("ankle",
+                               "LeftFootPitch", "leftfoot",
+                               Eigen::Vector3d(0.0, 0.0, 0.0),
+                               Eigen::Matrix3d::Identity());
 
     return 0;
 }
