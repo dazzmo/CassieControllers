@@ -12,6 +12,7 @@
 #include "pinocchio/parsers/urdf.hpp"
 
 // TODO: Read all the constants from a .yaml file or something
+// TODO: Use the CodeGenerator class instead?
 
 struct BodySite {
     std::string name;
@@ -223,14 +224,14 @@ int main(int argc, char* argv[]) {
         casadi::Function(model.name + "_mass_matrix", casadi::SXVector{cs_q}, casadi::SXVector{densify(cs_M)}),
         casadi::Function(model.name + "_bias_vector", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(cs_h)}),
         casadi::Function(model.name + "_spring_forces", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(spring_forces)}),
-        casadi::Function(model.name + "_heel_spring_constraint", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(cl), densify(Jcl), densify(mtimes(dJcldt, cs_v)), densify(Hcl)}), // Usually want dJdt*dqdt = dJdq*dqdt*dqdt
+        casadi::Function(model.name + "_achilles_rod_constraint", casadi::SXVector{cs_q, cs_v}, casadi::SXVector{densify(cl), densify(Jcl), densify(mtimes(dJcldt, cs_v)), densify(Hcl)}), // Usually want dJdt*dqdt = dJdq*dqdt*dqdt
         casadi::Function(model.name + "_actuation", casadi::SXVector{cs_q}, casadi::SXVector{densify(B)})
     };
 
     // Define end-effector positions and Jacobian
     ADData::Matrix6x J(6, model.nv);
     ADData::Matrix6x dJdt(6, model.nv);
-    pinocchio::forwardKinematics(ad_model, ad_data, q_ad, v_ad, TangentVectorAD::Zero(model.nv));
+    pinocchio::forwardKinematics(ad_model, ad_data, q_ad, v_ad, TangentVectorAD::Zero(model.nv)); // Last argument is acceleration
     pinocchio::updateFramePlacements(ad_model, ad_data);
     pinocchio::computeJointJacobians(ad_model, ad_data, q_ad);
 
