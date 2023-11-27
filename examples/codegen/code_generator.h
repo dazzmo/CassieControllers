@@ -38,6 +38,9 @@ class CodeGenerator {
     ADModel &GetModel() { return *model_; }
     ADData &GetData() { return *data_; }
 
+    ConfigVectorAD &GetConfigurationVector() { return q_; }
+    TangentVectorAD &GetTangentVector() { return v_; }
+
     casadi::SX &GetConfigurationVectorSX() { return q_sx_; }
     casadi::SX &GetTangentVectorSX() { return v_sx_; }
 
@@ -48,6 +51,9 @@ class CodeGenerator {
     // Dynamics
     int GenerateInertiaMatrix();
     int GenerateBiasVector();
+    int AddReferenceFrame(const std::string &name,
+                          const std::string &parent_joint, const std::string &parent_frame,
+                          const Eigen::Vector3d &r, const Eigen::Matrix3d &R);
     int GenerateEndEffectorData(const std::string &name,
                                 const std::string &parent_joint, const std::string &parent_frame,
                                 const Eigen::Vector3d &r, const Eigen::Matrix3d &R);

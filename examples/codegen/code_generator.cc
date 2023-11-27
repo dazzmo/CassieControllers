@@ -49,23 +49,34 @@ int CodeGenerator::GenerateBiasVector() {
     return 0;
 }
 
-int CodeGenerator::GenerateEndEffectorData(const std::string &name,
-                                           const std::string &parent_joint, const std::string &parent_frame,
-                                           const Eigen::Vector3d &r, const Eigen::Matrix3d &R) {
+int CodeGenerator::AddReferenceFrame(const std::string &name,
+                                     const std::string &parent_joint, const std::string &parent_frame,
+                                     const Eigen::Vector3d &r, const Eigen::Matrix3d &R) {
+    // Cast frame data to AD
     Eigen::Matrix<ADScalar, 3, 3> R_ad = R.cast<ADScalar>();
     Eigen::Matrix<ADScalar, 3, 1> r_ad = r.cast<ADScalar>();
-    
+
     // Create frame on model
     model_->addFrame(pinocchio::FrameTpl<ADScalar>(name, model_->getJointId(parent_joint),
-                                      model_->getFrameId(parent_frame), 
-                                      pinocchio::SE3Tpl<ADScalar>(R_ad, r_ad),
-                                      pinocchio::OP_FRAME));
-
+                                                   model_->getFrameId(parent_frame),
+                                                   pinocchio::SE3Tpl<ADScalar>(R_ad, r_ad),
+                                                   pinocchio::OP_FRAME));
     // Update data
     delete data_;
     data_ = new ADData(*model_);
-    pinocchio::framesForwardKinematics(*model_, *data_, q_);
+
+    return 0;
+}
+
+int CodeGenerator::GenerateEndEffectorData(const std::string &name,
+                                           const std::string &parent_joint, const std::string &parent_frame,
+                                           const Eigen::Vector3d &r, const Eigen::Matrix3d &R) {
+    // Add a reference frame
+    AddReferenceFrame(name, parent_joint, parent_frame, r, R);
     
+    // Perform forward kinematics    
+    pinocchio::framesForwardKinematics(*model_, *data_, q_);
+
     ADData::Matrix6x J(6, model_->nv), dJdt(6, model_->nv);
     pinocchio::forwardKinematics(*model_, *data_, q_, v_, TangentVectorAD::Zero(model_->nv));
     pinocchio::updateFramePlacements(*model_, *data_);
@@ -95,9 +106,12 @@ int CodeGenerator::GenerateCode(const std::string &name,
     casadi::Dict opts;
     opts["with_header"] = true;
     casadi::Function fun = casadi::Function(model_->name + "_" + name, in, out);
+    std::cout << fun.name() << '\n';
     casadi::CodeGenerator cg(fun.name(), opts);
     cg.add(fun);
     cg.generate(cg_dest_);
+
+    std::cout << "Finished\n";
 
     return 0;
 }

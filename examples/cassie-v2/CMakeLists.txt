@@ -36,13 +36,11 @@ file(GLOB_RECURSE CASSIE_CODEGEN_SRC
 # target_include_directories(cassie_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
 
 # Single-leg Cassie dynamics
-add_executable(cassie_codegen_leg_v2 ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen_leg.cc)
-target_link_libraries(cassie_codegen_leg_v2 PUBLIC 
-${pinocchio_LIBRARIES}
-casadi
-Eigen3::Eigen
+add_executable(cassie_codegen_v2 ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen_leg.cc)
+target_link_libraries(cassie_codegen_v2 PUBLIC 
+code_generator
 )
-target_include_directories(cassie_codegen_leg_v2 PUBLIC ${pinocchio_INCLUDE_DIRS})
+target_include_directories(cassie_codegen_v2 PUBLIC ${pinocchio_INCLUDE_DIRS})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_leg.urdf 
 ${CMAKE_CURRENT_BINARY_DIR}/cassie_leg.urdf
