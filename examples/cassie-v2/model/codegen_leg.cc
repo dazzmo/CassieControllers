@@ -229,9 +229,10 @@ int main(int argc, char* argv[]) {
     };
 
     // Define end-effector positions and Jacobian
+    TangentVectorAD q_acc_zero = TangentVectorAD::Zero(model.nv);
     ADData::Matrix6x J(6, model.nv);
     ADData::Matrix6x dJdt(6, model.nv);
-    pinocchio::forwardKinematics(ad_model, ad_data, q_ad, v_ad, TangentVectorAD::Zero(model.nv)); // Last argument is acceleration
+    pinocchio::forwardKinematics(ad_model, ad_data, q_ad, v_ad, q_acc_zero);
     pinocchio::updateFramePlacements(ad_model, ad_data);
     pinocchio::computeJointJacobians(ad_model, ad_data, q_ad);
 
