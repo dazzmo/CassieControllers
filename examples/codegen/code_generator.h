@@ -28,13 +28,13 @@ class CodeGenerator {
     typedef ADModel::ConfigVectorType ConfigVectorAD;
     typedef ADModel::TangentVectorType TangentVectorAD;
 
+    // Constructors and destructor
     CodeGenerator() = default;
     ~CodeGenerator() = default;
 
     CodeGenerator(const std::string &model_urdf);
 
     // Setters and Getters
-
     ADModel &GetModel() { return *model_; }
     ADData &GetData() { return *data_; }
 

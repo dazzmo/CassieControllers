@@ -4,6 +4,7 @@ project(cassie_stand_sim)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# TODO: How many of these do we still need?
 find_package(glog REQUIRED)
 find_package(Eigen3 3.3 REQUIRED)
 find_package(pinocchio)
@@ -17,7 +18,7 @@ find_package(casadi)
 # )
 
 file(GLOB_RECURSE CASSIE_CODEGEN_SRC
-    # ${CMAKE_CURRENT_SOURCE_DIR}/model/cg/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/model/cg/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/model/cg/*.c
 )
 

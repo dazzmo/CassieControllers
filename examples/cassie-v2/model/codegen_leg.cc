@@ -1,14 +1,18 @@
 #include "code_generator.h"
 
-// TODO: Read all the constants from a .yaml file or something
+// TODO: Read all the constants from a .yaml file
+// TODO: Provide better estimate of damping terms
 
 int main(int argc, char* argv[]) {
+
+    // Initialise model from Cassie urdf (just one leg)
     CodeGenerator cg("./cassie_leg.urdf");
     cg.SetCodeGenerationDestination(argv[1]);
 
-    // Create reference frames
-    // Sole of foot frame (https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model)
+    /********** Create reference frames **********/
+
     // TODO: Double-check the order (ZYX vs. XYZ)
+    // Sole of foot frame (https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model)
     Eigen::AngleAxisd rollAngle(0.0, Eigen::Vector3d::UnitX());
     Eigen::AngleAxisd pitchAngle(-140.0 * M_PI / 180.0, Eigen::Vector3d::UnitY());
     Eigen::AngleAxisd yawAngle(-M_PI_2, Eigen::Vector3d::UnitZ());
@@ -66,20 +70,27 @@ int main(int argc, char* argv[]) {
                                         data.oMf[model.getFrameId("heel_tip")].translation();
     casadi::SX cl = dl.squaredNorm() - achilles_length * achilles_length;
 
-    // Get Jacobian of constraint, its time-derivative, and the Hessian
+    // Get Jacobian of the closed-loop constraint, its time-derivative, and the Hessian
+    // Note that dJdt = dJdq * dqdt by chain rule
     casadi::SX Jcl = jacobian(cl, cg.GetConfigurationVectorSX());
     casadi::SX Hcl = hessian(cl, cg.GetConfigurationVectorSX());
-    // dJdt = dJdq * dqdt by chain rule
     casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetTangentVectorSX()), cg.GetConfigurationVectorSX());
 
-    cg.GenerateCode("achilles_rod_constraint", {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()},
-                    {densify(cl), densify(Jcl), densify(mtimes(dJcldt, cg.GetTangentVectorSX())), densify(Hcl)});
+    // Generate code for constraint
+    cg.GenerateCode(
+        "achilles_rod_constraint", 
+        {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()},
+        {densify(cl), densify(Jcl), densify(mtimes(dJcldt, cg.GetTangentVectorSX())), densify(Hcl)}
+    );
 
-    // Bias vector
-    CodeGenerator::TangentVectorAD h = pinocchio::rnea<CodeGenerator::ADScalar>(model, data,
-                                                                                cg.GetConfigurationVector(),
-                                                                                cg.GetTangentVector(),
-                                                                                CodeGenerator::TangentVectorAD::Zero(model.nv));
+    // Bias vector (includes gravity, damping, spring forces, etc.)
+    CodeGenerator::TangentVectorAD h = pinocchio::rnea<CodeGenerator::ADScalar>(
+        model, 
+        data,
+        cg.GetConfigurationVector(),
+        cg.GetTangentVector(),
+        CodeGenerator::TangentVectorAD::Zero(model.nv)
+    );
 
     // Spring dynamics parameters from:
     // https://github.com/jpreher/cassie_description/blob/master/MATLAB/Cassie_v4.m#L193
@@ -105,14 +116,15 @@ int main(int argc, char* argv[]) {
 
     // Damping forces
     CodeGenerator::TangentVectorAD damping(model.nv);
-    damping.setConstant(1.0);  // TODO: Provide better estimate of these terms
+    damping.setConstant(1.0); // TODO: Make it a vector! See MuJoCo model
     h += damping;
 
+    // Generate code for bias vector
     casadi::SX h_sx;
     pinocchio::casadi::copy(h, h_sx);
     cg.GenerateCode("bias_vector", {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()}, {h_sx});
 
-    // Actuation matrix
+    // Actuation matrix (same as gear ratios)
     casadi::SX B = casadi::SX::zeros(model.nv, 5);
     B(model.joints[model.getJointId("LeftHipRoll")].idx_v(), 0) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipRoll")].idx_v()];
     B(model.joints[model.getJointId("LeftHipYaw")].idx_v(), 1) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipYaw")].idx_v()];
