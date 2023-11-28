@@ -34,9 +34,9 @@ struct QPOASESData {
 
     // Solution vector
     Vector x;
-    // QP Hessian matrix
+    // Hessian matrix of objective
     Eigen::Matrix<Scalar, -1, -1, Eigen::RowMajor> H;
-    // QP gradient vector
+    // Gradient vector of objective
     Vector g;
     // QP constraint jacobian
     Eigen::Matrix<Scalar, -1, -1, Eigen::RowMajor> A;
@@ -48,9 +48,8 @@ struct QPOASESData {
     Vector lbx;
     // QP variables upper bound
     Vector ubx;
-
-    // Objective value
-    Scalar cost;
+    // Constant component of objective
+    Scalar cost_const;
 };
 
 }  // namespace optimisation

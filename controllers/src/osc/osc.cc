@@ -174,13 +174,14 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
         
-        // Task constant vector
-        Vector a = task.second->dJdt_v() + task.second->ErrorOutputPD(); // TODO: WHat's the task constant vector?
+        // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
+        Vector a = task.second->ddr() - task.second->dJdt_v() + task.second->ErrorOutputPD();
 
-        // Add to objective
+        // Add to objective 0.5 * x^t H x + g^T x + c
+        // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * A.transpose() * W * a;
-        qp_data_->cost += (W * a).dot(a);
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
+        qp_data_->cost_const += (W * a).dot(a);
     }
 
     // ==== End-effector task cost addition ==== //
@@ -195,13 +196,13 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
         
-        // Task constant vector
-        Vector3 a = task.second->dJdt_v() + task.second->ErrorOutputPD();
+        // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
+        Vector3 a = task.second->ddr() - task.second->dJdt_v() + task.second->ErrorOutputPD();
 
-        // Add to objective
+        // Add to objective (|| A qacc - a ||^2)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * A.transpose() * W * a;
-        qp_data_->cost += (W * a).dot(a);
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
+        qp_data_->cost_const += (W * a).dot(a);
 
         // Contact
         Dimension dim = task.second->dim();
@@ -254,7 +255,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // Get solution
     qp_->getPrimalSolution(qp_data_->x.data());
-    // qp_data_->cost += qp_->get // TODO: Is this needed?
+    // qp_data_->cost_const += qp_->get // TODO: Is this needed?
 
     // Extract solution components
     x_->Extract(qp_data_->x);
