@@ -38,11 +38,14 @@ class CodeGenerator {
     ADModel &GetModel() { return *model_; }
     ADData &GetData() { return *data_; }
 
-    ConfigVectorAD &GetConfigurationVector() { return q_; }
-    TangentVectorAD &GetTangentVector() { return v_; }
+    ConfigVectorAD &GetQpos() { return q_; }
+    TangentVectorAD &GetQvel() { return v_; }
 
-    casadi::SX &GetConfigurationVectorSX() { return q_sx_; }
-    casadi::SX &GetTangentVectorSX() { return v_sx_; }
+    casadi::SX &GetQposSX() { return q_sx_; }
+    casadi::SX &GetQvelSX() { return v_sx_; }
+
+    int GetJointIdq(const std::string &name) {return model_->joints[model_->getJointId(name)].idx_q(); }
+    int GetJointIdv(const std::string &name) {return model_->joints[model_->getJointId(name)].idx_v(); }
 
     void SetCodeGenerationDestination(const std::string &dest) { cg_dest_ = dest; }
 

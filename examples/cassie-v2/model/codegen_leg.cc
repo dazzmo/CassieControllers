@@ -1,7 +1,7 @@
 #include "code_generator.h"
 
 // TODO: Read all the constants from a .yaml file
-// TODO: Provide better estimate of damping terms
+// TODO: Provide better estimate of damping terms? (see other Cassie groups)
 
 int main(int argc, char* argv[]) {
 
@@ -49,17 +49,17 @@ int main(int argc, char* argv[]) {
     cg.GenerateInertiaMatrix();
 
     // Add gearing and rotor inertia information (all from Cassie wiki)
-    model.rotorGearRatio[model.joints[model.getJointId("LeftHipRoll")].idx_v()] = 25.0;
-    model.rotorGearRatio[model.joints[model.getJointId("LeftHipYaw")].idx_v()] = 25.0;
-    model.rotorGearRatio[model.joints[model.getJointId("LeftHipPitch")].idx_v()] = 16.0;
-    model.rotorGearRatio[model.joints[model.getJointId("LeftKneePitch")].idx_v()] = 16.0;
-    model.rotorGearRatio[model.joints[model.getJointId("LeftFootPitch")].idx_v()] = 50.0;
+    model.rotorGearRatio[cg.GetJointIdv("LeftHipRoll")] = 25.0;
+    model.rotorGearRatio[cg.GetJointIdv("LeftHipYaw")] = 25.0;
+    model.rotorGearRatio[cg.GetJointIdv("LeftHipPitch")] = 16.0;
+    model.rotorGearRatio[cg.GetJointIdv("LeftKneePitch")] = 16.0;
+    model.rotorGearRatio[cg.GetJointIdv("LeftFootPitch")] = 50.0;
 
-    model.rotorInertia[model.joints[model.getJointId("LeftHipRoll")].idx_v()] = 6.10e-05;
-    model.rotorInertia[model.joints[model.getJointId("LeftHipYaw")].idx_v()] = 6.10e-05;
-    model.rotorInertia[model.joints[model.getJointId("LeftHipPitch")].idx_v()] = 3.65e-04;
-    model.rotorInertia[model.joints[model.getJointId("LeftKneePitch")].idx_v()] = 3.65e-04;
-    model.rotorInertia[model.joints[model.getJointId("LeftFootPitch")].idx_v()] = 4.90e-06;
+    model.rotorInertia[cg.GetJointIdv("LeftHipRoll")] = 6.10e-05;
+    model.rotorInertia[cg.GetJointIdv("LeftHipYaw")] = 6.10e-05;
+    model.rotorInertia[cg.GetJointIdv("LeftHipPitch")] = 3.65e-04;
+    model.rotorInertia[cg.GetJointIdv("LeftKneePitch")] = 3.65e-04;
+    model.rotorInertia[cg.GetJointIdv("LeftFootPitch")] = 4.90e-06;
 
     // Achilles rod on Cassie constrains each end to be 501.2mm apart:
     // https://github.com/agilityrobotics/cassie-doc/wiki/Achilles-Rod-Model
@@ -72,67 +72,78 @@ int main(int argc, char* argv[]) {
 
     // Get Jacobian of the closed-loop constraint, its time-derivative, and the Hessian
     // Note that dJdt = dJdq * dqdt by chain rule
-    casadi::SX Jcl = jacobian(cl, cg.GetConfigurationVectorSX());
-    casadi::SX Hcl = hessian(cl, cg.GetConfigurationVectorSX());
-    casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetTangentVectorSX()), cg.GetConfigurationVectorSX());
+    casadi::SX Jcl = jacobian(cl, cg.GetQposSX());
+    casadi::SX Hcl = hessian(cl, cg.GetQposSX());
+    casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetQvelSX()), cg.GetQposSX());
 
     // Generate code for constraint
     cg.GenerateCode(
         "achilles_rod_constraint", 
-        {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()},
-        {densify(cl), densify(Jcl), densify(mtimes(dJcldt, cg.GetTangentVectorSX())), densify(Hcl)}
+        {cg.GetQposSX(), cg.GetQvelSX()},
+        {densify(cl), densify(Jcl), densify(mtimes(dJcldt, cg.GetQvelSX())), densify(Hcl)}
     );
 
     // Bias vector (includes gravity, damping, spring forces, etc.)
     CodeGenerator::TangentVectorAD h = pinocchio::rnea<CodeGenerator::ADScalar>(
         model, 
         data,
-        cg.GetConfigurationVector(),
-        cg.GetTangentVector(),
+        cg.GetQpos(),
+        cg.GetQvel(),
         CodeGenerator::TangentVectorAD::Zero(model.nv)
     );
 
-    // Spring dynamics parameters from:
+    // Spring dynamics parameters. Commented values from:
     // https://github.com/jpreher/cassie_description/blob/master/MATLAB/Cassie_v4.m#L193
+    // Currently-used values from the cassie.xml MuJoCo model (but added small nonzero for heel)
+    // Values will depend on which springs are currently attached to Cassie
     CodeGenerator::TangentVectorAD spring_forces = CodeGenerator::TangentVectorAD::Zero(model.nv);
-    double k_knee_stiffness = 2300.0;
-    double k_heel_stiffness = 2000.0;
-    double b_knee_damping = 4.6;
-    double b_heel_damping = 4.0;
+    double k_knee_stiffness = 1500; //2300.0;
+    double k_heel_stiffness = 1250; //2000.0;
+    double b_knee_damping = 0.1;    //4.6;
+    double b_heel_damping = 0.001;  //4.0;
 
     // Extract joint coordinates of springs
-    casadi::SX q_knee = cg.GetConfigurationVectorSX()(model.joints[model.getJointId("LeftShinPitch")].idx_q());
-    casadi::SX q_heel = cg.GetConfigurationVectorSX()(model.joints[model.getJointId("LeftAchillesSpring")].idx_q());
+    casadi::SX q_knee = cg.GetQposSX()(cg.GetJointIdq("LeftShinPitch"));
+    casadi::SX q_heel = cg.GetQposSX()(cg.GetJointIdq("LeftAchillesSpring"));
 
-    casadi::SX v_knee = cg.GetTangentVectorSX()(model.joints[model.getJointId("LeftShinPitch")].idx_v());
-    casadi::SX v_heel = cg.GetTangentVectorSX()(model.joints[model.getJointId("LeftAchillesSpring")].idx_v());
+    casadi::SX v_knee = cg.GetQvelSX()(cg.GetJointIdv("LeftShinPitch"));
+    casadi::SX v_heel = cg.GetQvelSX()(cg.GetJointIdv("LeftAchillesSpring"));
 
     // Add to spring forces
-    spring_forces(model.joints[model.getJointId("LeftShinPitch")].idx_v()) = k_knee_stiffness * (q_knee) + b_knee_damping * (v_knee);
-    spring_forces(model.joints[model.getJointId("LeftAchillesSpring")].idx_v()) = k_heel_stiffness * (q_heel) + b_heel_damping * (v_heel);
+    spring_forces(cg.GetJointIdv("LeftShinPitch")) = k_knee_stiffness * (q_knee) + b_knee_damping * (v_knee);
+    spring_forces(cg.GetJointIdv("LeftAchillesSpring")) = k_heel_stiffness * (q_heel) + b_heel_damping * (v_heel);
 
     // Add spring forces to bias vector
-    h += spring_forces;
+    h += spring_forces; // TODO: Subtract?
 
     // Damping forces
     CodeGenerator::TangentVectorAD damping(model.nv);
-    damping.setConstant(1.0); // TODO: Make it a vector! See MuJoCo model
-    h += damping;
+    damping(cg.GetJointIdv("LeftHipRoll")) = 10.0;
+    damping(cg.GetJointIdv("LeftHipYaw")) = 1.0;
+    damping(cg.GetJointIdv("LeftHipPitch")) = 1.0;
+    damping(cg.GetJointIdv("LeftKneePitch")) = 1.0;
+    damping(cg.GetJointIdv("LeftShinPitch")) = 0.1;
+    damping(cg.GetJointIdv("LeftTarsusPitch")) = 0.1;
+    damping(cg.GetJointIdv("LeftAchillesSpring")) = 0.0;
+    damping(cg.GetJointIdv("LeftFootPitch")) = 1.0;
+
+    // Add damping forces to bias vector
+    h += damping; // TODO: Subtract?
 
     // Generate code for bias vector
     casadi::SX h_sx;
     pinocchio::casadi::copy(h, h_sx);
-    cg.GenerateCode("bias_vector", {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()}, {h_sx});
+    cg.GenerateCode("bias_vector", {cg.GetQposSX(), cg.GetQvelSX()}, {h_sx});
 
-    // Actuation matrix (same as gear ratios)
+    // Actuation matrix (filled with gear ratios)
     casadi::SX B = casadi::SX::zeros(model.nv, 5);
-    B(model.joints[model.getJointId("LeftHipRoll")].idx_v(), 0) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipRoll")].idx_v()];
-    B(model.joints[model.getJointId("LeftHipYaw")].idx_v(), 1) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipYaw")].idx_v()];
-    B(model.joints[model.getJointId("LeftHipPitch")].idx_v(), 2) = model.rotorGearRatio[model.joints[model.getJointId("LeftHipPitch")].idx_v()];
-    B(model.joints[model.getJointId("LeftKneePitch")].idx_v(), 3) = model.rotorGearRatio[model.joints[model.getJointId("LeftKneePitch")].idx_v()];
-    B(model.joints[model.getJointId("LeftFootPitch")].idx_v(), 4) = model.rotorGearRatio[model.joints[model.getJointId("LeftFootPitch")].idx_v()];
+    B(cg.GetJointIdv("LeftHipRoll"), 0) = model.rotorGearRatio[cg.GetJointIdv("LeftHipRoll")];
+    B(cg.GetJointIdv("LeftHipYaw"), 1) = model.rotorGearRatio[cg.GetJointIdv("LeftHipYaw")];
+    B(cg.GetJointIdv("LeftHipPitch"), 2) = model.rotorGearRatio[cg.GetJointIdv("LeftHipPitch")];
+    B(cg.GetJointIdv("LeftKneePitch"), 3) = model.rotorGearRatio[cg.GetJointIdv("LeftKneePitch")];
+    B(cg.GetJointIdv("LeftFootPitch"), 4) = model.rotorGearRatio[cg.GetJointIdv("LeftFootPitch")];
 
-    cg.GenerateCode("actuation_map", {cg.GetConfigurationVectorSX()}, {B});
+    cg.GenerateCode("actuation_map", {cg.GetQposSX()}, {B});
 
     // Generate end-effector data
     // https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model
