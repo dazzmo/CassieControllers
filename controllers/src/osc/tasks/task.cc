@@ -70,7 +70,7 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     }
 
     // Update velocity
-    dx_ = J_ * v; // TODO: Why treat this specially? What about ddx?
+    dx_ = J_ * v;
 
     // Compute errors
     e_ = x_ - r_;

@@ -15,7 +15,6 @@ void DynamicModel::UpdateState(Dimension nq, const Scalar *q, Dimension nv, cons
     // Naive copy
     memcpy(state_.q.data(), q, sizeof(Scalar) * nq);
     memcpy(state_.v.data(), v, sizeof(Scalar) * nv);
-    // TODO: Shouldn't this update the accelerations too? Otherwise why have accelerations in the state?
 }
 
 /**
