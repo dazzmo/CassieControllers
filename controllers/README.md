@@ -11,7 +11,7 @@ The OSC class is concerned with creating control outputs $u$ that satisfy the dy
 
 $$
 \begin{align}
-u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2 + w_{u} || u ||^2\\
+u \in \arg\min_{\ddot{q},u,\lambda_c} & \sum_i w_i || J_i \ddot{q} + \dot{J}_i \dot{q} + \ddot{x}_d ||^2 + w_u || u ||^2\\
 \textrm{s.t.} \quad & M(q) \ddot{q} + h(q,\dot{q}) = B(q) u + J_c^T \lambda_c\\
 & \lambda_c \in \mathcal{F}_c\\
 & u\_{\min} \le u \le u\_{\max}\\
