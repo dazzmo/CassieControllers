@@ -15,14 +15,14 @@ Task::Task(const std::string &name, Dimension n, const DynamicModel::Size &sz, T
 
 void Task::Resize(Dimension n, const DynamicModel::Size &sz) {
     dim_ = n;
-    
-    nq_ = sz.nq;
-    nv_ = sz.nv;
 
-    w_ = 1.0;
+    W_.resize(dim_);
+    W_.diagonal().setConstant(1.0);
 
-    Kp_ = Vector::Ones(n);
-    Kd_ = Vector::Ones(n);
+    Kp_.resize(n);
+    Kp_.diagonal() = Vector::Zero(n);
+    Kd_.resize(n);
+    Kd_.diagonal() = Vector::Zero(n);
 
     // Create vectors
     x_ = Vector::Zero(n);
@@ -40,7 +40,7 @@ void Task::Resize(Dimension n, const DynamicModel::Size &sz) {
     pd_out_ = Vector::Zero(n);
 
     J_ = Matrix::Zero(n, sz.nv);
-    Jdot_qdot_ = Vector::Zero(n);
+    dJdt_v_ = Vector::Zero(n);
 }
 
 void Task::SetReference(const Vector &r) {
@@ -64,9 +64,9 @@ void Task::SetReference(const Vector &r, const Vector &dr, const Vector &ddr) {
 void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     // Perform callback
     if (callback_ != nullptr) {
-        callback_(q, v, x_, J_, Jdot_qdot_);
+        callback_(q, v, x_, J_, dJdt_v_);
     } else {
-        throw std::runtime_error("Task callback for " + name_ + "is null!");
+        throw std::runtime_error("Task callback for " + name_ + " is null!");
     }
 
     // Update velocity
@@ -77,5 +77,5 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     de_ = dx_ - dr_;
 
     // Compute PD error
-    pd_out_ = Kp_.asDiagonal() * e_ + Kd_.asDiagonal() * de_;
+    pd_out_ = Kp_ * e_ + Kd_ * de_;
 }

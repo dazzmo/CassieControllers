@@ -3,7 +3,11 @@
 using namespace controller;
 
 void OutputPrescale::StartRamp(Scalar time, Scalar tau, const RampType &type) {
+    // Type of ramp
     ramp_type_ = type;
+    // Time constant for ramping
+    ramp_tau_ = tau;
+    // Starting time of ramp
     t_ramp_start_ = time;
 }
 

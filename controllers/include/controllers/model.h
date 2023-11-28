@@ -81,7 +81,7 @@ class DynamicModel {
     const Size &size() const { return sz_; }
     Bounds &bounds() { return bounds_; }
     State &state() { return state_; }
-    State &state_init() { return initial_state_; }
+    State &initial_state() { return initial_state_; }
     const Dynamics &dynamics() const { return dynamics_; }
 
    protected:

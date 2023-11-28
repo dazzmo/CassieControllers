@@ -12,6 +12,8 @@ class JointTrackTask : public Task {
     void Update(const Vector &q, const Vector &v);
 
    private:
+      Dimension nq_;
+      Dimension nv_;
 };
 
 }  // namespace osc

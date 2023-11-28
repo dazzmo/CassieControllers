@@ -14,7 +14,7 @@ namespace osc {
 class Task {
    public:
     typedef void (*TaskCallbackFunction)(const Vector &q, const Vector &v,
-                                         Vector &x, Matrix &J, Vector &Jdot_qdot);
+                                         Vector &x, Matrix &J, Vector &dJdt_v);
 
     Task(const std::string &name, Dimension n, const DynamicModel::Size &sz);
     Task(const std::string &name, Dimension n, const DynamicModel::Size &sz, TaskCallbackFunction callback);
@@ -72,45 +72,51 @@ class Task {
      * @brief Task jacobian time derivative with velocity (ndim x 1)
      *
      */
-    const Vector &Jdot_qdot() const { return Jdot_qdot_; }
+    const Vector &dJdt_v() const { return dJdt_v_; }
 
     /**
      * @brief Proportional gains for error output
      *
      */
-    const Vector &Kp() const { return Kp_; }
+    const DiagonalMatrix &Kp() const { return Kp_; }
 
     /**
      * @brief Derivative gains for error output
      *
      */
-    const Vector &Kd() const { return Kd_; }
+    const DiagonalMatrix &Kd() const { return Kd_; }
 
     /**
-     * @brief Task weighting
-     *
+     * @brief Set the diagonal of the Kp matrix for error output calculation
+     * 
+     * @param Kp_vec 
      */
-    double weight() const { return w_; }
+    void SetKpGains(const Vector &Kp_vec) { Kp_.diagonal() = Kp_vec; }
 
-    void SetTaskWeighting(double w) { w_ = w; }
+    /**
+     * @brief Set the diagonal of the Kp matrix for error output calculation
+     * 
+     * @param Kd_vec 
+     */
+    void SetKdGains(const Vector &Kd_vec) { Kd_.diagonal() = Kd_vec; }
+
+    /**
+     * @brief Diagonal matrix for task weight matrix
+     *
+     * @return const DiagonalMatrix&
+     */
+    const DiagonalMatrix &TaskWeightMatrix() const { return W_; }
+
+    /**
+     * @brief Sets the diagonal of the weighting matrix W
+     * 
+     * @param W 
+     */
+    void SetTaskWeightMatrix(const Vector &W_vec) { W_.diagonal() = W_vec; }
 
     void SetReference(const Vector &r);
     void SetReference(const Vector &r, const Vector &dr);
     void SetReference(const Vector &r, const Vector &dr, const Vector &ddr);
-
-    void SetErrorGains(const Vector &Kp, const Vector &Kd) {
-        LOG(INFO) << Kp.size();
-        LOG(INFO) << dim();
-        assert(Kp.size() == dim() && "Kp gains are the incorrect dimension");
-        assert(Kd.size() == dim() && "Kd gains are the incorrect dimension");
-        Kp_ = Kp;
-        Kd_ = Kd;
-    }
-
-    void SetErrorGains(const Vector &Kp) {
-        Kp_ = Kp;
-        Kd_.setZero();
-    }
 
     /**
      * @brief Returns the PD error e = Kp (x - r) + Kd (dx - dr)
@@ -139,8 +145,6 @@ class Task {
 
    protected:
     Dimension dim_;
-    Dimension nq_;
-    Dimension nv_;
 
     Vector x_;    // Task
     Vector dx_;   // Task velocity
@@ -156,8 +160,8 @@ class Task {
 
     Vector pd_out_;  // PD error output
 
-    Matrix J_;     // Task jacobian
-    Vector Jdot_qdot_;  // Task jacobian time derivative and velocity product
+    Matrix J_;       // Task jacobian
+    Vector dJdt_v_;  // Task jacobian time derivative and velocity product
 
    private:
     std::string name_;
@@ -165,10 +169,10 @@ class Task {
     // Starting index in task vector
     Index start_;
 
-    Scalar w_;  // Task weighting
+    DiagonalMatrix W_;  // Task weighting diagonal matrix
 
-    Vector Kp_;  // Proportional gains for task-error computation
-    Vector Kd_;  // Derivative gains for task-error computation
+    DiagonalMatrix Kp_;  // Proportional gains for task-error computation
+    DiagonalMatrix Kd_;  // Derivative gains for task-error computation
 
     TaskCallbackFunction callback_;
 

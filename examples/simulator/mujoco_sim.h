@@ -85,6 +85,10 @@ class MujocoSimulator {
         mju_printMat(M, m_->nv, m_->nv);
     };
 
+    // Give user access to model and data structs
+    mjModel* m_;      // MuJoCo model
+    mjData* d_;       // MuJoCo data
+
    private:
     // Determines if the system has been iniitalised
     bool is_init_ = false;
@@ -96,8 +100,6 @@ class MujocoSimulator {
     GLFWwindow* window_;
 
     // MuJoCo data structures
-    mjModel* m_;      // MuJoCo model
-    mjData* d_;       // MuJoCo data
     mjvCamera cam_;   // abstract camera
     mjvOption opt_;   // visualization options
     mjvScene scn_;    // abstract scene

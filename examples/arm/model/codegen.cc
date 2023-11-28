@@ -4,9 +4,12 @@ int main(int argc, char* argv[]) {
     CodeGenerator cg("./arm.urdf");
     cg.SetCodeGenerationDestination(argv[1]);
 
+    // Compute inertia matrix
     cg.GenerateInertiaMatrix();
+    // Compute bias vector
     cg.GenerateBiasVector();
 
+    // Task for tip
     cg.GenerateEndEffectorData("tip",
                                "wrist", "third_link",
                                Eigen::Vector3d(0, 0, -1.0),
@@ -21,19 +24,16 @@ int main(int argc, char* argv[]) {
     B(model.joints[model.getJointId("wrist")].idx_v(), 2) = 1.0;
 
     cg.GenerateCode("actuation_matrix",
-                    {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()},
+                    {cg.GetQposSX(), cg.GetQvelSX()},
                     {B});
 
     // Constraint for wrist and elbow
-    casadi::SX c =
-        cg.GetConfigurationVectorSX()(model.joints[model.getJointId("wrist")].idx_q());
-        //  -
-        // 2.0 * cg.GetConfigurationVectorSX()(model.joints[model.getJointId("elbow")].idx_q());
-    casadi::SX Jc = jacobian(c, cg.GetConfigurationVectorSX());
-    casadi::SX dJcdq = mtimes(jacobian(mtimes(Jc, cg.GetTangentVectorSX()), cg.GetConfigurationVectorSX()), cg.GetTangentVectorSX());
+    casadi::SX c = cg.GetQposSX()(model.joints[model.getJointId("wrist")].idx_q());
+    casadi::SX Jc = jacobian(c, cg.GetQposSX());
+    casadi::SX dJcdq = mtimes(jacobian(mtimes(Jc, cg.GetQvelSX()), cg.GetQposSX()), cg.GetQvelSX());
 
     cg.GenerateCode("constraint",
-                    {cg.GetConfigurationVectorSX(), cg.GetTangentVectorSX()},
+                    {cg.GetQposSX(), cg.GetQvelSX()},
                     {c, densify(Jc), densify(dJcdq)});
 
     return 0;

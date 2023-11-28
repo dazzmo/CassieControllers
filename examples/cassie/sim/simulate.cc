@@ -1,48 +1,67 @@
-#include <cstdio>
-#include <cstring>
+#include "simulate.h"
 
-#include "controller/osc_leg.h"
-#include "mujoco_sim.h"
+int main() {
 
-int main(int argc, const char** argv) {
+    // Initialise logging
     google::InitGoogleLogging("simulate");
     FLAGS_logtostderr = 1;
 
-    // Create simulator
+    // Create simulator and load model
     MujocoSimulator& sim = MujocoSimulator::getInstance();
-
     sim.LoadModel("./agility_cassie/scene.xml");
     sim.Init();
 
-    // make controller
-    const double freq = 2e2;
-    CassieLegOSC* c = new CassieLegOSC();
-    if (c->Init() != ControllerStatus::SUCCESS) {
-        mju_error("Could not initialise controller");
-    }
-    c->SetControlFrequency(freq);
+    // Set controller options
+    controller::osc::Options opt;
+    opt.frequency = 500.0;
+    opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
 
-    mjtNum t_ctrl = sim.GetSimulatorTime();
+    // Create an operational space controller model for Cassie leg
+    CassieLegOSC leg_ctrl;
+    controller::osc::OperationalSpaceController ctrl(leg_ctrl, opt);
+    ctrl.Init();
+    ctrl.SetControlWeighting(Eigen::Vector<double, 5>(1e-6, 1e-6, 1e-6, 1e-6, 1e-6));
+
+    // Set the initial pose for Cassie
+    init_cassie_model(sim);
+
+    // Simulate the model
+    double real_start;
+    double sim_start;
+    double t_ctrl = sim.GetSimulatorTime();
+
     while (!sim.WindowShouldClose()) {
-        mjtNum simstart = sim.GetSimulatorTime();
-        while (sim.GetSimulatorTime() - simstart < 1.0 / 60.0) {
-            // Apply control at desired frequency
-            if (sim.GetSimulatorTime() - t_ctrl > 1.0 / freq) {
-                c->MapMujocoState(sim.GetModelConfiguration(), sim.GetModelVelocity());
-                std::cout << "qacc (sim): ";
-                for (int i = 0; i < sim.GetModelNv(); i++) {
-                    std::cout << *(sim.GetModelAcceleration() + i) << '\t';
-                }
-                std::cout << '\n';
-                c->Update(sim.GetSimulatorTime());
-                t_ctrl = sim.GetSimulatorTime();
-            }
 
-            sim.ApplyControl(c->ctrl().data(), c->nu());
-            sim.ForwardStep();
+        // Render at 60 Hz and make sure simulator and real-time are in sync
+        real_start = real_time_seconds();
+        sim_start = sim.GetSimulatorTime();
+        while (real_time_seconds() - real_start < SIM_REFERESH_RATE) {
+            if (sim.GetSimulatorTime() - sim_start < SIM_REFERESH_RATE) {
+
+                // Apply controller at desired frequency within simulator
+                if (sim.GetSimulatorTime() - t_ctrl > 1.0 / opt.frequency) {
+
+                    // Update model state
+                    ctrl.GetModel().UpdateState(leg_ctrl.size().nq, sim.GetModelConfiguration(),
+                                                leg_ctrl.size().nv, sim.GetModelVelocity());
+
+                    // Compute controls
+                    ctrl.UpdateControl(sim.GetSimulatorTime(), 
+                                       ctrl.GetModel().state().q,
+                                       ctrl.GetModel().state().v);
+
+                    // Update timer and log
+                    t_ctrl = sim.GetSimulatorTime();
+                    LOG(INFO) << "u: " << ctrl.ControlOutput().transpose();
+                }
+
+                // Apply controls and step forward
+                sim.ApplyControl(ctrl.ControlOutput().data(), ctrl.GetModel().size().nu);
+                sim.ForwardStep();
+            } 
         }
         sim.UpdateSceneAndRender();
-    }
+    } 
 
     return 0;
 }

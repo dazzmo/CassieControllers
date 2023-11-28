@@ -1,9 +1,14 @@
 #include "controllers/osc/tasks/joint_limits_task.h"
 
+using namespace controller;
 using namespace controller::osc;
 
-JointLimitsTask::JointLimitsTask(const std::string &name, const DynamicModel::Size &sz) : Task("joint limits", 2 * sz.nq, sz) {
+JointLimitsTask::JointLimitsTask(const DynamicModel::Size &sz) : Task("joint limits", 2 * sz.nq, sz) {
     beta_ = 0.5;
+
+    nq_ = sz.nq;
+    nv_ = sz.nv;
+
     zeta_ = Vector::Zero(sz.nq);
     qmin_ = ConfigurationVector::Zero(sz.nq);
     qmax_ = ConfigurationVector::Zero(sz.nq);
@@ -16,12 +21,12 @@ JointLimitsTask::JointLimitsTask(const std::string &name, const DynamicModel::Si
  * @param q
  * @param qmin
  * @param qmax
- * @return double
+ * @return Scalar
  */
-double JointLimitsTask::TransitionFunction(double q, double qmin, double qmax) {
-    double zeta = 1.0;
-    double qmax_tilde = qmax - beta_;
-    double qmin_tilde = qmin + beta_;
+Scalar JointLimitsTask::TransitionFunction(Scalar q, Scalar qmin, Scalar qmax) {
+    Scalar zeta = 1.0;
+    Scalar qmax_tilde = qmax - beta_;
+    Scalar qmin_tilde = qmin + beta_;
 
     if (q >= qmax) {
         zeta = 1.0;
@@ -38,7 +43,7 @@ double JointLimitsTask::TransitionFunction(double q, double qmin, double qmax) {
     return zeta;
 }
 
-void JointLimitsTask::UpdateTask(const Vector &q, const Vector &v) {
+void JointLimitsTask::Update(const Vector &q, const Vector &v) {
     // Joint Limit and Velocity
     for (int i = 0; i < nq_; ++i) {
         zeta_[i] = TransitionFunction(q[i], qmin_[i], qmax_[i]);
@@ -51,8 +56,8 @@ void JointLimitsTask::UpdateTask(const Vector &q, const Vector &v) {
     for (int i = 0; i < nq_; ++i) {
         J_(i, i) = -zeta_[i];
         J_(nq_ + i, i) = zeta_[i];
-        Jdot_qdot_[i] = 0.0;
-        Jdot_qdot_[nq_ + i] = 0.0;
+        dJdt_v_[i] = 0.0;
+        dJdt_v_[nq_ + i] = 0.0;
     }
 
     // Compute task velocity
@@ -64,6 +69,6 @@ void JointLimitsTask::UpdateTask(const Vector &q, const Vector &v) {
     de_ = dx_;
 
     // Compute output
-    pd_out_.topRows(nq_) = Kp().asDiagonal() * e_.topRows(nq_) + Kd().asDiagonal() * de_.topRows(nq_);
-    pd_out_.bottomRows(nq_) = Kp().asDiagonal() * e_.bottomRows(nq_) + Kd().asDiagonal() * de_.bottomRows(nq_);
+    pd_out_.topRows(nq_) = Kp() * e_.topRows(nq_) + Kd() * de_.topRows(nq_);
+    pd_out_.bottomRows(nq_) = Kp() * e_.bottomRows(nq_) + Kd() * de_.bottomRows(nq_);
 }

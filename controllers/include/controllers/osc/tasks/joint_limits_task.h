@@ -17,20 +17,24 @@ namespace osc {
 
 class JointLimitsTask : public Task {
    public:
-    JointLimitsTask(const std::string &name, const DynamicModel::Size &sz);
+    JointLimitsTask(const DynamicModel::Size &sz);
 
     void SetUpperPositionLimit(const ConfigurationVector &qmax) { qmax_ = qmax; }
     void SetLowerPositionLimit(const ConfigurationVector &qmin) { qmin_ = qmin; }
 
-    void UpdateTask(const Vector &q, const Vector &v);
+    void Update(const Vector &q, const Vector &v);
 
    private:
-    double beta_ = 1.0;
+    Scalar beta_ = 1.0;
+    
+    Dimension nq_;
+    Dimension nv_;
+    
     Vector zeta_;
     ConfigurationVector qmin_;
     ConfigurationVector qmax_;
 
-    double TransitionFunction(double q, double qmin, double qmax);
+    Scalar TransitionFunction(Scalar q, Scalar qmin, Scalar qmax);
 };
 
 }  // namespace osc

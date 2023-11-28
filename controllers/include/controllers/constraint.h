@@ -1,5 +1,5 @@
-#ifndef INCLUDE_CONTROLLERS_Constraint_HPP
-#define INCLUDE_CONTROLLERS_Constraint_HPP
+#ifndef INCLUDE_CONTROLLERS_CONSTRAINT_HPP
+#define INCLUDE_CONTROLLERS_CONSTRAINT_HPP
 
 #include <glog/logging.h>
 
@@ -13,7 +13,7 @@ namespace controller {
 class Constraint {
    public:
     typedef void (*ConstraintCallbackFunction)(const Vector &q, const Vector &v,
-                                               Vector &c, Matrix &J, Vector &Jdot_qdot);
+                                               Vector &c, Matrix &J, Vector &dJdt_v);
 
     Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz);
     Constraint(const std::string &name, Dimension n, const DynamicModel::Size &sz, ConstraintCallbackFunction callback);
@@ -45,7 +45,7 @@ class Constraint {
      * @brief Constraint jacobian time derivative with velocity (ndim x 1)
      *
      */
-    const Vector &Jdot_qdot() const { return Jdot_qdot_; }
+    const Vector &dJdt_v() const { return dJdt_v_; }
 
     /**
      * @brief Constraint forces
@@ -73,16 +73,15 @@ class Constraint {
     virtual void Update(const ConfigurationVector &q, const TangentVector &v);
 
    protected:
+    // Constraint dimension
     Dimension dim_;
-    Dimension nq_;
-    Dimension nv_;
 
     // Indexing
     Index start_;
 
-    Vector c_;     // Constraint
-    Matrix J_;     // Constraint jacobian
-    Vector Jdot_qdot_;  // Constraint jacobian time derivative and velocity product
+    Vector c_;       // Constraint
+    Matrix J_;       // Constraint jacobian
+    Vector dJdt_v_;  // Constraint jacobian time derivative and velocity product
 
     Vector lambda_;  // Constraint force
 
@@ -96,4 +95,4 @@ class Constraint {
 
 }  // namespace controller
 
-#endif /* INCLUDE_CONTROLLERS_Constraint_HPP */
+#endif /* INCLUDE_CONTROLLERS_CONSTRAINT_HPP */

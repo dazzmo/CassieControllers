@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 # project(controllers)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(Eigen3 3.3 REQUIRED)
@@ -18,7 +18,12 @@ file(GLOB_RECURSE SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc
 )
 
+# Not finding qpOASES on mac
 add_library(controllers SHARED ${INCLUDE} ${SRC})
-target_link_libraries(controllers PUBLIC Eigen3::Eigen glog::glog qpOASES)
+if (APPLE)
+    target_link_libraries(controllers PUBLIC Eigen3::Eigen glog::glog /usr/local/lib/libqpOASES.dylib)
+elseif (UNIX)
+    target_link_libraries(controllers PUBLIC Eigen3::Eigen glog::glog qpOASES)
+endif ()
 target_include_directories(controllers PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 set_target_properties(controllers PROPERTIES LINKER_LANGUAGE CXX)
