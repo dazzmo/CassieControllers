@@ -1,4 +1,5 @@
 # Cassie
+
 ## Cassie Simulation
 To run the simulation with the controller, you must execute the following command:
 `./cassie_simulator <path to "agility_cassie/scene.xml">`

@@ -33,7 +33,7 @@ int CassieLegOSC::HeelSpringDeflection() {
     const int max_iter = 50;
     for (int i = 0; i < max_iter; i++) {
         // Perform least-squares estimation
-        cassie_heel_spring_constraint(in, out, NULL, NULL, 0);
+        cassie_achilles_rod_constraint(in, out, NULL, NULL, 0); // TODO: Use the class
         // Update
         hs -= (J.transpose() * J).inverse() * J.transpose() * e;
         // Update heel spring estimates in joint vector
@@ -104,7 +104,7 @@ int CassieLegOSC::InverseKinematics(ConfigurationVector &qpos, const Vector3 &x_
         // Compute end-effector jacobian
         cassie_ankle(in, out_ankle, NULL, NULL, 0);
         // Compute constraint jacobian and hessian
-        cassie_heel_spring_constraint(in, out_constraint, NULL, NULL, 0);
+        cassie_achilles_rod_constraint(in, out_constraint, NULL, NULL, 0); // TODO: Use the class
 
         // Compute FK error
         Eigen::VectorXd e = x_i - x_d;
