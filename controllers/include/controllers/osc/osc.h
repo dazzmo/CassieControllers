@@ -9,8 +9,9 @@
 
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/QR"
+#include "eigen3/Eigen/Cholesky"
 
-#include "controllers/acc_limits.h"
+// #include "controllers/acc_limits.h" (include this later if needed)
 #include "controllers/controller.h"
 #include "controllers/optimisation/qpoases_data.h"
 #include "controllers/optimisation/subvector.h"

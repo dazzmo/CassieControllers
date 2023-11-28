@@ -117,48 +117,51 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
                 .middleRows(c.second->start(), c.second->dim())
                 .middleCols(x_->qacc.start, x_->qacc.sz) = c.second->J();
 
-            qp_data_->ubA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v(); // TODO: Should upper bound be positive? Or is it a >= thing?
+            qp_data_->ubA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v();
             qp_data_->lbA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v();
         }
     }
 
     // ==== Dynamics constraints ====
     // Mass matrix
-    qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz)
-        .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M; // TODO: What does this do?
+    // lbA <= A x <= ubA
+    // M qacc + h = B u
+    qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz)
+        .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M;
 
-    if (ncp > 0) {
-        Matrix invM = m_.dynamics().M; // TODO: Shouldn't this be the INVERSE of the mass matrix? (But how to do efficiently?)
-        Matrix JMJT = Jcp_ * invM * Jcp_.transpose();
+    if (ncp > 0) { // Projected constraints
+        // TODO: Damian to fix inverse mass matrix and make this nice
+        Eigen::LDLT<Eigen::MatrixXd> Mldlt = m_.dynamics().M.ldlt();
+        Matrix JMJT = Jcp_ * Mldlt.solve(Jcp_.transpose());
         Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
 
         // Compute null space matrix
-        N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * invM;
+        N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * Mldlt.solve(Matrix::Identity(m_.size().nv, m_.size().nv));
 
         // Equality bounds
-        qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_; // TODO: What about other forces here?
-        qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
+        qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
+        qp_data_->lbA.middleRows(c_->dynamics.start, c_->dynamics.sz) = qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz);
 
-    } else {
+    } else { // Holonomic constraints
         N_ = Matrix::Identity(m_.size().nv, m_.size().nv);
 
         // Equality bounds
-        qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h;
-        qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
+        qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz) = -N_ * m_.dynamics().h;
+        qp_data_->lbA.middleRows(c_->dynamics.start, c_->dynamics.sz) = qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz);
     }
 
     // End effector forces
     for (auto const& ee : m_.GetEndEffectorTaskMap()) {
-        qp_data_->A.topRows(m_.size().nv).middleCols(x_->lambda_c.start + ee.second->start(), ee.second->dim()) = -N_ * ee.second->J().transpose();
+        qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz).middleCols(x_->lambda_c.start + ee.second->start(), ee.second->dim()) = -N_ * ee.second->J().transpose();
     }
 
     // Holonomic constraint forces
     for (auto const& c : m_.GetHolonomicConstraintMap()) {
-        qp_data_->A.topRows(m_.size().nv).middleCols(x_->lambda_h.start + c.second->start(), c.second->dim()) = -N_ * c.second->J().transpose();
+        qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz).middleCols(x_->lambda_h.start + c.second->start(), c.second->dim()) = -N_ * c.second->J().transpose();
     }
 
     // Actuation
-    qp_data_->A.topRows(m_.size().nv).middleCols(x_->ctrl.start, x_->ctrl.sz) = -N_ * m_.dynamics().B;
+    qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz).middleCols(x_->ctrl.start, x_->ctrl.sz) = -N_ * m_.dynamics().B;
 
     // Reset cost
     qp_data_->H.setZero();

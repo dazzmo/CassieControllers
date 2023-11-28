@@ -48,12 +48,13 @@ class CassieLegOSC : public osc::Model {
         // Joint damping (NO CONTROL ON TOES CURRENTLY)
         joint_track_task_ = new osc::JointTrackTask(this->size());
         AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task_));
-        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5));
+        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1, 1, 1, 1, 1, 1, 1, 1));
         GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(0, 0, 0, 0, 0, 0, 0, 0));
-        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(0, 0, 0, 0, 0, 0, 0, 0));
+        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1, 1, 1, 1, 1, 1, 1, 1));
 
         // Add constraint
         AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
+        // AddProjectedConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
     }
     ~CassieLegOSC() = default;
 
