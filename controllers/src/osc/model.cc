@@ -39,6 +39,8 @@ void Model::AddTask(const std::string &name, const std::shared_ptr<Task> &task) 
 /**
  * @brief Adds a three-dimensional end-effector task, where callback is a function with inputs
  * (q, v) and outputs the task, its jacobian and its time derivative-velocity product (i.e. (x, J, dJdt_v))
+ * TODO: Should make clear that function should be callback(q, v, x, J, dJdt_v) where the last 3 arguments
+ * get overwritten, not returned as outputs.
  *
  * @param name
  * @param callback
@@ -56,6 +58,8 @@ void Model::AddEndEffectorTask(const std::string &name, Task::TaskCallbackFuncti
 /**
  * @brief Adds a holonomic constraint to the model where the constriant forces associated with
  * the constraint are solved for explicitly within the optimisation.
+ * TODO: Should make clear that function should be callback(q, v, c, J, dJdt_v) where the last 3 arguments
+ * get overwritten.
  *
  * @param name
  * @param n
@@ -73,6 +77,8 @@ void Model::AddHolonomicConstraint(const std::string &name, Dimension n, Constra
 /**
  * @brief Adds a constraint to the model that the dynamic constriants will be projected into
  * (i.e. constraint forces are anaytically determined before optimisation)
+ * TODO: Should make clear that function should be callback(q, v, c, J, dJdt_v) where the last 3 arguments
+ * get overwritten.
  *
  * @param name
  * @param n

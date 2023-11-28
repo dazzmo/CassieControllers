@@ -7,6 +7,9 @@
 #include <qpOASES.hpp>
 #include <utility>
 
+#include "eigen3/Eigen/Core"
+#include "eigen3/Eigen/QR"
+
 #include "controllers/acc_limits.h"
 #include "controllers/controller.h"
 #include "controllers/optimisation/qpoases_data.h"
@@ -16,8 +19,6 @@
 #include "controllers/osc/tasks/end_effector_task.h"
 #include "controllers/osc/tasks/task.h"
 #include "controllers/types.h"
-#include "eigen3/Eigen/Core"
-#include "eigen3/Eigen/QR"
 
 namespace controller {
 namespace osc {

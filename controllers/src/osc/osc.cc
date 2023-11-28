@@ -39,6 +39,7 @@ void OperationalSpaceController::Init() {
 
     // Create optimisation vector
     x_ = new OptimisationVector(m_.size(), m_.GetNumberOfContacts(), m_.GetNumberOfHolonomicConstraints());
+
     // Create constraint vector
     c_ = new ConstraintVector(m_.size(), m_.GetNumberOfContacts(), m_.GetNumberOfHolonomicConstraints());
 
@@ -85,11 +86,13 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // Update model dynamics
     m_.UpdateModel(q, v);
+
     // Update references
     m_.UpdateReferences(time, q, v);
 
     // Number of projected constraints in problem
     Dimension ncp = m_.GetNumberOfProjectedConstraints();
+
     // Number of holonomic constraints in problem
     Dimension nch = m_.GetNumberOfHolonomicConstraints();
 
@@ -128,14 +131,17 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         Matrix invM = m_.dynamics().M;
         Matrix JMJT = Jcp_ * invM * Jcp_.transpose();
         Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
+
         // Compute null space matrix
         N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * invM;
+
         // Equality bounds
         qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
         qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
 
     } else {
         N_ = Matrix::Identity(m_.size().nv, m_.size().nv);
+
         // Equality bounds
         qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h;
         qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
@@ -161,10 +167,13 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // ==== Task cost addition ==== //
     for (auto const& task : m_.GetTaskMap()) {
         task.second->Update(q, v);
+
         // Task weighting matrix
         const DiagonalMatrix& W = task.second->TaskWeightMatrix();
+        
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
+        
         // Task constant vector
         Vector a = task.second->dJdt_v() + task.second->ErrorOutputPD();
 
@@ -176,12 +185,16 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // ==== End-effector task cost addition ==== //
     for (auto const& task : m_.GetEndEffectorTaskMap()) {
+        
         // Update the task
         task.second->Update(q, v);
+        
         // Task weighting matrix
         const DiagonalMatrix& W = task.second->TaskWeightMatrix();
+        
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
+        
         // Task constant vector
         Vector3 a = task.second->dJdt_v() + task.second->ErrorOutputPD();
 
@@ -209,8 +222,10 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     }
 
     // ==== Solving ==== //
+
     // Set maximum number of working set recalculations
     int nWSR = opt_.max_number_working_set_recalculations;
+    
     // Pre-multiply H by 2 to account for the expected form in qpOASES as 0.5 * x^T * H * x
     qp_data_->H *= 2.0;
 
