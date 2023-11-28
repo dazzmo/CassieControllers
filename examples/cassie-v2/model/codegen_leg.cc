@@ -125,14 +125,14 @@ int main(int argc, char* argv[]) {
     // Add to damping forces
     // TODO: Could do this more nicely with a diagonal matrix
     CodeGenerator::TangentVectorAD damping(model.nv);
-    damping(cg.GetJointIdv("LeftHipRoll"))        = d_lhiproll    * cg.GetQposSX()(cg.GetJointIdv("LeftHipRoll"));
-    damping(cg.GetJointIdv("LeftHipYaw"))         = d_lhipyaw     * cg.GetQposSX()(cg.GetJointIdv("LeftHipYaw"));
-    damping(cg.GetJointIdv("LeftHipPitch"))       = d_lhippitch   * cg.GetQposSX()(cg.GetJointIdv("LeftHipPitch"));
-    damping(cg.GetJointIdv("LeftKneePitch"))      = d_lknee       * cg.GetQposSX()(cg.GetJointIdv("LeftKneePitch"));
-    damping(cg.GetJointIdv("LeftShinPitch"))      = d_lshinspring * cg.GetQposSX()(cg.GetJointIdv("LeftShinPitch"));
-    damping(cg.GetJointIdv("LeftTarsusPitch"))    = d_ltarsus     * cg.GetQposSX()(cg.GetJointIdv("LeftTarsusPitch"));
-    damping(cg.GetJointIdv("LeftAchillesSpring")) = d_lheelspring * cg.GetQposSX()(cg.GetJointIdv("LeftAchillesSpring"));
-    damping(cg.GetJointIdv("LeftFootPitch"))      = d_lfoot       * cg.GetQposSX()(cg.GetJointIdv("LeftFootPitch"));
+    damping(cg.GetJointIdv("LeftHipRoll"))        = d_lhiproll    * cg.GetQvelSX()(cg.GetJointIdv("LeftHipRoll"));
+    damping(cg.GetJointIdv("LeftHipYaw"))         = d_lhipyaw     * cg.GetQvelSX()(cg.GetJointIdv("LeftHipYaw"));
+    damping(cg.GetJointIdv("LeftHipPitch"))       = d_lhippitch   * cg.GetQvelSX()(cg.GetJointIdv("LeftHipPitch"));
+    damping(cg.GetJointIdv("LeftKneePitch"))      = d_lknee       * cg.GetQvelSX()(cg.GetJointIdv("LeftKneePitch"));
+    damping(cg.GetJointIdv("LeftShinPitch"))      = d_lshinspring * cg.GetQvelSX()(cg.GetJointIdv("LeftShinPitch"));
+    damping(cg.GetJointIdv("LeftTarsusPitch"))    = d_ltarsus     * cg.GetQvelSX()(cg.GetJointIdv("LeftTarsusPitch"));
+    damping(cg.GetJointIdv("LeftAchillesSpring")) = d_lheelspring * cg.GetQvelSX()(cg.GetJointIdv("LeftAchillesSpring"));
+    damping(cg.GetJointIdv("LeftFootPitch"))      = d_lfoot       * cg.GetQvelSX()(cg.GetJointIdv("LeftFootPitch"));
 
     // Add damping forces to bias vector
     h += damping;
