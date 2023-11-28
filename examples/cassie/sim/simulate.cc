@@ -20,7 +20,6 @@ int main() {
     CassieLegOSC leg_ctrl;
     controller::osc::OperationalSpaceController ctrl(leg_ctrl, opt);
     ctrl.Init();
-    ctrl.SetControlWeighting(Eigen::Vector<double, 5>(1e-6, 1e-6, 1e-6, 1e-6, 1e-6));
 
     // Set the initial pose for Cassie
     init_cassie_model(sim);

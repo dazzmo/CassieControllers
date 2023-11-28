@@ -38,6 +38,9 @@ class CassieLegOSC : public osc::Model {
         bounds().vmax.setConstant(1e2);
         bounds().amax.setConstant(1e20);
 
+        // Set control weights in cost function
+        SetControlWeighting(Eigen::Vector<Scalar, CASSIE_LEG_NU>(1, 1, 1, 1, 1));
+
         // Add ankle tracking task
         // TODO: Choose weights
         AddTask("ankle", 3, &CassieLegOSC::AnklePositionTask);

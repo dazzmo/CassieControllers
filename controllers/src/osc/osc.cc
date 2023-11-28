@@ -10,9 +10,9 @@ OperationalSpaceController::OperationalSpaceController(const Model& model, const
     qp_data_ = nullptr;
     qp_ = nullptr;
 
-    // Initialise any weights
+    // Initialise control output weights
     Wu_.resize(m_.size().nu);
-    Wu_.diagonal().setZero();
+    SetControlWeighting(m_.GetControlWeighting());
 }
 
 /**
