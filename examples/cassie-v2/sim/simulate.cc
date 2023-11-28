@@ -14,7 +14,7 @@ int main() {
     // Set controller options
     controller::osc::Options opt;
     opt.frequency = 500.0;
-    opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
+    opt.qpoases_print_level = qpOASES::PrintLevel::PL_DEBUG_ITER;
 
     // Create an operational space controller model for Cassie leg
     CassieLegOSC leg_ctrl;
@@ -46,11 +46,11 @@ int main() {
                                                 leg_ctrl.size().nv, sim.GetModelVelocity());
 
                     // Compute controls
-                    LOG(INFO) << "MADE IT TO HERE?";
+                    LOG(INFO) << "BEFORE COMPUTING CONTROLS";
                     ctrl.UpdateControl(sim.GetSimulatorTime(), 
                                        ctrl.GetModel().state().q,
                                        ctrl.GetModel().state().v);
-                    LOG(INFO) << "MADE IT TO HERE!";
+                    LOG(INFO) << "AFTER COMPUTING CONTROLS";
 
                     // Update timer and log
                     t_ctrl = sim.GetSimulatorTime();
