@@ -117,7 +117,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
                 .middleRows(c.second->start(), c.second->dim())
                 .middleCols(x_->qacc.start, x_->qacc.sz) = c.second->J();
 
-            qp_data_->ubA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v();
+            qp_data_->ubA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v(); // TODO: Should upper bound be positive? Or is it a >= thing?
             qp_data_->lbA.bottomRows(nch).middleRows(c.second->start(), c.second->dim()) = -c.second->dJdt_v();
         }
     }
@@ -125,10 +125,10 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // ==== Dynamics constraints ====
     // Mass matrix
     qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz)
-        .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M;
+        .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M; // TODO: What does this do?
 
     if (ncp > 0) {
-        Matrix invM = m_.dynamics().M;
+        Matrix invM = m_.dynamics().M; // TODO: Shouldn't this be the INVERSE of the mass matrix?
         Matrix JMJT = Jcp_ * invM * Jcp_.transpose();
         Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
 
@@ -136,7 +136,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * invM;
 
         // Equality bounds
-        qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
+        qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_; // TODO: What about other forces here?
         qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
 
     } else {
@@ -175,7 +175,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         const Matrix& A = task.second->J();
         
         // Task constant vector
-        Vector a = task.second->dJdt_v() + task.second->ErrorOutputPD();
+        Vector a = task.second->dJdt_v() + task.second->ErrorOutputPD(); // TODO: WHat's the task constant vector?
 
         // Add to objective
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
@@ -218,7 +218,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // ==== Torque regularisation cost addition ==== //
     for (int i = 0; i < m_.size().nu; ++i) {
         Index idx = x_->ctrl.start + i;
-        qp_data_->H(idx, idx) += Wu_.diagonal()[i];
+        qp_data_->H(idx, idx) += Wu_.diagonal()[i]; // TODO: Double-check
     }
 
     // ==== Solving ==== //
@@ -254,11 +254,11 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // Get solution
     qp_->getPrimalSolution(qp_data_->x.data());
-    // qp_data_->cost += qp_->get
+    // qp_data_->cost += qp_->get // TODO: Is this needed?
 
     // Extract solution components
     x_->Extract(qp_data_->x);
-    c_->Extract(qp_data_->x);
+    c_->Extract(qp_data_->x); // TODO: Should this be c not x?
 
-    u_ = ApplyPrescale(time) * x_->ctrl.vec;
+    u_ = ApplyPrescale(time) * x_->ctrl.vec; // TODO: Do we actually need the pre-scale? Might want to remove it, but not doing any harm at the moment
 }

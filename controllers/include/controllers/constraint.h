@@ -59,7 +59,7 @@ class Constraint {
      *
      * @return Vector&
      */
-    Vector &lambda() { return lambda_; }
+    Vector &lambda() { return lambda_; } // TODO: Do we need this one and the const Vector version above it?
 
     void SetStartIndex(Index idx) { start_ = idx; }
 
