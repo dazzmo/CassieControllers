@@ -94,41 +94,48 @@ int main(int argc, char* argv[]) {
 
     // Spring dynamics parameters. Commented values from:
     // https://github.com/jpreher/cassie_description/blob/master/MATLAB/Cassie_v4.m#L193
-    // Currently-used values from the cassie.xml MuJoCo model (but added small nonzero for heel)
+    // Currently-used values from the cassie.xml MuJoCo model
     // Values will depend on which springs are currently attached to Cassie
-    CodeGenerator::TangentVectorAD spring_forces = CodeGenerator::TangentVectorAD::Zero(model.nv);
     double k_knee_stiffness = 1500; //2300.0;
     double k_heel_stiffness = 1250; //2000.0;
-    double b_knee_damping = 0.1;    //4.6;
-    double b_heel_damping = 0.001;  //4.0;
 
     // Extract joint coordinates of springs
     casadi::SX q_knee = cg.GetQposSX()(cg.GetJointIdq("LeftShinPitch"));
     casadi::SX q_heel = cg.GetQposSX()(cg.GetJointIdq("LeftAchillesSpring"));
 
-    casadi::SX v_knee = cg.GetQvelSX()(cg.GetJointIdv("LeftShinPitch"));
-    casadi::SX v_heel = cg.GetQvelSX()(cg.GetJointIdv("LeftAchillesSpring"));
-
     // Add to spring forces
-    spring_forces(cg.GetJointIdv("LeftShinPitch")) = k_knee_stiffness * (q_knee) + b_knee_damping * (v_knee);
-    spring_forces(cg.GetJointIdv("LeftAchillesSpring")) = k_heel_stiffness * (q_heel) + b_heel_damping * (v_heel);
+    CodeGenerator::TangentVectorAD spring_forces = CodeGenerator::TangentVectorAD::Zero(model.nv);
+    spring_forces(cg.GetJointIdv("LeftShinPitch")) = k_knee_stiffness * (q_knee);
+    spring_forces(cg.GetJointIdv("LeftAchillesSpring")) = k_heel_stiffness * (q_heel);
 
     // Add spring forces to bias vector
-    h += spring_forces; // TODO: Subtract?
+    h += spring_forces;
 
-    // Damping forces
+    // Damping forces (from MuJoCo model, cassie.xml)
+    // Commented values from same source as springs
+    double d_lhiproll     = 1.0;
+    double d_lhipyaw      = 1.0;
+    double d_lhippitch    = 1.0;
+    double d_lknee        = 1.0;
+    double d_lshinspring  = 0.1;     //4.6
+    double d_ltarsus      = 0.1;
+    double d_lheelspring  = 0.001;   //4.0
+    double d_lfoot        = 1.0;
+
+    // Add to damping forces
+    // TODO: Could do this more nicely with a diagonal matrix
     CodeGenerator::TangentVectorAD damping(model.nv);
-    damping(cg.GetJointIdv("LeftHipRoll")) = 10.0;
-    damping(cg.GetJointIdv("LeftHipYaw")) = 1.0;
-    damping(cg.GetJointIdv("LeftHipPitch")) = 1.0;
-    damping(cg.GetJointIdv("LeftKneePitch")) = 1.0;
-    damping(cg.GetJointIdv("LeftShinPitch")) = 0.1;
-    damping(cg.GetJointIdv("LeftTarsusPitch")) = 0.1;
-    damping(cg.GetJointIdv("LeftAchillesSpring")) = 0.0;
-    damping(cg.GetJointIdv("LeftFootPitch")) = 1.0;
+    damping(cg.GetJointIdv("LeftHipRoll"))        = d_lhiproll    * cg.GetQposSX()(cg.GetJointIdv("LeftHipRoll"));
+    damping(cg.GetJointIdv("LeftHipYaw"))         = d_lhipyaw     * cg.GetQposSX()(cg.GetJointIdv("LeftHipYaw"));
+    damping(cg.GetJointIdv("LeftHipPitch"))       = d_lhippitch   * cg.GetQposSX()(cg.GetJointIdv("LeftHipPitch"));
+    damping(cg.GetJointIdv("LeftKneePitch"))      = d_lknee       * cg.GetQposSX()(cg.GetJointIdv("LeftKneePitch"));
+    damping(cg.GetJointIdv("LeftShinPitch"))      = d_lshinspring * cg.GetQposSX()(cg.GetJointIdv("LeftShinPitch"));
+    damping(cg.GetJointIdv("LeftTarsusPitch"))    = d_ltarsus     * cg.GetQposSX()(cg.GetJointIdv("LeftTarsusPitch"));
+    damping(cg.GetJointIdv("LeftAchillesSpring")) = d_lheelspring * cg.GetQposSX()(cg.GetJointIdv("LeftAchillesSpring"));
+    damping(cg.GetJointIdv("LeftFootPitch"))      = d_lfoot       * cg.GetQposSX()(cg.GetJointIdv("LeftFootPitch"));
 
     // Add damping forces to bias vector
-    h += damping; // TODO: Subtract?
+    h += damping;
 
     // Generate code for bias vector
     casadi::SX h_sx;
