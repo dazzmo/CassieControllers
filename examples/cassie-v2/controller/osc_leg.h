@@ -35,31 +35,22 @@ class CassieLegOSC : public osc::Model {
         bounds().qmin << -0.3927, -0.3927, -0.8727, -2.8623, -0.3, 0.75, -0.3, -2.4435;
         bounds().qmax << 0.3927, 0.3927, 1.3963, -0.95, 0.3, 3.0, 0.3, -0.5236;
         bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9; // TODO: This is without gear ratio. Is ok?
-        bounds().vmax.setConstant(1e1);
+        bounds().vmax.setConstant(1e2);
         bounds().amax.setConstant(1e20);
 
         // Add ankle tracking task
         // TODO: Choose weights
         AddTask("ankle", 3, &CassieLegOSC::AnklePositionTask);
-        GetTask("ankle")->SetTaskWeightMatrix(Vector3(1e-5, 1e-5, 1e-5));
-        GetTask("ankle")->SetKpGains(Vector3(0, 0, 0));
-        GetTask("ankle")->SetKdGains(Vector3(0, 0, 0));
+        GetTask("ankle")->SetTaskWeightMatrix(Vector3(1e0, 1e0, 1e0));
+        GetTask("ankle")->SetKpGains(Vector3(100, 100, 100));
+        GetTask("ankle")->SetKdGains(Vector3(1, 1, 1));
 
         // Joint damping (NO CONTROL ON TOES CURRENTLY)
         joint_track_task_ = new osc::JointTrackTask(this->size());
         AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task_));
-        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
-        GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(100, 100, 100, 200, 0.0, 200, 0.0, 0));
-        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(2, 2, 1e0, 2, 5, 0, 5, 0));
-
-        // Joint limits
-        // joint_limits_task_ = new osc::JointLimitsTask(this->size());
-        // joint_limits_task_->SetLowerPositionLimit(bounds().qmin);
-        // joint_limits_task_->SetUpperPositionLimit(bounds().qmax);
-        // AddTask("joint limits", std::shared_ptr<controller::osc::Task>(joint_limits_task_));
-        // GetTask("joint limits")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
-        // GetTask("joint limits")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
-        // GetTask("joint limits")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0, 1e0));
+        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5));
+        GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(0, 0, 0, 0, 0, 0, 0, 0));
+        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(0, 0, 0, 0, 0, 0, 0, 0));
 
         // Add constraint
         AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
@@ -69,6 +60,8 @@ class CassieLegOSC : public osc::Model {
     // Function that gets called every time control is updated
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
         GetTask("ankle")->SetReference(Vector3(0.0, 0.2, -0.5));
+        // std::cout << GetTask("ankle") -> x() << std::endl;
+
         // Compute IK for leg
         ConfigurationVector qd = q;
         InverseKinematics(qd, Vector3(0, 0.2, -0.5), q);
