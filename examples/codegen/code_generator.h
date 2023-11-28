@@ -28,18 +28,24 @@ class CodeGenerator {
     typedef ADModel::ConfigVectorType ConfigVectorAD;
     typedef ADModel::TangentVectorType TangentVectorAD;
 
+    // Constructors and destructor
     CodeGenerator() = default;
     ~CodeGenerator() = default;
 
     CodeGenerator(const std::string &model_urdf);
 
     // Setters and Getters
-
     ADModel &GetModel() { return *model_; }
     ADData &GetData() { return *data_; }
 
-    casadi::SX &GetConfigurationVectorSX() { return q_sx_; }
-    casadi::SX &GetTangentVectorSX() { return v_sx_; }
+    ConfigVectorAD &GetQpos() { return q_; }
+    TangentVectorAD &GetQvel() { return v_; }
+
+    casadi::SX &GetQposSX() { return q_sx_; }
+    casadi::SX &GetQvelSX() { return v_sx_; }
+
+    int GetJointIdq(const std::string &name) {return model_->joints[model_->getJointId(name)].idx_q(); }
+    int GetJointIdv(const std::string &name) {return model_->joints[model_->getJointId(name)].idx_v(); }
 
     void SetCodeGenerationDestination(const std::string &dest) { cg_dest_ = dest; }
 
@@ -48,6 +54,9 @@ class CodeGenerator {
     // Dynamics
     int GenerateInertiaMatrix();
     int GenerateBiasVector();
+    int AddReferenceFrame(const std::string &name,
+                          const std::string &parent_joint, const std::string &parent_frame,
+                          const Eigen::Vector3d &r, const Eigen::Matrix3d &R);
     int GenerateEndEffectorData(const std::string &name,
                                 const std::string &parent_joint, const std::string &parent_frame,
                                 const Eigen::Vector3d &r, const Eigen::Matrix3d &R);
