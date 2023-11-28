@@ -69,6 +69,6 @@ void JointLimitsTask::Update(const Vector &q, const Vector &v) {
     de_ = dx_;
 
     // Compute output
-    pd_out_.topRows(nq_) = Kp() * e_.topRows(nq_) + Kd() * de_.topRows(nq_);
-    pd_out_.bottomRows(nq_) = Kp() * e_.bottomRows(nq_) + Kd() * de_.bottomRows(nq_);
+    pd_out_.topRows(nq_) = -(Kp() * e_.topRows(nq_) + Kd() * de_.topRows(nq_));
+    pd_out_.bottomRows(nq_) = -(Kp() * e_.bottomRows(nq_) + Kd() * de_.bottomRows(nq_));
 }

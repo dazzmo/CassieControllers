@@ -25,5 +25,5 @@ void JointTrackTask::Update(const Vector &q, const Vector &v) {
     de_ = dx_ - dr_;
 
     // Output
-    pd_out_ = Kp() * e_ + Kd() * de_;
+    pd_out_ = -(Kp() * e_ + Kd() * de_);
 }

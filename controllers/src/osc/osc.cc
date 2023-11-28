@@ -199,7 +199,8 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
         Vector3 a = task.second->ddr() - task.second->dJdt_v() + task.second->ErrorOutputPD();
 
-        // Add to objective (|| A qacc - a ||^2)
+        // Add to objective 0.5 * x^t H x + g^T x + c
+        // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
         qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
         qp_data_->cost_const += (W * a).dot(a);
