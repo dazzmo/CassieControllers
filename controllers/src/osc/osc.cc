@@ -128,7 +128,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M; // TODO: What does this do?
 
     if (ncp > 0) {
-        Matrix invM = m_.dynamics().M; // TODO: Shouldn't this be the INVERSE of the mass matrix?
+        Matrix invM = m_.dynamics().M; // TODO: Shouldn't this be the INVERSE of the mass matrix? (But how to do efficiently?)
         Matrix JMJT = Jcp_ * invM * Jcp_.transpose();
         Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
 
