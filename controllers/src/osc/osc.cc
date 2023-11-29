@@ -56,6 +56,7 @@ void OperationalSpaceController::Init() {
     }
 
     // Acceleration bounds
+    // TODO: Use start index for generality
     for (int i = 0; i < m_.size().nv; ++i) {
         qp_data_->ubx[i] = m_.bounds().amax[i];
         qp_data_->lbx[i] = -m_.bounds().amax[i];
@@ -224,12 +225,6 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
             qp_data_->lbx.middleRows(idx, dim) << -qpOASES::ZERO, -qpOASES::ZERO, -qpOASES::ZERO;
         }
     }
-
-    LOG(INFO) << "qacc:     " << x_->qacc.start;
-    LOG(INFO) << "ctrl:     " << x_->ctrl.start;
-    LOG(INFO) << "lambda_c: " << x_->lambda_c.start;
-    LOG(INFO) << "lambda_h: " << x_->lambda_h.start;
-    LOG(INFO) << "dynamics: " << c_->dynamics.start;
 
     // ==== Torque regularisation cost addition ==== //
     for (int i = 0; i < m_.size().nu; ++i) {
