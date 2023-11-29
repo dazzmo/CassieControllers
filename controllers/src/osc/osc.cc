@@ -170,6 +170,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // Reset cost
     qp_data_->H.setZero();
     qp_data_->g.setZero();
+    qp_data_->cost_const = 0.0; // TODO: This is not actually used by the solver
 
     // ==== Task cost addition ==== //
     for (auto const& task : m_.GetTaskMap()) {
@@ -188,7 +189,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
         qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
-        qp_data_->cost_const += (W * a).dot(a);
+        qp_data_->cost_const += (W * a).dot(a); // TODO: This is not actually used by the solver
     }
 
     // ==== End-effector task cost addition ==== //
@@ -210,7 +211,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
         qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
-        qp_data_->cost_const += (W * a).dot(a);
+        qp_data_->cost_const += (W * a).dot(a); // TODO: This is not actually used by the solver
 
         // Contact
         Dimension dim = task.second->dim();
@@ -223,6 +224,12 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
             qp_data_->lbx.middleRows(idx, dim) << -qpOASES::ZERO, -qpOASES::ZERO, -qpOASES::ZERO;
         }
     }
+
+    LOG(INFO) << "qacc:     " << x_->qacc.start;
+    LOG(INFO) << "ctrl:     " << x_->ctrl.start;
+    LOG(INFO) << "lambda_c: " << x_->lambda_c.start;
+    LOG(INFO) << "lambda_h: " << x_->lambda_h.start;
+    LOG(INFO) << "dynamics: " << c_->dynamics.start;
 
     // ==== Torque regularisation cost addition ==== //
     for (int i = 0; i < m_.size().nu; ++i) {
