@@ -130,9 +130,11 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M;
 
     if (ncp > 0) { // Projected constraints
+
         // Compute LDLT decomposition of M
         Eigen::LDLT<Eigen::MatrixXd> Mldlt = m_.dynamics().M.ldlt();
-        // Inverse of the mass matrix
+
+        // Inverse of the mass matrix and pseudo-inv of projector
         Eigen::MatrixXd Minv = Mldlt.solve(Eigen::MatrixXd::Identity(m_.size().nv, m_.size().nv));
         Matrix JMJT = Jcp_ * Minv * Jcp_.transpose();
         Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
@@ -225,7 +227,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // ==== Torque regularisation cost addition ==== //
     for (int i = 0; i < m_.size().nu; ++i) {
         Index idx = x_->ctrl.start + i;
-        qp_data_->H(idx, idx) += Wu_.diagonal()[i]; // TODO: Double-check
+        qp_data_->H(idx, idx) += Wu_.diagonal()[i];
     }
 
     // ==== Solving ==== //
