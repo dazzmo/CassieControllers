@@ -257,13 +257,11 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         throw std::runtime_error("OSC has failed to solve current QP");
     }
 
-    // Get solution
+    // Get solution and data
     qp_->getPrimalSolution(qp_data_->x.data());
-    // qp_data_->cost_const += qp_->get // TODO: Is this needed?
-
-    // Extract solution components
+    // qp_data_->cost_const += qp_->get // TODO: Store cost from qpOASES
     x_->Extract(qp_data_->x);
-    c_->Extract(qp_data_->x); // TODO: Should this be c not x?
 
-    u_ = ApplyPrescale(time) * x_->ctrl.vec; // TODO: Do we actually need the pre-scale? Might want to remove it, but not doing any harm at the moment
+    // Ramp torque up/down if required
+    u_ = ApplyPrescale(time) * x_->ctrl.vec;
 }
