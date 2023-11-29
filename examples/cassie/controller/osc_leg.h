@@ -56,8 +56,8 @@ class CassieLegOSC : public osc::Model {
         GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1, 1, 1, 1, 1, 1, 1, 1));
 
         // Add constraint
-        AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
-        // AddProjectedConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
+        // AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
+        AddProjectedConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
     }
     ~CassieLegOSC() = default;
 

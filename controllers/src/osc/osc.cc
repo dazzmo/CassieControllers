@@ -130,13 +130,15 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M;
 
     if (ncp > 0) { // Projected constraints
-        // TODO: Damian to fix inverse mass matrix and make this nice
+        // Compute LDLT decomposition of M
         Eigen::LDLT<Eigen::MatrixXd> Mldlt = m_.dynamics().M.ldlt();
-        Matrix JMJT = Jcp_ * Mldlt.solve(Jcp_.transpose());
+        // Inverse of the mass matrix
+        Eigen::MatrixXd Minv = Mldlt.solve(Eigen::MatrixXd::Identity(m_.size().nv, m_.size().nv));
+        Matrix JMJT = Jcp_ * Minv * Jcp_.transpose();
         Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
 
-        // Compute null space matrix
-        N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * Mldlt.solve(Matrix::Identity(m_.size().nv, m_.size().nv));
+        // Compute null space projector
+        N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * Minv;
 
         // Equality bounds
         qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
