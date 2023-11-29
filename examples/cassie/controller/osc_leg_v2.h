@@ -48,18 +48,18 @@ class CassieLegOSC2 : public osc::Model {
         // Add task for tracking ankle in 3D space
         AddTask("ankle", 3, &CassieLegOSC2::AnklePositionTask);
         GetTask("ankle")->SetTaskWeightMatrix(Vector3(1, 1, 1));
-        GetTask("ankle")->SetKpGains(Vector3(10, 10, 10));
-        GetTask("ankle")->SetKdGains(Vector3(1, 1, 1));
+        GetTask("ankle")->SetKpGains(Vector3(0, 0, 0));
+        GetTask("ankle")->SetKdGains(Vector3(0, 0, 0));
 
         // Joint damping
         joint_track_task_ = new osc::JointTrackTask(this->size());
         AddTask("joint damp", std::shared_ptr<controller::osc::Task>(joint_track_task_));
         GetTask("joint damp")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1, 1, 1, 1, 1, 1, 1, 1));
-        GetTask("joint damp")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1, 1, 1, 1, 1, 1, 1, 1));
+        GetTask("joint damp")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(0, 0, 0, 0, 0, 0, 0, 0));
 
         // Add kinematic constraint
-        // AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC2::RigidBarConstraint);
-        AddProjectedConstraint("rigid bar", 1, &CassieLegOSC2::RigidBarConstraint);
+        AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC2::RigidBarConstraint);
+        // AddProjectedConstraint("rigid bar", 1, &CassieLegOSC2::RigidBarConstraint);
     }
     ~CassieLegOSC2() = default;
 
