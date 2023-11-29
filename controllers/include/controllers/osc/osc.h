@@ -35,7 +35,7 @@ class OperationalSpaceController : public Controller {
     void SetControlWeighting(const Vector& W) { 
         assert(W.size() == m_.size().nu && "Weighting diagonal is not correct length");
         Wu_.diagonal() = W; 
-        }
+    }
 
     void Init();
     void UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v);

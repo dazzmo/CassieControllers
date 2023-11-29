@@ -7,6 +7,9 @@ Model::Model(const DynamicModel::Size &sz) : DynamicModel(sz) {
     ncontacts_ = 0;
     nholonomic_constraints_ = 0;
     nprojected_constraints_ = 0;
+    
+    Wu_.resize(this->size().nu);
+    Wu_.diagonal().setZero();
 }
 
 /**
