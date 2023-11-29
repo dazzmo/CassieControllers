@@ -51,7 +51,7 @@ int main() {
 
                     // Update timer and log
                     t_ctrl = sim.GetSimulatorTime();
-                    LOG(INFO) << "u: " << ctrl.ControlOutput().transpose();
+                    // LOG(INFO) << "u: " << ctrl.ControlOutput().transpose();
                 }
 
                 // Apply controls and step forward

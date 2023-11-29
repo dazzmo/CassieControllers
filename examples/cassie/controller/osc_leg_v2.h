@@ -66,6 +66,7 @@ class CassieLegOSC2 : public osc::Model {
     // Update the references for any tasks
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
         GetTask("ankle")->SetReference(Vector3(-0.020, 0.135, -0.8));
+        // LOG(INFO) << "Ankle tracking PD error: " << GetTask("ankle")->ErrorOutputPD().transpose();
     }
 
     // Update controller state

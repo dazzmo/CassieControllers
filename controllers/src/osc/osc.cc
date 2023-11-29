@@ -263,8 +263,8 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // Get solution and data
     qp_->getPrimalSolution(qp_data_->x.data());
-    // qp_data_->cost_const += qp_->get // TODO: Store cost from qpOASES
     x_->Extract(qp_data_->x);
+    LOG(INFO) << "qpOASES objective value: " << qp_->getObjVal(); // log cost
 
     // Ramp torque up/down if required
     u_ = ApplyPrescale(time) * x_->ctrl.vec;
