@@ -10,9 +10,9 @@ OperationalSpaceController::OperationalSpaceController(const Model& model, const
     qp_data_ = nullptr;
     qp_ = nullptr;
 
-    // Initialise any weights
+    // Initialise weights on control outputs
     Wu_.resize(m_.size().nu);
-    Wu_.diagonal().setZero();
+    SetControlWeighting(m_.GetControlWeighting());
 }
 
 /**
@@ -39,6 +39,7 @@ void OperationalSpaceController::Init() {
 
     // Create optimisation vector
     x_ = new OptimisationVector(m_.size(), m_.GetNumberOfContacts(), m_.GetNumberOfHolonomicConstraints());
+
     // Create constraint vector
     c_ = new ConstraintVector(m_.size(), m_.GetNumberOfContacts(), m_.GetNumberOfHolonomicConstraints());
 
@@ -85,11 +86,13 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // Update model dynamics
     m_.UpdateModel(q, v);
+
     // Update references
     m_.UpdateReferences(time, q, v);
 
     // Number of projected constraints in problem
     Dimension ncp = m_.GetNumberOfProjectedConstraints();
+
     // Number of holonomic constraints in problem
     Dimension nch = m_.GetNumberOfHolonomicConstraints();
 
@@ -121,38 +124,48 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // ==== Dynamics constraints ====
     // Mass matrix
-    qp_data_->A.middleRows(x_->qacc.start, x_->qacc.sz)
+    // lbA <= A x <= ubA
+    // M qacc + h = B u
+    qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz)
         .middleCols(x_->qacc.start, x_->qacc.sz) = m_.dynamics().M;
 
-    if (ncp > 0) {
-        Matrix invM = m_.dynamics().M;
-        Matrix JMJT = Jcp_ * invM * Jcp_.transpose();
-        Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
-        // Compute null space matrix
-        N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * invM;
-        // Equality bounds
-        qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
-        qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
+    if (ncp > 0) { // Projected constraints
 
-    } else {
-        N_ = Matrix::Identity(m_.size().nv, m_.size().nv);
+        // Compute LDLT decomposition of M
+        Eigen::LDLT<Eigen::MatrixXd> Mldlt = m_.dynamics().M.ldlt();
+
+        // Inverse of the mass matrix and pseudo-inv of projector
+        Eigen::MatrixXd Minv = Mldlt.solve(Eigen::MatrixXd::Identity(m_.size().nv, m_.size().nv));
+        Matrix JMJT = Jcp_ * Minv * Jcp_.transpose();
+        Matrix pinvJMJT = JMJT.completeOrthogonalDecomposition().pseudoInverse();
+
+        // Compute null space projector
+        N_ = Matrix::Identity(m_.size().nv, m_.size().nv) - Jcp_.transpose() * pinvJMJT * Jcp_ * Minv;
+
         // Equality bounds
-        qp_data_->ubA.topRows(m_.size().nv) = -N_ * m_.dynamics().h;
-        qp_data_->lbA.topRows(m_.size().nv) = qp_data_->ubA.topRows(m_.size().nv);
+        qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
+        qp_data_->lbA.middleRows(c_->dynamics.start, c_->dynamics.sz) = qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz);
+
+    } else { // Holonomic constraints
+        N_ = Matrix::Identity(m_.size().nv, m_.size().nv);
+
+        // Equality bounds
+        qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz) = -N_ * m_.dynamics().h;
+        qp_data_->lbA.middleRows(c_->dynamics.start, c_->dynamics.sz) = qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz);
     }
 
     // End effector forces
     for (auto const& ee : m_.GetEndEffectorTaskMap()) {
-        qp_data_->A.topRows(m_.size().nv).middleCols(x_->lambda_c.start + ee.second->start(), ee.second->dim()) = -N_ * ee.second->J().transpose();
+        qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz).middleCols(x_->lambda_c.start + ee.second->start(), ee.second->dim()) = -N_ * ee.second->J().transpose();
     }
 
     // Holonomic constraint forces
     for (auto const& c : m_.GetHolonomicConstraintMap()) {
-        qp_data_->A.topRows(m_.size().nv).middleCols(x_->lambda_h.start + c.second->start(), c.second->dim()) = -N_ * c.second->J().transpose();
+        qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz).middleCols(x_->lambda_h.start + c.second->start(), c.second->dim()) = -N_ * c.second->J().transpose();
     }
 
     // Actuation
-    qp_data_->A.topRows(m_.size().nv).middleCols(x_->ctrl.start, x_->ctrl.sz) = -N_ * m_.dynamics().B;
+    qp_data_->A.middleRows(c_->dynamics.start, c_->dynamics.sz).middleCols(x_->ctrl.start, x_->ctrl.sz) = -N_ * m_.dynamics().B;
 
     // Reset cost
     qp_data_->H.setZero();
@@ -161,34 +174,43 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // ==== Task cost addition ==== //
     for (auto const& task : m_.GetTaskMap()) {
         task.second->Update(q, v);
+
         // Task weighting matrix
         const DiagonalMatrix& W = task.second->TaskWeightMatrix();
+        
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
-        // Task constant vector
-        Vector a = task.second->dJdt_v() + task.second->ErrorOutputPD();
+        
+        // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
+        Vector a = task.second->ddr() - task.second->dJdt_v() + task.second->ErrorOutputPD();
 
-        // Add to objective
+        // Add to objective 0.5 * x^t H x + g^T x + c
+        // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * A.transpose() * W * a;
-        qp_data_->cost += (W * a).dot(a);
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
+        qp_data_->cost_const += (W * a).dot(a);
     }
 
     // ==== End-effector task cost addition ==== //
     for (auto const& task : m_.GetEndEffectorTaskMap()) {
+        
         // Update the task
         task.second->Update(q, v);
+        
         // Task weighting matrix
         const DiagonalMatrix& W = task.second->TaskWeightMatrix();
+        
         // Task jacobian in qacc
         const Matrix& A = task.second->J();
-        // Task constant vector
-        Vector3 a = task.second->dJdt_v() + task.second->ErrorOutputPD();
+        
+        // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
+        Vector3 a = task.second->ddr() - task.second->dJdt_v() + task.second->ErrorOutputPD();
 
-        // Add to objective
+        // Add to objective 0.5 * x^t H x + g^T x + c
+        // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) += 2.0 * A.transpose() * W * a;
-        qp_data_->cost += (W * a).dot(a);
+        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
+        qp_data_->cost_const += (W * a).dot(a);
 
         // Contact
         Dimension dim = task.second->dim();
@@ -209,8 +231,10 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     }
 
     // ==== Solving ==== //
+
     // Set maximum number of working set recalculations
     int nWSR = opt_.max_number_working_set_recalculations;
+    
     // Pre-multiply H by 2 to account for the expected form in qpOASES as 0.5 * x^T * H * x
     qp_data_->H *= 2.0;
 
@@ -237,13 +261,11 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         throw std::runtime_error("OSC has failed to solve current QP");
     }
 
-    // Get solution
+    // Get solution and data
     qp_->getPrimalSolution(qp_data_->x.data());
-    // qp_data_->cost += qp_->get
-
-    // Extract solution components
+    // qp_data_->cost_const += qp_->get // TODO: Store cost from qpOASES
     x_->Extract(qp_data_->x);
-    c_->Extract(qp_data_->x);
 
+    // Ramp torque up/down if required
     u_ = ApplyPrescale(time) * x_->ctrl.vec;
 }

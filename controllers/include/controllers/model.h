@@ -33,11 +33,9 @@ class DynamicModel {
         State(const Size &sz) {
             q = ConfigurationVector::Zero(sz.nq);
             v = TangentVector::Zero(sz.nv);
-            a = TangentVector::Zero(sz.nv);
         }
         ConfigurationVector q;
         TangentVector v;
-        TangentVector a;
     };
 
     struct Bounds {

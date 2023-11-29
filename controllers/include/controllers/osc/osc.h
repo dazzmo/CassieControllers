@@ -7,7 +7,11 @@
 #include <qpOASES.hpp>
 #include <utility>
 
-#include "controllers/acc_limits.h"
+#include "eigen3/Eigen/Core"
+#include "eigen3/Eigen/QR"
+#include "eigen3/Eigen/Cholesky"
+
+// #include "controllers/acc_limits.h" (include this later if needed)
 #include "controllers/controller.h"
 #include "controllers/optimisation/qpoases_data.h"
 #include "controllers/optimisation/subvector.h"
@@ -16,8 +20,6 @@
 #include "controllers/osc/tasks/end_effector_task.h"
 #include "controllers/osc/tasks/task.h"
 #include "controllers/types.h"
-#include "eigen3/Eigen/Core"
-#include "eigen3/Eigen/QR"
 
 namespace controller {
 namespace osc {
@@ -33,7 +35,7 @@ class OperationalSpaceController : public Controller {
     void SetControlWeighting(const Vector& W) { 
         assert(W.size() == m_.size().nu && "Weighting diagonal is not correct length");
         Wu_.diagonal() = W; 
-        }
+    }
 
     void Init();
     void UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v);

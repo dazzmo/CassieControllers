@@ -38,6 +38,9 @@ class CassieLegOSC : public osc::Model {
         bounds().vmax.setConstant(1e2);
         bounds().amax.setConstant(1e20);
 
+        // Set control weights in cost function
+        SetControlWeighting(Eigen::Vector<Scalar, CASSIE_LEG_NU>(1, 1, 1, 1, 1));
+
         // Add ankle tracking task
         // TODO: Choose weights
         AddTask("ankle", 3, &CassieLegOSC::AnklePositionTask);
@@ -48,12 +51,13 @@ class CassieLegOSC : public osc::Model {
         // Joint damping (NO CONTROL ON TOES CURRENTLY)
         joint_track_task_ = new osc::JointTrackTask(this->size());
         AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task_));
-        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5));
+        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1, 1, 1, 1, 1, 1, 1, 1));
         GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(0, 0, 0, 0, 0, 0, 0, 0));
-        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(0, 0, 0, 0, 0, 0, 0, 0));
+        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1, 1, 1, 1, 1, 1, 1, 1));
 
         // Add constraint
-        AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
+        // AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
+        AddProjectedConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
     }
     ~CassieLegOSC() = default;
 

@@ -94,7 +94,7 @@ class Task {
     void SetKpGains(const Vector &Kp_vec) { Kp_.diagonal() = Kp_vec; }
 
     /**
-     * @brief Set the diagonal of the Kp matrix for error output calculation
+     * @brief Set the diagonal of the Kd matrix for error output calculation
      * 
      * @param Kd_vec 
      */
@@ -138,8 +138,6 @@ class Task {
      * @return const Index
      */
     const Index start() const { return start_; }
-
-    // void PrintTaskData();
 
     virtual void Update(const ConfigurationVector &q, const TangentVector &v);
 

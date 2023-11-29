@@ -77,5 +77,5 @@ void Task::Update(const ConfigurationVector &q, const TangentVector &v) {
     de_ = dx_ - dr_;
 
     // Compute PD error
-    pd_out_ = Kp_ * e_ + Kd_ * de_;
+    pd_out_ = -(Kp_ * e_ + Kd_ * de_);
 }
