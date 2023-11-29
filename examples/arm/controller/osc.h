@@ -30,8 +30,10 @@ class ArmModel : public osc::Model {
         bounds().vmax.setConstant(1e1);
         bounds().amax.setConstant(1e6);
 
-        // Add tasks here
+        // Set control weights in cost function
+        SetControlWeighting(Eigen::Vector<Scalar, ARM_MODEL_NU>(1, 1, 1));
 
+        // Add tasks here
         AddTask("tip", 3, &ArmModel::TipPositionTask);
         GetTask("tip")->SetTaskWeightMatrix(Vector3(1.0, 1.0, 1.0));
         GetTask("tip")->SetKpGains(Vector3(0.0, 1e2, 1e2));
@@ -41,7 +43,7 @@ class ArmModel : public osc::Model {
         joint_track_task = new osc::JointTrackTask(this->size());
         AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task));
         GetTask("joint track")->SetTaskWeightMatrix(Vector3(1.0, 1.0, 1.0));
-        GetTask("joint track")->SetKdGains(Vector3(1.0, 1.0, 1.0));
+        GetTask("joint track")->SetKdGains(Vector3(5.0, 5.0, 5.0));
     }
 
     // Function that gets called every time control is updated

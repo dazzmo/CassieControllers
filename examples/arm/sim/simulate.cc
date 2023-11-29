@@ -33,7 +33,6 @@ int main(int argc, const char** argv) {
     opt.frequency = 500.0;
     controller::osc::OperationalSpaceController c(arm, opt);
     c.Init();
-    c.SetControlWeighting(Eigen::Vector<double, 3>(1e0, 1e-6, 1e-6));
 
     // Simulate the model
     double t_ctrl = sim.GetSimulatorTime();
