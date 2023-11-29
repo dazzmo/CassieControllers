@@ -48,7 +48,12 @@ class ArmModel : public osc::Model {
 
     // Function that gets called every time control is updated
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        GetTask("tip")->SetReference(Vector3(0.0, 1.0, -1.0));
+        // GetTask("tip")->SetReference(Vector3(0.0, 1.0, -1.0));
+        double phase = 2.0*M_PI/4.0*time;
+        double xpos = 0.0;
+        double ypos = 1.0 - 1.0*sin(phase);
+        double zpos = -1.0 + 1.0*cos(phase);
+        GetTask("tip")->SetReference(Vector3(xpos, ypos, zpos));
         GetTask("joint track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
     }
 
