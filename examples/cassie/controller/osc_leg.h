@@ -34,7 +34,7 @@ class CassieLegOSC : public osc::Model {
         initial_state().q << 0.00449956, 0, 0.497301, -1.1997, 0, 1.42671, 0.0, -1.59681;
         bounds().qmin << -0.3927, -0.3927, -0.8727, -2.8623, -0.3, 0.75, -0.3, -2.4435;
         bounds().qmax << 0.3927, 0.3927, 1.3963, -0.95, 0.3, 3.0, 0.3, -0.5236;
-        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9; // TODO: This is without gear ratio. Is ok?
+        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9;
         bounds().vmax.setConstant(1e2);
         bounds().amax.setConstant(1e20);
 
