@@ -147,7 +147,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
         qp_data_->lbA.middleRows(c_->dynamics.start, c_->dynamics.sz) = qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz);
 
-    } else { // Holonomic constraints
+    } else { // Holonomic constraints / no constraints
         N_ = Matrix::Identity(m_.size().nv, m_.size().nv);
 
         // Equality bounds
