@@ -43,24 +43,33 @@ class CassieLegOSC2 : public osc::Model {
         bounds().vmax << 12.15, 12.15, 8.5, 8.5, 20, 20, 20, 11.52; // From cassie.urdf
         bounds().amax.setConstant(1e4);                             // This is a guess
 
+        // Some weights
+        double ctrl_weight = 1e-3;
+        double ankle_weight = 1e0;
+        double damp_weight = 1e-4;
+
+        double ankle_kp = 50.0;
+        double ankle_kd = 5.0;
+        double damp_kd = 10.0;
+
         // Set control weights in cost function
-        SetControlWeighting(Eigen::Vector<Scalar, CASSIE_LEG_NU>(1, 1, 1, 1, 1));
+        SetControlWeighting(Eigen::Vector<Scalar, CASSIE_LEG_NU>(ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight));
 
         // Add task for tracking ankle in 3D space
         AddTask("ankle", 3, &CassieLegOSC2::AnklePositionTask);
-        GetTask("ankle")->SetTaskWeightMatrix(Vector3(1, 1, 1));
-        GetTask("ankle")->SetKpGains(Vector3(0, 0, 0));
-        GetTask("ankle")->SetKdGains(Vector3(0, 0, 0));
+        GetTask("ankle")->SetTaskWeightMatrix(Vector3(ankle_weight, ankle_weight, ankle_weight));
+        GetTask("ankle")->SetKpGains(Vector3(ankle_kp, ankle_kp, ankle_kp));
+        GetTask("ankle")->SetKdGains(Vector3(ankle_kd, ankle_kd, ankle_kd));
 
         // Joint damping
         joint_track_task_ = new osc::JointTrackTask(this->size());
         AddTask("joint damp", std::shared_ptr<controller::osc::Task>(joint_track_task_));
-        GetTask("joint damp")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1, 1, 1, 1, 1, 1, 1, 1));
-        GetTask("joint damp")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(0, 0, 0, 0, 0, 0, 0, 0));
+        GetTask("joint damp")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight));
+        GetTask("joint damp")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(damp_kd, damp_kd, damp_kd, damp_kd, 0, damp_kd, 0, damp_kd));
 
         // Add kinematic constraint
-        AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC2::RigidBarConstraint);
-        // AddProjectedConstraint("rigid bar", 1, &CassieLegOSC2::RigidBarConstraint);
+        AddHolonomicConstraint("rigid bar", 3, &CassieLegOSC2::RigidBarConstraint);
+        // AddProjectedConstraint("rigid bar", 3, &CassieLegOSC2::RigidBarConstraint);
     }
     ~CassieLegOSC2() = default;
 
