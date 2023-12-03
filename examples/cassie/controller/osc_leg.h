@@ -75,10 +75,17 @@ class CassieLegOSC : public osc::Model {
 
     // Update the references for any tasks
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        GetTask("ankle")->SetReference(Vector3(-0.020, 0.135, -0.8));
-        // GetTask("ankle")->SetReference(Vector3(0.1 + 0.3 * cos(-2 * time), 0.1, -0.7 + 0.3 * sin(-2 * time)));
-        LOG(INFO) << "Ankle position: " << GetTask("ankle")->x().transpose() << std::endl;
-        LOG(INFO) << "Ankle tracking PD error: " << GetTask("ankle")->ErrorOutputPD().transpose();
+        // GetTask("ankle")->SetReference(Vector3(-0.020, 0.135, -0.8));
+
+        double phase = -2.0*M_PI/4.0*time;
+        double xpos = 0.0 + 0.2*cos(phase);
+        double ypos = 0.1;
+        double zpos = -0.7 + 0.2*sin(phase);
+        
+        GetTask("ankle")->SetReference(Vector3(xpos, ypos, zpos));
+
+        LOG(INFO) << "Ankle position: " << GetTask("ankle")->x().transpose();
+        LOG(INFO) << "Ankle tracking error: " << GetTask("ankle")->e().transpose();
     }
 
     // Update controller state
@@ -99,7 +106,6 @@ class CassieLegOSC : public osc::Model {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {c.data(), J.data(), dJdt_v.data(), nullptr};
         cassie_achilles_rod_constraint(in, out, NULL, NULL, 0);
-        LOG(INFO) << "c: " << c.transpose();
     }
 
     // Dynamics

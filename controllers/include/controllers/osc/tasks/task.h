@@ -63,6 +63,22 @@ class Task {
     const Vector &ddr() const { return ddr_; }
 
     /**
+     * @brief Task tracking error
+     *
+     */
+    const Vector &e() const { return e_; }
+    /**
+     * @brief Task tracking error velocity
+     *
+     */
+    const Vector &de() const { return de_; }
+    /**
+     * @brief Task tracking error acceleration
+     *
+     */
+    const Vector &dde() const { return dde_; }
+
+    /**
      * @brief Task jacobian (ndim x nv)
      *
      */
