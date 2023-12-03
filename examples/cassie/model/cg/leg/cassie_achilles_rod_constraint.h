@@ -34,9 +34,9 @@ const casadi_int* cassie_achilles_rod_constraint_sparsity_in(casadi_int i);
 const casadi_int* cassie_achilles_rod_constraint_sparsity_out(casadi_int i);
 int cassie_achilles_rod_constraint_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
 #define cassie_achilles_rod_constraint_SZ_ARG 2
-#define cassie_achilles_rod_constraint_SZ_RES 4
+#define cassie_achilles_rod_constraint_SZ_RES 3
 #define cassie_achilles_rod_constraint_SZ_IW 0
-#define cassie_achilles_rod_constraint_SZ_W 258
+#define cassie_achilles_rod_constraint_SZ_W 238
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
