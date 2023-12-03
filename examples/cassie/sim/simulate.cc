@@ -17,7 +17,7 @@ int main() {
     opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
 
     // Create an operational space controller model for Cassie leg
-    CassieLegOSC2 leg_ctrl;
+    CassieLegOSC leg_ctrl;
     controller::osc::OperationalSpaceController ctrl(leg_ctrl, opt);
     ctrl.Init();
 

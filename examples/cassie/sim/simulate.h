@@ -7,7 +7,7 @@
 #include <mujoco/mujoco.h>
 
 #include "mujoco_sim.h"
-#include "controller/osc_leg_v2.h"
+#include "controller/osc_leg.h"
 #include "controllers/osc/osc.h"
 
 const double SIM_REFERESH_RATE = 1.0 / 60.0;
