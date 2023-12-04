@@ -56,6 +56,7 @@ void OperationalSpaceController::Init() {
     }
 
     // Acceleration bounds
+    // TODO: Use start index for generality
     for (int i = 0; i < m_.size().nv; ++i) {
         qp_data_->ubx[i] = m_.bounds().amax[i];
         qp_data_->lbx[i] = -m_.bounds().amax[i];
@@ -146,7 +147,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz) = -N_ * m_.dynamics().h - Jcp_.transpose() * pinvJMJT * dJcpdq_v_;
         qp_data_->lbA.middleRows(c_->dynamics.start, c_->dynamics.sz) = qp_data_->ubA.middleRows(c_->dynamics.start, c_->dynamics.sz);
 
-    } else { // Holonomic constraints
+    } else { // Holonomic constraints / no constraints
         N_ = Matrix::Identity(m_.size().nv, m_.size().nv);
 
         // Equality bounds
@@ -170,6 +171,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // Reset cost
     qp_data_->H.setZero();
     qp_data_->g.setZero();
+    qp_data_->cost_const = 0.0; // TODO: This is not actually used by the solver
 
     // ==== Task cost addition ==== //
     for (auto const& task : m_.GetTaskMap()) {
@@ -188,7 +190,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
         qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
-        qp_data_->cost_const += (W * a).dot(a);
+        qp_data_->cost_const += (W * a).dot(a); // TODO: This is not actually used by the solver
     }
 
     // ==== End-effector task cost addition ==== //
@@ -210,7 +212,7 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
         // cost = (A qacc - a)^T W (A qacc - a)
         qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
         qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
-        qp_data_->cost_const += (W * a).dot(a);
+        qp_data_->cost_const += (W * a).dot(a); // TODO: This is not actually used by the solver
 
         // Contact
         Dimension dim = task.second->dim();
@@ -263,8 +265,8 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // Get solution and data
     qp_->getPrimalSolution(qp_data_->x.data());
-    // qp_data_->cost_const += qp_->get // TODO: Store cost from qpOASES
     x_->Extract(qp_data_->x);
+    // LOG(INFO) << "qpOASES objective value: " << qp_->getObjVal(); // log cost
 
     // Ramp torque up/down if required
     u_ = ApplyPrescale(time) * x_->ctrl.vec;

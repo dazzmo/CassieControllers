@@ -1,25 +1,24 @@
-#ifndef CASSIE_CONTROLLER_OSC_LEG_HPP
-#define CASSIE_CONTROLLER_OSC_LEG_HPP
+#ifndef OSC_LEG_HPP
+#define OSC_LEG_HPP
 
 #include <glog/logging.h>
+#include <math.h>
 
 #include "eigen3/Eigen/Cholesky"
 #include "eigen3/Eigen/Dense"
 
 // Code-generated functions
+#include "model/cg/leg/cassie_achilles_rod_constraint.h"
 #include "model/cg/leg/cassie_actuation_map.h"
 #include "model/cg/leg/cassie_ankle.h"
 #include "model/cg/leg/cassie_bias_vector.h"
-#include "model/cg/leg/cassie_foot_back.h"
-#include "model/cg/leg/cassie_foot_front.h"
-#include "model/cg/leg/cassie_achilles_rod_constraint.h"
 #include "model/cg/leg/cassie_mass_matrix.h"
 
-// OSC model include
+// OSC model
 #include "controllers/osc/model.h"
-#include "controllers/osc/tasks/joint_limits_task.h"
 #include "controllers/osc/tasks/joint_track_task.h"
 
+// Sizes
 #define CASSIE_LEG_NQ (8)
 #define CASSIE_LEG_NV (8)
 #define CASSIE_LEG_NU (5)
@@ -27,57 +26,70 @@
 using namespace controller;
 
 class CassieLegOSC : public osc::Model {
+
    public:
     CassieLegOSC() : osc::Model(DynamicModel::Size(CASSIE_LEG_NQ, CASSIE_LEG_NV, CASSIE_LEG_NU)) {
 
-        // hip roll, hip yaw, hip pitch, knee, shin, tarsus, heel spring, toe
-        initial_state().q << 0.00449956, 0, 0.497301, -1.1997, 0, 1.42671, 0.0, -1.59681;
-        bounds().qmin << -0.3927, -0.3927, -0.8727, -2.8623, -0.3, 0.75, -0.3, -2.4435;
-        bounds().qmax << 0.3927, 0.3927, 1.3963, -0.95, 0.3, 3.0, 0.3, -0.5236;
-        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9; // TODO: This is without gear ratio. Is ok?
-        bounds().vmax.setConstant(1e2);
-        bounds().amax.setConstant(1e20);
+        // Order: hip roll, yaw, pitch, knee, shin (spring), tarsus, heel spring, toe
+        initial_state().q <<  0.0045, 0.0, 0.4973, -1.1997, 0.0, 1.4267, 0.0, -1.5968;
+
+        // Add bounds (from cassie.xml, different from kinematic model on wiki)
+        bounds().qmin << -15.0, -22.5, -50.0, -164.0, -20.0,  50.0, -20.0, -140.0; 
+        bounds().qmax <<  22.5,  22.5,  80.0,  -37.0,  20.0, 170.0,  20.0,  -30.0;
+        bounds().qmin *= M_PI /180;
+        bounds().qmax *= M_PI /180;
+
+        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9;
+        bounds().vmax << 12.15, 12.15, 8.5, 8.5, 20, 20, 20, 11.52; // From cassie.urdf
+        bounds().amax.setConstant(1e4);                             // This is a guess
+
+        // Some weights
+        double ctrl_weight = 1e-3;
+        double ankle_weight = 1e0;
+        double damp_weight = 1e-4;
+
+        double ankle_kp = 50.0;
+        double ankle_kd = 5.0;
+        double damp_kd = 10.0;
 
         // Set control weights in cost function
-        SetControlWeighting(Eigen::Vector<Scalar, CASSIE_LEG_NU>(1, 1, 1, 1, 1));
+        SetControlWeighting(Eigen::Vector<Scalar, CASSIE_LEG_NU>(ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight));
 
-        // Add ankle tracking task
-        // TODO: Choose weights
+        // Add task for tracking ankle in 3D space
         AddTask("ankle", 3, &CassieLegOSC::AnklePositionTask);
-        GetTask("ankle")->SetTaskWeightMatrix(Vector3(1e0, 1e0, 1e0));
-        GetTask("ankle")->SetKpGains(Vector3(10, 10, 10));
-        GetTask("ankle")->SetKdGains(Vector3(1, 1, 1));
+        GetTask("ankle")->SetTaskWeightMatrix(Vector3(ankle_weight, ankle_weight, ankle_weight));
+        GetTask("ankle")->SetKpGains(Vector3(ankle_kp, ankle_kp, ankle_kp));
+        GetTask("ankle")->SetKdGains(Vector3(ankle_kd, ankle_kd, ankle_kd));
 
-        // Joint damping (NO CONTROL ON TOES CURRENTLY)
+        // Joint damping
         joint_track_task_ = new osc::JointTrackTask(this->size());
-        AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task_));
-        GetTask("joint track")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(1, 1, 1, 1, 1, 1, 1, 1));
-        GetTask("joint track")->SetKpGains(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(0, 0, 0, 0, 0, 0, 0, 0));
-        GetTask("joint track")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(1, 1, 1, 1, 1, 1, 1, 1));
+        AddTask("joint damp", std::shared_ptr<controller::osc::Task>(joint_track_task_));
+        GetTask("joint damp")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_LEG_NQ>(damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight));
+        GetTask("joint damp")->SetKdGains(Eigen::Vector<Scalar, CASSIE_LEG_NV>(damp_kd, damp_kd, damp_kd, damp_kd, 0, damp_kd, 0, damp_kd));
 
-        // Add constraint
-        // AddHolonomicConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
-        AddProjectedConstraint("rigid bar", 1, &CassieLegOSC::RigidBarConstraint);
+        // Add kinematic constraint
+        AddHolonomicConstraint("rigid bar", 3, &CassieLegOSC::RigidBarConstraint);
+        // AddProjectedConstraint("rigid bar", 3, &CassieLegOSC::RigidBarConstraint);
     }
     ~CassieLegOSC() = default;
 
-    // Function that gets called every time control is updated
+    // Update the references for any tasks
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        GetTask("ankle")->SetReference(Vector3(0.0, 0.2, -0.5));
-        // std::cout << GetTask("ankle") -> x() << std::endl;
+        // GetTask("ankle")->SetReference(Vector3(-0.020, 0.135, -0.8));
 
-        // Compute IK for leg
-        ConfigurationVector qd = q;
-        InverseKinematics(qd, Vector3(0, 0.2, -0.5), q);
-        LOG(INFO) << "qd: " << qd.transpose();
-        LOG(INFO) << "qa: " << q.transpose();
-        GetTask("joint track")->SetReference(qd);
+        double phase = -2.0*M_PI/4.0*time;
+        double xpos = 0.0 + 0.2*cos(phase);
+        double ypos = 0.1;
+        double zpos = -0.7 + 0.2*sin(phase);
+        
+        GetTask("ankle")->SetReference(Vector3(xpos, ypos, zpos));
+
+        LOG(INFO) << "Ankle position: " << GetTask("ankle")->x().transpose();
+        LOG(INFO) << "Ankle tracking error: " << GetTask("ankle")->e().transpose();
     }
 
+    // Update controller state
     void UpdateState(Dimension nq, const Scalar* q, Dimension nv, const Scalar* v);
-
-    int HeelSpringDeflection();
-    int InverseKinematics(Eigen::VectorXd& qpos, const Eigen::Vector3d& x_d, const Eigen::VectorXd& q0);
 
    protected:
     // Tasks
@@ -116,9 +128,7 @@ class CassieLegOSC : public osc::Model {
     }
 
    private:
-    bool ik_restart_ = true;
-    controller::osc::JointTrackTask* joint_track_task_;
-    controller::osc::JointLimitsTask* joint_limits_task_;
+    osc::JointTrackTask* joint_track_task_;
 };
 
-#endif /* CASSIE_CONTROLLER_OSC_LEG_HPP */
+#endif /* OSC_LEG_HPP */

@@ -13,7 +13,7 @@ int main() {
 
     // Set controller options
     controller::osc::Options opt;
-    opt.frequency = 500.0;
+    opt.frequency = 1000.0;
     opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
 
     // Create an operational space controller model for Cassie leg
@@ -51,7 +51,7 @@ int main() {
 
                     // Update timer and log
                     t_ctrl = sim.GetSimulatorTime();
-                    LOG(INFO) << "u: " << ctrl.ControlOutput().transpose();
+                    // LOG(INFO) << "u: " << ctrl.ControlOutput().transpose();
                 }
 
                 // Apply controls and step forward

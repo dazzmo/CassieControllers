@@ -34,9 +34,9 @@ struct QPOASESData {
 
     // Solution vector
     Vector x;
-    // Hessian matrix of objective
+    // Quadratic term in objective
     Eigen::Matrix<Scalar, -1, -1, Eigen::RowMajor> H;
-    // Gradient vector of objective
+    // Linear term in objective
     Vector g;
     // QP constraint jacobian
     Eigen::Matrix<Scalar, -1, -1, Eigen::RowMajor> A;
