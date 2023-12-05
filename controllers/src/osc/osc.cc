@@ -171,50 +171,19 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // Reset cost
     qp_data_->H.setZero();
     qp_data_->g.setZero();
-    qp_data_->cost_const = 0.0; // TODO: This is not actually used by the solver
 
     // ==== Task cost addition ==== //
     for (auto const& task : m_.GetTaskMap()) {
-        task.second->Update(q, v);
-
-        // Task weighting matrix
-        const DiagonalMatrix& W = task.second->TaskWeightMatrix();
-        
-        // Task jacobian in qacc
-        const Matrix& A = task.second->J();
-        
-        // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
-        Vector a = task.second->ddr() - task.second->dJdt_v() + task.second->ErrorOutputPD();
-
-        // Add to objective 0.5 * x^t H x + g^T x + c
-        // cost = (A qacc - a)^T W (A qacc - a)
-        qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
-        qp_data_->cost_const += (W * a).dot(a); // TODO: This is not actually used by the solver
+        AddTaskCost(task.second, q, v);
     }
 
     // ==== End-effector task cost addition ==== //
     for (auto const& task : m_.GetEndEffectorTaskMap()) {
         
-        // Update the task
-        task.second->Update(q, v);
-        
-        // Task weighting matrix
-        const DiagonalMatrix& W = task.second->TaskWeightMatrix();
-        
-        // Task jacobian in qacc
-        const Matrix& A = task.second->J();
-        
-        // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
-        Vector3 a = task.second->ddr() - task.second->dJdt_v() + task.second->ErrorOutputPD();
+        // Add cost for task
+        AddTaskCost(task.second, q, v);
 
-        // Add to objective 0.5 * x^t H x + g^T x + c
-        // cost = (A qacc - a)^T W (A qacc - a)
-        qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-        qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
-        qp_data_->cost_const += (W * a).dot(a); // TODO: This is not actually used by the solver
-
-        // Contact
+        // Modify for contact
         Dimension dim = task.second->dim();
         Index idx = x_->lambda_c.start + task.second->start();
         if (task.second->inContact) {
@@ -266,8 +235,36 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
     // Get solution and data
     qp_->getPrimalSolution(qp_data_->x.data());
     x_->Extract(qp_data_->x);
-    // LOG(INFO) << "qpOASES objective value: " << qp_->getObjVal(); // log cost
+    qp_data_->cost = qp_->getObjVal();
 
     // Ramp torque up/down if required
     u_ = ApplyPrescale(time) * x_->ctrl.vec;
+}
+
+/**
+ * @brief Adds cost to OSC program given a particular task
+ *
+ * @param task
+ * @param q
+ * @param v
+ */
+void OperationalSpaceController::AddTaskCost(const std::shared_ptr<Task>& task, 
+                                             const ConfigurationVector& q, 
+                                             const TangentVector& v) {
+    // Update task information
+    task->Update(q, v);
+
+    // Task weighting matrix
+    const DiagonalMatrix& W = task->TaskWeightMatrix();
+    
+    // Task jacobian in qacc
+    const Matrix& A = task->J();
+    
+    // Task constant vector (note: ErrorOutputPD = -Kp*e - Kd*edot)
+    Vector a = task->ddr() - task->dJdt_v() + task->ErrorOutputPD();
+
+    // Add to objective 0.5 * x^t H x + g^T x + c
+    // cost = (A qacc - a)^T W (A qacc - a)
+    qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
+    qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
 }

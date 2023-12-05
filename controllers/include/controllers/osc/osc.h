@@ -39,6 +39,7 @@ class OperationalSpaceController : public Controller {
 
     void Init();
     void UpdateControl(Scalar time, const ConfigurationVector& q, const TangentVector& v);
+    void AddTaskCost(const std::shared_ptr<Task> &task, const ConfigurationVector& q, const TangentVector& v);
 
     /**
      * @brief Resets the controller

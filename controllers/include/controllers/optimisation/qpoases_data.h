@@ -26,6 +26,7 @@ struct QPOASESData {
         ubx = qpOASES::INFTY * Vector::Ones(nx);
         lbx = -qpOASES::INFTY * Vector::Ones(nx);
         x = Vector::Zero(nx);
+        cost = 0.0;
     }
     // Number of variables
     Dimension nx;
@@ -48,8 +49,8 @@ struct QPOASESData {
     Vector lbx;
     // QP variables upper bound
     Vector ubx;
-    // Constant component of objective
-    Scalar cost_const;
+    // Keep track of cost
+    Scalar cost;
 };
 
 }  // namespace optimisation
