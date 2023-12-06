@@ -89,49 +89,25 @@ class CassieFixedOSC : public osc::Model {
         GetTask("joint damp")->SetTaskWeightMatrix(damp_weights);
         GetTask("joint damp")->SetKdGains(damp_kds);
 
-
-        // // Some weights
-        // double ctrl_weight = 1e-3;
-        // double ankle_weight = 1e0;
-        // double damp_weight = 1e-4;
-
-        // double ankle_kp = 50.0;
-        // double ankle_kd = 5.0;
-        // double damp_kd = 10.0;
-
-        // // Set control weights in cost function
-        // SetControlWeighting(Eigen::Vector<Scalar, CASSIE_FIXED_NU>(ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight,
-        //                                                            ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight, ctrl_weight));
-
-        // // Add task for tracking ankle in 3D space
-        // AddTask("left ankle", 3, &CassieFixedOSC::LeftAnklePositionTask);
-        // GetTask("left ankle")->SetTaskWeightMatrix(Vector3(ankle_weight, ankle_weight, ankle_weight));
-        // GetTask("left ankle")->SetKpGains(Vector3(ankle_kp, ankle_kp, ankle_kp));
-        // GetTask("left ankle")->SetKdGains(Vector3(ankle_kd, ankle_kd, ankle_kd));
-
-        // // Joint damping
-        // joint_track_task_ = new osc::JointTrackTask(this->size());
-        // AddTask("joint damp", std::shared_ptr<controller::osc::Task>(joint_track_task_));
-        // GetTask("joint damp")->SetTaskWeightMatrix(Eigen::Vector<Scalar, CASSIE_FIXED_NQ>(damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight,
-        //                                                                                   damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight, damp_weight));
-        // GetTask("joint damp")->SetKdGains(Eigen::Vector<Scalar, CASSIE_FIXED_NV>(damp_kd, damp_kd, damp_kd, damp_kd, 0, damp_kd, 0, damp_kd,
-        //                                                                          damp_kd, damp_kd, damp_kd, damp_kd, 0, damp_kd, 0, damp_kd));
-
         // Add kinematic constraint
-        AddHolonomicConstraint("rigid bar", 3, &CassieFixedOSC::RigidBarConstraint);
-        // AddProjectedConstraint("rigid bar", 3, &CassieFixedOSC::RigidBarConstraint);
+        AddHolonomicConstraint("rigid bar", 6, &CassieFixedOSC::RigidBarConstraint);
     }
     ~CassieFixedOSC() = default;
 
     // Update the references for any tasks
     void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        double phase = -2.0*M_PI/4.0*time;
-        double xpos = 0.0 + 0.2*cos(phase);
-        double ypos = 0.1;
-        double zpos = -0.7 + 0.2*sin(phase);
+        double l_phase = -2.0*M_PI/4.0*time;
+        double l_xpos = 0.0 + 0.2*cos(l_phase);
+        double l_ypos = 0.1;
+        double l_zpos = -0.7 + 0.2*sin(l_phase);
+
+        double r_phase = -2.0*M_PI/4.0*time + M_PI_2;
+        double r_xpos = 0.0 + 0.2*cos(r_phase);
+        double r_ypos = -0.1;
+        double r_zpos = -0.7 + 0.2*sin(r_phase);
         
-        GetTask("left ankle")->SetReference(Vector3(xpos, ypos, zpos));
-        GetTask("right ankle")->SetReference(Vector3(-0.020, -0.135, -0.8));
+        GetTask("left ankle")->SetReference(Vector3(l_xpos, l_ypos, l_zpos));
+        GetTask("right ankle")->SetReference(Vector3(r_xpos, r_ypos, r_zpos));
 
         LOG(INFO) << "Left ankle tracking error: " << GetTask("left ankle")->e().transpose();
         LOG(INFO) << "Right ankle tracking error: " << GetTask("right ankle")->e().transpose();

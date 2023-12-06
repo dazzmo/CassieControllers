@@ -14,7 +14,7 @@ int main() {
     // Set controller options
     controller::osc::Options opt;
     opt.frequency = 1000.0;
-    opt.qpoases_print_level = qpOASES::PrintLevel::PL_TABULAR;
+    opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
 
     // Create an operational space controller model for Cassie leg
     CassieFixedOSC cassie_ctrl;
