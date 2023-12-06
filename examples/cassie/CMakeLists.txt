@@ -38,6 +38,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_fixed.urdf
 ${CMAKE_CURRENT_BINARY_DIR}/cassie_fixed.urdf
 COPYONLY)
 
+add_executable(cassie_sim sim/simulate.cc)
+target_link_libraries(cassie_sim PUBLIC mujoco_simulator Eigen3::Eigen cassie_control glog::glog)
+
 # Single-leg Cassie dynamics
 # TODO: Remove these when we don't need them anymore!
 add_executable(cassie_leg_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen_leg.cc)
@@ -50,7 +53,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_leg.urdf
 ${CMAKE_CURRENT_BINARY_DIR}/cassie_leg.urdf
 COPYONLY)
 
-add_executable(cassie_stand_sim sim/simulate.cc)
-target_link_libraries(cassie_stand_sim PUBLIC mujoco_simulator Eigen3::Eigen cassie_control glog::glog)
+add_executable(cassie_leg_sim sim/simulate_leg.cc)
+target_link_libraries(cassie_leg_sim PUBLIC mujoco_simulator Eigen3::Eigen cassie_control glog::glog)
 
 file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sim/agility_cassie" "${CMAKE_CURRENT_BINARY_DIR}/agility_cassie" SYMBOLIC)
