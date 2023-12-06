@@ -2,7 +2,6 @@
 
 /**
  * @brief Remaps the measured state to the state expected by our model
- * TODO: This will need to be updated when we move to the full Cassie model (leg no longer at position 0)
  * 
  * @param nq 
  * @param q 

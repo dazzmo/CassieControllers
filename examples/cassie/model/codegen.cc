@@ -2,6 +2,7 @@
 
 // TODO: Read all the constants from a .yaml file
 // TODO: Provide better estimate of damping terms? (see other Cassie groups)
+// TODO: Add mass matrix to next version (Cassie off stand)
 
 int main(int argc, char* argv[]) {
 
