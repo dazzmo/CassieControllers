@@ -3,7 +3,7 @@
 <!-- Author: Jenna Reher (jreher@caltech.edu)                                              -->
 <!-- This URDF is up to date with Agility Robotics specifications as of 03/20/2018.        -->
 <!-- Reference: https://github.com/agilityrobotics/agility-cassie-doc/wiki/Kinematic-Model -->
-<robot name ="cassie">
+<robot name ="cassie_leg">
 	<!-- Robot Link Definitions -->
 	<!--     22 linkages        -->
 	<link name="base_link">
