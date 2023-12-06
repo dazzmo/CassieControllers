@@ -15,7 +15,7 @@ extern "C" {
   #define _CASADI_NAMESPACE_CONCAT(NS, ID) NS ## ID
   #define CASADI_PREFIX(ID) CASADI_NAMESPACE_CONCAT(CODEGEN_PREFIX, ID)
 #else
-  #define CASADI_PREFIX(ID) cassie_mass_matrix_ ## ID
+  #define CASADI_PREFIX(ID) cassie_leg_mass_matrix_ ## ID
 #endif
 
 #include <math.h>
@@ -54,7 +54,7 @@ casadi_real casadi_sq(casadi_real x) { return x*x;}
 static const casadi_int casadi_s0[12] = {8, 1, 0, 8, 0, 1, 2, 3, 4, 5, 6, 7};
 static const casadi_int casadi_s1[75] = {8, 8, 0, 8, 16, 24, 32, 40, 48, 56, 64, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7};
 
-/* cassie_mass_matrix:(i0[8])->(o0[8x8]) */
+/* cassie_leg_mass_matrix:(i0[8])->(o0[8x8]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a2, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a3, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a4, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a5, a50, a51, a52, a53, a54, a55, a56, a57, a58, a59, a6, a60, a61, a62, a63, a64, a65, a66, a67, a68, a69, a7, a70, a71, a72, a73, a74, a75, a76, a77, a78, a79, a8, a80, a9;
   a0=2.7200000000000002e-03;
@@ -1296,73 +1296,73 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT int cassie_mass_matrix(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
+CASADI_SYMBOL_EXPORT int cassie_leg_mass_matrix(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
   return casadi_f0(arg, res, iw, w, mem);
 }
 
-CASADI_SYMBOL_EXPORT int cassie_mass_matrix_alloc_mem(void) {
+CASADI_SYMBOL_EXPORT int cassie_leg_mass_matrix_alloc_mem(void) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT int cassie_mass_matrix_init_mem(int mem) {
+CASADI_SYMBOL_EXPORT int cassie_leg_mass_matrix_init_mem(int mem) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT void cassie_mass_matrix_free_mem(int mem) {
+CASADI_SYMBOL_EXPORT void cassie_leg_mass_matrix_free_mem(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT int cassie_mass_matrix_checkout(void) {
+CASADI_SYMBOL_EXPORT int cassie_leg_mass_matrix_checkout(void) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT void cassie_mass_matrix_release(int mem) {
+CASADI_SYMBOL_EXPORT void cassie_leg_mass_matrix_release(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT void cassie_mass_matrix_incref(void) {
+CASADI_SYMBOL_EXPORT void cassie_leg_mass_matrix_incref(void) {
 }
 
-CASADI_SYMBOL_EXPORT void cassie_mass_matrix_decref(void) {
+CASADI_SYMBOL_EXPORT void cassie_leg_mass_matrix_decref(void) {
 }
 
-CASADI_SYMBOL_EXPORT casadi_int cassie_mass_matrix_n_in(void) { return 1;}
+CASADI_SYMBOL_EXPORT casadi_int cassie_leg_mass_matrix_n_in(void) { return 1;}
 
-CASADI_SYMBOL_EXPORT casadi_int cassie_mass_matrix_n_out(void) { return 1;}
+CASADI_SYMBOL_EXPORT casadi_int cassie_leg_mass_matrix_n_out(void) { return 1;}
 
-CASADI_SYMBOL_EXPORT casadi_real cassie_mass_matrix_default_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT casadi_real cassie_leg_mass_matrix_default_in(casadi_int i) {
   switch (i) {
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT const char* cassie_mass_matrix_name_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* cassie_leg_mass_matrix_name_in(casadi_int i) {
   switch (i) {
     case 0: return "i0";
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT const char* cassie_mass_matrix_name_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* cassie_leg_mass_matrix_name_out(casadi_int i) {
   switch (i) {
     case 0: return "o0";
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* cassie_mass_matrix_sparsity_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* cassie_leg_mass_matrix_sparsity_in(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* cassie_mass_matrix_sparsity_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* cassie_leg_mass_matrix_sparsity_out(casadi_int i) {
   switch (i) {
     case 0: return casadi_s1;
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT int cassie_mass_matrix_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
+CASADI_SYMBOL_EXPORT int cassie_leg_mass_matrix_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
   if (sz_arg) *sz_arg = 1;
   if (sz_res) *sz_res = 1;
   if (sz_iw) *sz_iw = 0;

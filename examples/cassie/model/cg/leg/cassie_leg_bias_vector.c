@@ -15,7 +15,7 @@ extern "C" {
   #define _CASADI_NAMESPACE_CONCAT(NS, ID) NS ## ID
   #define CASADI_PREFIX(ID) CASADI_NAMESPACE_CONCAT(CODEGEN_PREFIX, ID)
 #else
-  #define CASADI_PREFIX(ID) cassie_bias_vector_ ## ID
+  #define CASADI_PREFIX(ID) cassie_leg_bias_vector_ ## ID
 #endif
 
 #include <math.h>
@@ -49,7 +49,7 @@ extern "C" {
 
 static const casadi_int casadi_s0[12] = {8, 1, 0, 8, 0, 1, 2, 3, 4, 5, 6, 7};
 
-/* cassie_bias_vector:(i0[8],i1[8])->(o0[8]) */
+/* cassie_leg_bias_vector:(i0[8],i1[8])->(o0[8]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a10, a100, a101, a102, a103, a104, a105, a106, a107, a108, a109, a11, a110, a111, a112, a113, a114, a115, a116, a117, a118, a119, a12, a120, a121, a122, a123, a124, a125, a126, a127, a128, a129, a13, a130, a131, a132, a133, a134, a135, a136, a137, a138, a139, a14, a140, a141, a142, a143, a144, a145, a146, a147, a148, a149, a15, a150, a151, a152, a153, a154, a155, a156, a157, a158, a159, a16, a160, a161, a162, a163, a164, a165, a166, a167, a168, a169, a17, a170, a171, a172, a173, a174, a175, a176, a177, a178, a179, a18, a180, a181, a182, a183, a184, a185, a186, a187, a188, a189, a19, a190, a191, a192, a193, a194, a195, a196, a197, a198, a199, a2, a20, a200, a21, a22, a23, a24, a25, a26, a27, a28, a29, a3, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a4, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a5, a50, a51, a52, a53, a54, a55, a56, a57, a58, a59, a6, a60, a61, a62, a63, a64, a65, a66, a67, a68, a69, a7, a70, a71, a72, a73, a74, a75, a76, a77, a78, a79, a8, a80, a81, a82, a83, a84, a85, a86, a87, a88, a89, a9, a90, a91, a92, a93, a94, a95, a96, a97, a98, a99;
   a0=-1.7929999999999995e-02;
@@ -1413,45 +1413,45 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT int cassie_bias_vector(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
+CASADI_SYMBOL_EXPORT int cassie_leg_bias_vector(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
   return casadi_f0(arg, res, iw, w, mem);
 }
 
-CASADI_SYMBOL_EXPORT int cassie_bias_vector_alloc_mem(void) {
+CASADI_SYMBOL_EXPORT int cassie_leg_bias_vector_alloc_mem(void) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT int cassie_bias_vector_init_mem(int mem) {
+CASADI_SYMBOL_EXPORT int cassie_leg_bias_vector_init_mem(int mem) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT void cassie_bias_vector_free_mem(int mem) {
+CASADI_SYMBOL_EXPORT void cassie_leg_bias_vector_free_mem(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT int cassie_bias_vector_checkout(void) {
+CASADI_SYMBOL_EXPORT int cassie_leg_bias_vector_checkout(void) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT void cassie_bias_vector_release(int mem) {
+CASADI_SYMBOL_EXPORT void cassie_leg_bias_vector_release(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT void cassie_bias_vector_incref(void) {
+CASADI_SYMBOL_EXPORT void cassie_leg_bias_vector_incref(void) {
 }
 
-CASADI_SYMBOL_EXPORT void cassie_bias_vector_decref(void) {
+CASADI_SYMBOL_EXPORT void cassie_leg_bias_vector_decref(void) {
 }
 
-CASADI_SYMBOL_EXPORT casadi_int cassie_bias_vector_n_in(void) { return 2;}
+CASADI_SYMBOL_EXPORT casadi_int cassie_leg_bias_vector_n_in(void) { return 2;}
 
-CASADI_SYMBOL_EXPORT casadi_int cassie_bias_vector_n_out(void) { return 1;}
+CASADI_SYMBOL_EXPORT casadi_int cassie_leg_bias_vector_n_out(void) { return 1;}
 
-CASADI_SYMBOL_EXPORT casadi_real cassie_bias_vector_default_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT casadi_real cassie_leg_bias_vector_default_in(casadi_int i) {
   switch (i) {
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT const char* cassie_bias_vector_name_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* cassie_leg_bias_vector_name_in(casadi_int i) {
   switch (i) {
     case 0: return "i0";
     case 1: return "i1";
@@ -1459,14 +1459,14 @@ CASADI_SYMBOL_EXPORT const char* cassie_bias_vector_name_in(casadi_int i) {
   }
 }
 
-CASADI_SYMBOL_EXPORT const char* cassie_bias_vector_name_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* cassie_leg_bias_vector_name_out(casadi_int i) {
   switch (i) {
     case 0: return "o0";
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* cassie_bias_vector_sparsity_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* cassie_leg_bias_vector_sparsity_in(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
     case 1: return casadi_s0;
@@ -1474,14 +1474,14 @@ CASADI_SYMBOL_EXPORT const casadi_int* cassie_bias_vector_sparsity_in(casadi_int
   }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* cassie_bias_vector_sparsity_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* cassie_leg_bias_vector_sparsity_out(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT int cassie_bias_vector_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
+CASADI_SYMBOL_EXPORT int cassie_leg_bias_vector_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
   if (sz_arg) *sz_arg = 2;
   if (sz_res) *sz_res = 1;
   if (sz_iw) *sz_iw = 0;

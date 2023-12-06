@@ -8,11 +8,11 @@
 #include "eigen3/Eigen/Dense"
 
 // Code-generated functions
-#include "model/cg/leg/cassie_achilles_rod_constraint.h"
-#include "model/cg/leg/cassie_actuation_map.h"
-#include "model/cg/leg/cassie_ankle.h"
-#include "model/cg/leg/cassie_bias_vector.h"
-#include "model/cg/leg/cassie_mass_matrix.h"
+#include "model/cg/leg/cassie_leg_achilles_rod_constraint.h"
+#include "model/cg/leg/cassie_leg_actuation_map.h"
+#include "model/cg/leg/cassie_leg_ankle.h"
+#include "model/cg/leg/cassie_leg_bias_vector.h"
+#include "model/cg/leg/cassie_leg_mass_matrix.h"
 
 // OSC model
 #include "controllers/osc/model.h"
@@ -97,7 +97,7 @@ class CassieLegOSC : public osc::Model {
                                   Vector& x, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_ankle(in, out, NULL, NULL, 0);
+        cassie_leg_ankle(in, out, NULL, NULL, 0);
     }
 
     // Constraints
@@ -105,26 +105,26 @@ class CassieLegOSC : public osc::Model {
                                    Vector& c, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {c.data(), J.data(), dJdt_v.data(), nullptr};
-        cassie_achilles_rod_constraint(in, out, NULL, NULL, 0);
+        cassie_leg_achilles_rod_constraint(in, out, NULL, NULL, 0);
     }
 
     // Dynamics
     void ComputeMassMatrix(const ConfigurationVector& q, Matrix& M) {
         const double* in[] = {q.data(), NULL};
         double* out[] = {M.data()};
-        cassie_mass_matrix(in, out, NULL, NULL, 0);
+        cassie_leg_mass_matrix(in, out, NULL, NULL, 0);
     }
 
     void ComputeBiasVector(const ConfigurationVector& q, const TangentVector& v, Vector& h) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {h.data()};
-        cassie_bias_vector(in, out, NULL, NULL, 0);
+        cassie_leg_bias_vector(in, out, NULL, NULL, 0);
     }
 
     void ComputeActuationMap(const ConfigurationVector& q, Matrix& B) {
         const double* in[] = {q.data()};
         double* out[] = {B.data()};
-        cassie_actuation_map(in, out, NULL, NULL, 0);
+        cassie_leg_actuation_map(in, out, NULL, NULL, 0);
     }
 
    private:

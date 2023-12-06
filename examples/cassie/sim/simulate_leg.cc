@@ -1,4 +1,4 @@
-#include "simulate.h"
+#include "simulate_leg.h"
 
 int main() {
 
