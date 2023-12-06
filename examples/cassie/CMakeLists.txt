@@ -28,20 +28,23 @@ target_include_directories(cassie_control PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/")
 set_target_properties(cassie_control PROPERTIES LINKER_LANGUAGE CXX)
 
 # Full-body Cassie dynamics
-# add_executable(cassie_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
-# target_link_libraries(cassie_codegen PUBLIC 
-# ${pinocchio_LIBRARIES}
-# casadi
-# Eigen3::Eigen
-# )
-# target_include_directories(cassie_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
-
-# Single-leg Cassie dynamics
-add_executable(cassie_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen_leg.cc)
+add_executable(cassie_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
 target_link_libraries(cassie_codegen PUBLIC 
 code_generator
 )
 target_include_directories(cassie_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_fixed.urdf 
+${CMAKE_CURRENT_BINARY_DIR}/cassie_fixed.urdf
+COPYONLY)
+
+# Single-leg Cassie dynamics
+# TODO: Remove these when we don't need them anymore!
+add_executable(cassie_leg_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen_leg.cc)
+target_link_libraries(cassie_leg_codegen PUBLIC 
+code_generator
+)
+target_include_directories(cassie_leg_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_leg.urdf 
 ${CMAKE_CURRENT_BINARY_DIR}/cassie_leg.urdf

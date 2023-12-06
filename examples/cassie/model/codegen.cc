@@ -1,5 +1,8 @@
 #include "code_generator.h"
 
+// TODO: Read all the constants from a .yaml file
+// TODO: Provide better estimate of damping terms? (see other Cassie groups)
+
 int main(int argc, char* argv[]) {
 
     // Initialise model from Cassie urdf
@@ -88,7 +91,6 @@ int main(int argc, char* argv[]) {
     casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetQvelSX()), cg.GetQposSX());
 
     // Generate code for the constraints
-    // TODO: Check if I have to split it up into left and right constraints!
     cg.GenerateCode(
         "achilles_rod_constraints",
         {cg.GetQposSX(), cg.GetQvelSX()},
@@ -102,7 +104,100 @@ int main(int argc, char* argv[]) {
         cg.GetQvel(),
         CodeGenerator::TangentVectorAD::Zero(model.nv));
 
-    // TODO: Up to spring dynamics. Continue later...
+    // Spring dynamics parameters. Commented values from:
+    // https://github.com/jpreher/cassie_description/blob/master/MATLAB/Cassie_v4.m#L193
+    // Currently-used values from the cassie.xml MuJoCo model
+    // Values will depend on which springs are currently attached to Cassie
+    double knee_stiffness = 1500;  // 2300.0;
+    double heel_stiffness = 1250;  // 2000.0;
+
+    // Extract joint coordinates of springs
+    casadi::SX q_l_knee = cg.GetQposSX()(cg.GetJointIdq("LeftShinPitch"));
+    casadi::SX q_r_knee = cg.GetQposSX()(cg.GetJointIdq("RightShinPitch"));
+    casadi::SX q_l_heel = cg.GetQposSX()(cg.GetJointIdq("LeftAchillesSpring"));
+    casadi::SX q_r_heel = cg.GetQposSX()(cg.GetJointIdq("RightAchillesSpring"));
+
+    // Add to spring forces
+    CodeGenerator::TangentVectorAD spring_forces = CodeGenerator::TangentVectorAD::Zero(model.nv);
+    spring_forces(cg.GetJointIdv("LeftShinPitch")) = knee_stiffness * (q_l_knee);
+    spring_forces(cg.GetJointIdv("RightShinPitch")) = knee_stiffness * (q_r_knee);
+    spring_forces(cg.GetJointIdv("LeftAchillesSpring")) = heel_stiffness * (q_l_heel);
+    spring_forces(cg.GetJointIdv("RightAchillesSpring")) = heel_stiffness * (q_r_heel);
+
+    // Add spring forces to bias vector
+    h += spring_forces;
+
+    // Damping forces (from MuJoCo model, cassie.xml)
+    // Commented values from same source as springs
+    double d_hiproll = 1.0;
+    double d_hipyaw = 1.0;
+    double d_hippitch = 1.0;
+    double d_knee = 1.0;
+    double d_shinspring = 0.1;    // 4.6
+    double d_tarsus = 0.1;
+    double d_heelspring = 0.001;  // 4.0
+    double d_foot = 1.0;
+
+    // Add to damping forces
+    // TODO: Could do this more nicely with a diagonal matrix
+    CodeGenerator::TangentVectorAD damping = CodeGenerator::TangentVectorAD::Zero(model.nv);
+    damping(cg.GetJointIdv("LeftHipRoll")) = d_hiproll * cg.GetQvelSX()(cg.GetJointIdv("LeftHipRoll"));
+    damping(cg.GetJointIdv("LeftHipYaw")) = d_hipyaw * cg.GetQvelSX()(cg.GetJointIdv("LeftHipYaw"));
+    damping(cg.GetJointIdv("LeftHipPitch")) = d_hippitch * cg.GetQvelSX()(cg.GetJointIdv("LeftHipPitch"));
+    damping(cg.GetJointIdv("LeftKneePitch")) = d_knee * cg.GetQvelSX()(cg.GetJointIdv("LeftKneePitch"));
+    damping(cg.GetJointIdv("LeftShinPitch")) = d_shinspring * cg.GetQvelSX()(cg.GetJointIdv("LeftShinPitch"));
+    damping(cg.GetJointIdv("LeftTarsusPitch")) = d_tarsus * cg.GetQvelSX()(cg.GetJointIdv("LeftTarsusPitch"));
+    damping(cg.GetJointIdv("LeftAchillesSpring")) = d_heelspring * cg.GetQvelSX()(cg.GetJointIdv("LeftAchillesSpring"));
+    damping(cg.GetJointIdv("LeftFootPitch")) = d_foot * cg.GetQvelSX()(cg.GetJointIdv("LeftFootPitch"));
+
+    damping(cg.GetJointIdv("RightHipRoll")) = d_hiproll * cg.GetQvelSX()(cg.GetJointIdv("RightHipRoll"));
+    damping(cg.GetJointIdv("RightHipYaw")) = d_hipyaw * cg.GetQvelSX()(cg.GetJointIdv("RightHipYaw"));
+    damping(cg.GetJointIdv("RightHipPitch")) = d_hippitch * cg.GetQvelSX()(cg.GetJointIdv("RightHipPitch"));
+    damping(cg.GetJointIdv("RightKneePitch")) = d_knee * cg.GetQvelSX()(cg.GetJointIdv("RightKneePitch"));
+    damping(cg.GetJointIdv("RightShinPitch")) = d_shinspring * cg.GetQvelSX()(cg.GetJointIdv("RightShinPitch"));
+    damping(cg.GetJointIdv("RightTarsusPitch")) = d_tarsus * cg.GetQvelSX()(cg.GetJointIdv("RightTarsusPitch"));
+    damping(cg.GetJointIdv("RightAchillesSpring")) = d_heelspring * cg.GetQvelSX()(cg.GetJointIdv("RightAchillesSpring"));
+    damping(cg.GetJointIdv("RightFootPitch")) = d_foot * cg.GetQvelSX()(cg.GetJointIdv("RightFootPitch"));
+
+    // Add damping forces to bias vector
+    h += damping;
+
+    // Generate code for bias vector
+    casadi::SX h_sx;
+    pinocchio::casadi::copy(h, h_sx);
+    cg.GenerateCode("bias_vector", {cg.GetQposSX(), cg.GetQvelSX()}, {h_sx});
+
+    // Actuation matrix (filled with gear ratios)
+    casadi::SX B = casadi::SX::zeros(model.nv, 10);
+    B(cg.GetJointIdv("LeftHipRoll"), 0) = model.rotorGearRatio[cg.GetJointIdv("LeftHipRoll")];
+    B(cg.GetJointIdv("LeftHipYaw"), 1) = model.rotorGearRatio[cg.GetJointIdv("LeftHipYaw")];
+    B(cg.GetJointIdv("LeftHipPitch"), 2) = model.rotorGearRatio[cg.GetJointIdv("LeftHipPitch")];
+    B(cg.GetJointIdv("LeftKneePitch"), 3) = model.rotorGearRatio[cg.GetJointIdv("LeftKneePitch")];
+    B(cg.GetJointIdv("LeftFootPitch"), 4) = model.rotorGearRatio[cg.GetJointIdv("LeftFootPitch")];
+
+    B(cg.GetJointIdv("RightHipRoll"), 5) = model.rotorGearRatio[cg.GetJointIdv("RightHipRoll")];
+    B(cg.GetJointIdv("RightHipYaw"), 6) = model.rotorGearRatio[cg.GetJointIdv("RightHipYaw")];
+    B(cg.GetJointIdv("RightHipPitch"), 7) = model.rotorGearRatio[cg.GetJointIdv("RightHipPitch")];
+    B(cg.GetJointIdv("RightKneePitch"), 8) = model.rotorGearRatio[cg.GetJointIdv("RightKneePitch")];
+    B(cg.GetJointIdv("RightFootPitch"), 9) = model.rotorGearRatio[cg.GetJointIdv("RightFootPitch")];
+
+    cg.GenerateCode("actuation_map", {cg.GetQposSX()}, {densify(B)});
+
+    // Generate end-effector data
+    // https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model
+    cg.GenerateEndEffectorData("left_foot_front", "LeftFootPitch", "left_foot",
+                               Eigen::Vector3d(0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
+    cg.GenerateEndEffectorData("left_foot_back", "LeftFootPitch", "left_foot",
+                               Eigen::Vector3d(-0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
+    cg.GenerateEndEffectorData("left_ankle", "LeftFootPitch", "leftfoot",
+                               Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Matrix3d::Identity());
+
+    cg.GenerateEndEffectorData("right_foot_front", "RightFootPitch", "right_foot",
+                               Eigen::Vector3d(0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
+    cg.GenerateEndEffectorData("right_foot_back", "RightFootPitch", "right_foot",
+                               Eigen::Vector3d(-0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
+    cg.GenerateEndEffectorData("right_ankle", "RightFootPitch", "rightfoot",
+                               Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Matrix3d::Identity());
 
     return 0;
 }
