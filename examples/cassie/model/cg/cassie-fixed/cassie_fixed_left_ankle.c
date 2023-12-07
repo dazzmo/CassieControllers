@@ -15,7 +15,7 @@ extern "C" {
   #define _CASADI_NAMESPACE_CONCAT(NS, ID) NS ## ID
   #define CASADI_PREFIX(ID) CASADI_NAMESPACE_CONCAT(CODEGEN_PREFIX, ID)
 #else
-  #define CASADI_PREFIX(ID) cassie_ankle_ ## ID
+  #define CASADI_PREFIX(ID) cassie_fixed_left_ankle_ ## ID
 #endif
 
 #include <math.h>
@@ -49,11 +49,11 @@ extern "C" {
   #endif
 #endif
 
-static const casadi_int casadi_s0[12] = {8, 1, 0, 8, 0, 1, 2, 3, 4, 5, 6, 7};
+static const casadi_int casadi_s0[20] = {16, 1, 0, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 static const casadi_int casadi_s1[7] = {3, 1, 0, 3, 0, 1, 2};
-static const casadi_int casadi_s2[35] = {3, 8, 0, 3, 6, 9, 12, 15, 18, 21, 24, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2};
+static const casadi_int casadi_s2[67] = {3, 16, 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2};
 
-/* cassie_ankle:(i0[8],i1[8])->(o0[3],o1[3x8],o2[3]) */
+/* cassie_fixed_left_ankle:(i0[16],i1[16])->(o0[3],o1[3x16],o2[3]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a2, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a3, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, a4, a40, a41, a42, a43, a44, a45, a46, a47, a48, a49, a5, a50, a51, a52, a53, a54, a55, a56, a57, a6, a7, a8, a9;
   a0=-4.9000000000000002e-02;
@@ -418,37 +418,61 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   if (res[1]!=0) res[1][18]=a38;
   if (res[1]!=0) res[1][19]=a38;
   if (res[1]!=0) res[1][20]=a38;
-  a38=(a53*a21);
-  a52=(a37*a50);
-  a38=(a38-a52);
   a52=(a53*a21);
   a33=(a37*a50);
   a52=(a52-a33);
-  a38=(a38-a52);
-  if (res[1]!=0) res[1][21]=a38;
-  a38=(a37*a26);
-  a52=(a44*a21);
-  a38=(a38-a52);
+  a33=(a53*a21);
+  a5=(a37*a50);
+  a33=(a33-a5);
+  a52=(a52-a33);
+  if (res[1]!=0) res[1][21]=a52;
+  a52=(a37*a26);
+  a33=(a44*a21);
+  a52=(a52-a33);
   a37=(a37*a26);
-  a52=(a44*a21);
-  a37=(a37-a52);
-  a38=(a38-a37);
-  if (res[1]!=0) res[1][22]=a38;
-  a38=(a44*a50);
+  a33=(a44*a21);
+  a37=(a37-a33);
+  a52=(a52-a37);
+  if (res[1]!=0) res[1][22]=a52;
+  a52=(a44*a50);
   a37=(a53*a26);
-  a38=(a38-a37);
+  a52=(a52-a37);
   a44=(a44*a50);
   a53=(a53*a26);
   a44=(a44-a53);
-  a38=(a38-a44);
-  if (res[1]!=0) res[1][23]=a38;
+  a52=(a52-a44);
+  if (res[1]!=0) res[1][23]=a52;
+  if (res[1]!=0) res[1][24]=a38;
+  if (res[1]!=0) res[1][25]=a38;
+  if (res[1]!=0) res[1][26]=a38;
+  if (res[1]!=0) res[1][27]=a38;
+  if (res[1]!=0) res[1][28]=a38;
+  if (res[1]!=0) res[1][29]=a38;
+  if (res[1]!=0) res[1][30]=a38;
+  if (res[1]!=0) res[1][31]=a38;
+  if (res[1]!=0) res[1][32]=a38;
+  if (res[1]!=0) res[1][33]=a38;
+  if (res[1]!=0) res[1][34]=a38;
+  if (res[1]!=0) res[1][35]=a38;
+  if (res[1]!=0) res[1][36]=a38;
+  if (res[1]!=0) res[1][37]=a38;
+  if (res[1]!=0) res[1][38]=a38;
+  if (res[1]!=0) res[1][39]=a38;
+  if (res[1]!=0) res[1][40]=a38;
+  if (res[1]!=0) res[1][41]=a38;
+  if (res[1]!=0) res[1][42]=a38;
+  if (res[1]!=0) res[1][43]=a38;
+  if (res[1]!=0) res[1][44]=a38;
+  if (res[1]!=0) res[1][45]=a38;
+  if (res[1]!=0) res[1][46]=a38;
+  if (res[1]!=0) res[1][47]=a38;
   a38=arg[0]? arg[0][7] : 0;
-  a44=cos(a38);
-  a53=(a42*a44);
-  a37=sin(a38);
-  a52=(a10*a37);
-  a53=(a53+a52);
-  a52=arg[1]? arg[1][7] : 0;
+  a52=cos(a38);
+  a44=(a42*a52);
+  a53=sin(a38);
+  a37=(a10*a53);
+  a44=(a44+a37);
+  a37=arg[1]? arg[1][7] : 0;
   a33=cos(a38);
   a5=cos(a40);
   a48=cos(a34);
@@ -549,7 +573,7 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a13=(a22-a13);
   a31=(a38*a13);
   a56=(a56-a31);
-  a56=(a52*a56);
+  a56=(a37*a56);
   a9=(a54*a9);
   a32=(a15*a32);
   a41=(a2*a41);
@@ -628,9 +652,9 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a8=(a38*a49);
   a57=(a57+a8);
   a56=(a56+a57);
-  a53=(a53*a56);
-  a10=(a10*a44);
-  a42=(a42*a37);
+  a44=(a44*a56);
+  a10=(a10*a52);
+  a42=(a42*a53);
   a10=(a10-a42);
   a49=(a33*a49);
   a9=(a38*a9);
@@ -638,8 +662,8 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a33=(a33*a13);
   a38=(a38*a55);
   a33=(a33+a38);
-  a52=(a52*a33);
-  a49=(a49-a52);
+  a37=(a37*a33);
+  a49=(a49-a37);
   a10=(a10*a49);
   a20=(a20*a1);
   a20=(a20+a36);
@@ -650,8 +674,8 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a6=(a6+a36);
   a36=(a2*a6);
   a1=(a28*a0);
-  a52=(a23*a31);
-  a1=(a1+a52);
+  a37=(a23*a31);
+  a1=(a1+a37);
   a36=(a36+a1);
   a27=(a27*a36);
   a29=(a23*a29);
@@ -707,74 +731,74 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a20=(a20+a30);
   a26=(a26*a20);
   a10=(a10+a26);
-  a53=(a53+a10);
-  if (res[2]!=0) res[2][0]=a53;
-  a53=(a51*a44);
-  a10=(a46*a37);
-  a53=(a53+a10);
-  a53=(a53*a56);
-  a46=(a46*a44);
-  a51=(a51*a37);
+  a44=(a44+a10);
+  if (res[2]!=0) res[2][0]=a44;
+  a44=(a51*a52);
+  a10=(a46*a53);
+  a44=(a44+a10);
+  a44=(a44*a56);
+  a46=(a46*a52);
+  a51=(a51*a53);
   a46=(a46-a51);
   a46=(a46*a49);
   a50=(a50*a20);
   a46=(a46+a50);
-  a53=(a53+a46);
-  if (res[2]!=0) res[2][1]=a53;
-  a53=(a12*a44);
-  a46=(a47*a37);
-  a53=(a53+a46);
-  a53=(a53*a56);
-  a47=(a47*a44);
-  a12=(a12*a37);
+  a44=(a44+a46);
+  if (res[2]!=0) res[2][1]=a44;
+  a44=(a12*a52);
+  a46=(a47*a53);
+  a44=(a44+a46);
+  a44=(a44*a56);
+  a47=(a47*a52);
+  a12=(a12*a53);
   a47=(a47-a12);
   a47=(a47*a49);
   a21=(a21*a20);
   a47=(a47+a21);
-  a53=(a53+a47);
-  if (res[2]!=0) res[2][2]=a53;
+  a44=(a44+a47);
+  if (res[2]!=0) res[2][2]=a44;
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT int cassie_ankle(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
+CASADI_SYMBOL_EXPORT int cassie_fixed_left_ankle(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem){
   return casadi_f0(arg, res, iw, w, mem);
 }
 
-CASADI_SYMBOL_EXPORT int cassie_ankle_alloc_mem(void) {
+CASADI_SYMBOL_EXPORT int cassie_fixed_left_ankle_alloc_mem(void) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT int cassie_ankle_init_mem(int mem) {
+CASADI_SYMBOL_EXPORT int cassie_fixed_left_ankle_init_mem(int mem) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT void cassie_ankle_free_mem(int mem) {
+CASADI_SYMBOL_EXPORT void cassie_fixed_left_ankle_free_mem(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT int cassie_ankle_checkout(void) {
+CASADI_SYMBOL_EXPORT int cassie_fixed_left_ankle_checkout(void) {
   return 0;
 }
 
-CASADI_SYMBOL_EXPORT void cassie_ankle_release(int mem) {
+CASADI_SYMBOL_EXPORT void cassie_fixed_left_ankle_release(int mem) {
 }
 
-CASADI_SYMBOL_EXPORT void cassie_ankle_incref(void) {
+CASADI_SYMBOL_EXPORT void cassie_fixed_left_ankle_incref(void) {
 }
 
-CASADI_SYMBOL_EXPORT void cassie_ankle_decref(void) {
+CASADI_SYMBOL_EXPORT void cassie_fixed_left_ankle_decref(void) {
 }
 
-CASADI_SYMBOL_EXPORT casadi_int cassie_ankle_n_in(void) { return 2;}
+CASADI_SYMBOL_EXPORT casadi_int cassie_fixed_left_ankle_n_in(void) { return 2;}
 
-CASADI_SYMBOL_EXPORT casadi_int cassie_ankle_n_out(void) { return 3;}
+CASADI_SYMBOL_EXPORT casadi_int cassie_fixed_left_ankle_n_out(void) { return 3;}
 
-CASADI_SYMBOL_EXPORT casadi_real cassie_ankle_default_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT casadi_real cassie_fixed_left_ankle_default_in(casadi_int i) {
   switch (i) {
     default: return 0;
   }
 }
 
-CASADI_SYMBOL_EXPORT const char* cassie_ankle_name_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* cassie_fixed_left_ankle_name_in(casadi_int i) {
   switch (i) {
     case 0: return "i0";
     case 1: return "i1";
@@ -782,7 +806,7 @@ CASADI_SYMBOL_EXPORT const char* cassie_ankle_name_in(casadi_int i) {
   }
 }
 
-CASADI_SYMBOL_EXPORT const char* cassie_ankle_name_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const char* cassie_fixed_left_ankle_name_out(casadi_int i) {
   switch (i) {
     case 0: return "o0";
     case 1: return "o1";
@@ -791,7 +815,7 @@ CASADI_SYMBOL_EXPORT const char* cassie_ankle_name_out(casadi_int i) {
   }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* cassie_ankle_sparsity_in(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* cassie_fixed_left_ankle_sparsity_in(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
     case 1: return casadi_s0;
@@ -799,7 +823,7 @@ CASADI_SYMBOL_EXPORT const casadi_int* cassie_ankle_sparsity_in(casadi_int i) {
   }
 }
 
-CASADI_SYMBOL_EXPORT const casadi_int* cassie_ankle_sparsity_out(casadi_int i) {
+CASADI_SYMBOL_EXPORT const casadi_int* cassie_fixed_left_ankle_sparsity_out(casadi_int i) {
   switch (i) {
     case 0: return casadi_s1;
     case 1: return casadi_s2;
@@ -808,7 +832,7 @@ CASADI_SYMBOL_EXPORT const casadi_int* cassie_ankle_sparsity_out(casadi_int i) {
   }
 }
 
-CASADI_SYMBOL_EXPORT int cassie_ankle_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
+CASADI_SYMBOL_EXPORT int cassie_fixed_left_ankle_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w) {
   if (sz_arg) *sz_arg = 2;
   if (sz_res) *sz_res = 3;
   if (sz_iw) *sz_iw = 0;

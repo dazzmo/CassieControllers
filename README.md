@@ -1,8 +1,13 @@
 # Controllers
 
-A work-in-progress testing platform for controller development and simulation for robotic systems.
+A work-in-progress testing platform for controller development and simulation for robotic systems. See the `examples/` folder and `README.md` files therein for full descriptions of the current examples in this repository:
 
-## Requirements
+- `examples/arm/`: A simple 3 degree-of-freedom robotic arm. The control task is to track trajectories with the end-effector.
+- `examples/cassie:` A model of the bipedal robot Cassie. The objective will eventually be to control the feet and centre-of-mass to track reference trajectories from a higher-level planner.
+
+For an explanation of the controllers in this repository, see `examples/arm/README.md`.
+
+## Requirements and installation
 
 We require the following libraries to run the controllers and their simulations. 
 * [glog](https://github.com/google/glog)
@@ -28,3 +33,17 @@ When building qpOASES, you will need to ensure it builds a shared libary (which 
 Similarly, when building Pinocchio, you most likely won't need the python bindings (which have a number of extra dependencies). We recommend building with:
 
     cmake .. -DBUILD_PYTHON_INTERFACE=OFF
+
+## Building the code
+
+We recommend creating a `build/` folder in the root directory of this repository in which to build the code. To build all examples, enter the following into a terminal:
+
+    mkdir build && cd build
+    cmake ..
+    make
+
+You can then navigate to `build/examples/arm/` or `build/examples/cassie/` and run `./arm_simulator` or `./cassie_sim`, respectfully.
+
+## Contact
+
+For any questions, please contact Damian Abood (dabo9333@uni.sydney.edu.au) or Nic Barbara (nicholas.barbara@sydney.edu.au).

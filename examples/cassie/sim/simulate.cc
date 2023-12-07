@@ -17,8 +17,8 @@ int main() {
     opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
 
     // Create an operational space controller model for Cassie leg
-    CassieLegOSC leg_ctrl;
-    controller::osc::OperationalSpaceController ctrl(leg_ctrl, opt);
+    CassieFixedOSC cassie_ctrl;
+    controller::osc::OperationalSpaceController ctrl(cassie_ctrl, opt);
     ctrl.Init();
 
     // Set the initial pose for Cassie
@@ -41,8 +41,8 @@ int main() {
                 if (sim.GetSimulatorTime() - t_ctrl > 1.0 / opt.frequency) {
 
                     // Update model state
-                    ctrl.GetModel().UpdateState(leg_ctrl.size().nq, sim.GetModelConfiguration(),
-                                                leg_ctrl.size().nv, sim.GetModelVelocity());
+                    ctrl.GetModel().UpdateState(cassie_ctrl.size().nq, sim.GetModelConfiguration(),
+                                                cassie_ctrl.size().nv, sim.GetModelVelocity());
 
                     // Compute controls
                     ctrl.UpdateControl(sim.GetSimulatorTime(), 
@@ -51,7 +51,6 @@ int main() {
 
                     // Update timer and log
                     t_ctrl = sim.GetSimulatorTime();
-                    // LOG(INFO) << "u: " << ctrl.ControlOutput().transpose();
                 }
 
                 // Apply controls and step forward
