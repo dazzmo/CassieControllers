@@ -174,14 +174,14 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 
     // ==== Task cost addition ==== //
     for (auto const& task : m_.GetTaskMap()) {
-        AddTaskCost(task.second, q, v);
+        AddTaskCost(*qp_data_,task.second, q, v);
     }
 
     // ==== End-effector task cost addition ==== //
     for (auto const& task : m_.GetEndEffectorTaskMap()) {
         
         // Add cost for task
-        AddTaskCost(task.second, q, v);
+        AddTaskCost(*qp_data_,task.second, q, v);
 
         // Modify for contact
         Dimension dim = task.second->dim();
@@ -244,11 +244,13 @@ void OperationalSpaceController::UpdateControl(Scalar time, const ConfigurationV
 /**
  * @brief Adds cost to OSC program given a particular task
  *
+ * @param qp_data
  * @param task
  * @param q
  * @param v
  */
-void OperationalSpaceController::AddTaskCost(const std::shared_ptr<Task>& task, 
+void OperationalSpaceController::AddTaskCost(controller::optimisation::QPOASESData& qp_data,
+                                             const std::shared_ptr<Task>& task, 
                                              const ConfigurationVector& q, 
                                              const TangentVector& v) {
     // Update task information
@@ -265,6 +267,6 @@ void OperationalSpaceController::AddTaskCost(const std::shared_ptr<Task>& task,
 
     // Add to objective 0.5 * x^t H x + g^T x + c
     // cost = (A qacc - a)^T W (A qacc - a)
-    qp_data_->H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
-    qp_data_->g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
+    qp_data.H.block(x_->qacc.start, x_->qacc.start, x_->qacc.sz, x_->qacc.sz) += A.transpose() * W * A;
+    qp_data.g.middleRows(x_->qacc.start, x_->qacc.sz) -= 2.0 * A.transpose() * W * a;
 }
