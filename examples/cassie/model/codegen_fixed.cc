@@ -1,7 +1,5 @@
 #include "code_generator.h"
 
-// TODO: NONE OF THIS HAS BEEN CHANGED FROM CASSIE-ON-STAND EXCEPT URDF. CHECK THIS!!
-
 // TODO: Read all the constants from a .yaml file
 // TODO: Provide better estimate of damping terms? (see other Cassie groups)
 // TODO: Add mass matrix to next version (Cassie off stand)
@@ -9,7 +7,7 @@
 int main(int argc, char* argv[]) {
 
     // Initialise model from Cassie urdf
-    CodeGenerator cg("./cassie.urdf");
+    CodeGenerator cg("./cassie_fixed.urdf");
     cg.SetCodeGenerationDestination(argv[1]);
 
     // Define rotation matrix for sole of foot

@@ -26,15 +26,29 @@ target_link_libraries(cassie_control controllers)
 target_include_directories(cassie_control PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/")
 set_target_properties(cassie_control PROPERTIES LINKER_LANGUAGE CXX)
 
-# Full-body Cassie dynamics
+# Full-body Cassie dynamics, fixed to stand
+add_executable(cassie_codegen_fixed ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen_fixed.cc)
+target_link_libraries(cassie_codegen_fixed PUBLIC 
+code_generator
+)
+target_include_directories(cassie_codegen_fixed PUBLIC ${pinocchio_INCLUDE_DIRS})
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_fixed.urdf 
+${CMAKE_CURRENT_BINARY_DIR}/cassie_fixed.urdf
+COPYONLY)
+
+add_executable(cassie_sim_fixed sim/simulate_fixed.cc)
+target_link_libraries(cassie_sim_fixed PUBLIC mujoco_simulator Eigen3::Eigen cassie_control glog::glog)
+
+# Full-body cassie dynamics, free from stand
 add_executable(cassie_codegen ${CMAKE_CURRENT_SOURCE_DIR}/model/codegen.cc)
 target_link_libraries(cassie_codegen PUBLIC 
 code_generator
 )
 target_include_directories(cassie_codegen PUBLIC ${pinocchio_INCLUDE_DIRS})
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie_fixed.urdf 
-${CMAKE_CURRENT_BINARY_DIR}/cassie_fixed.urdf
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/model/urdf/cassie.urdf 
+${CMAKE_CURRENT_BINARY_DIR}/cassie.urdf
 COPYONLY)
 
 add_executable(cassie_sim sim/simulate.cc)
