@@ -8,12 +8,13 @@
 #include "eigen3/Eigen/Dense"
 
 // Code-generated functions
-#include "model/cg/cassie-fixed/cassie_fixed_achilles_rod_constraints.h"
-#include "model/cg/cassie-fixed/cassie_fixed_actuation_map.h"
-#include "model/cg/cassie-fixed/cassie_fixed_left_ankle.h"
-#include "model/cg/cassie-fixed/cassie_fixed_right_ankle.h"
-#include "model/cg/cassie-fixed/cassie_fixed_bias_vector.h"
-#include "model/cg/cassie-fixed/cassie_fixed_mass_matrix.h"
+#include "model/cg/cassie/cassie_achilles_rod_constraints.h"
+#include "model/cg/cassie/cassie_actuation_map.h"
+#include "model/cg/cassie/cassie_centre_of_mass_data.h"
+#include "model/cg/cassie/cassie_left_ankle.h"
+#include "model/cg/cassie/cassie_right_ankle.h"
+#include "model/cg/cassie/cassie_bias_vector.h"
+#include "model/cg/cassie/cassie_mass_matrix.h"
 
 // OSC model
 #include "controllers/osc/model.h"
@@ -83,6 +84,10 @@ class CassieOSC : public osc::Model {
         GetTask("right ankle")->SetKpGains(Vector3(ankle_kp, ankle_kp, ankle_kp));
         GetTask("right ankle")->SetKdGains(Vector3(ankle_kd, ankle_kd, ankle_kd));
 
+        // Add task for center of mass with no weights, just for testing
+        AddTask("com", 3, &CassieOSC::CenterOfMassTask);
+        GetTask("com")->SetTaskWeightMatrix(ankle_weights*0);
+
         // Joint damping
         joint_track_task_ = new osc::JointTrackTask(this->size());
         AddTask("joint damp", std::shared_ptr<controller::osc::Task>(joint_track_task_));
@@ -109,27 +114,37 @@ class CassieOSC : public osc::Model {
         GetTask("left ankle")->SetReference(Vector3(l_xpos, l_ypos, l_zpos));
         GetTask("right ankle")->SetReference(Vector3(r_xpos, r_ypos, r_zpos));
 
-        LOG(INFO) << "Left ankle tracking error: " << GetTask("left ankle")->e().transpose();
-        LOG(INFO) << "Right ankle tracking error: " << GetTask("right ankle")->e().transpose();
+        // LOG(INFO) << "Left ankle tracking error: " << GetTask("left ankle")->e().transpose();
+        // LOG(INFO) << "Right ankle tracking error: " << GetTask("right ankle")->e().transpose();
+
+        LOG(INFO) << "Center of mass position: " << GetTask("com")->x().transpose();
     }
 
     // Update controller state
     void UpdateState(Dimension nq, const Scalar* q, Dimension nv, const Scalar* v);
 
    protected:
+
     // Tasks
     static void LeftAnklePositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                  Vector& x, Matrix& J, Vector& dJdt_v) {
+                                      Vector& x, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_fixed_left_ankle(in, out, NULL, NULL, 0);
+        cassie_left_ankle(in, out, NULL, NULL, 0);
     }
 
     static void RightAnklePositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                  Vector& x, Matrix& J, Vector& dJdt_v) {
+                                       Vector& x, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_fixed_right_ankle(in, out, NULL, NULL, 0);
+        cassie_right_ankle(in, out, NULL, NULL, 0);
+    }
+
+    static void CenterOfMassTask(const ConfigurationVector& q, const TangentVector& v,
+                                 Vector& x, Matrix& J, Vector& dJdt_v) {
+        const double* in[] = {q.data(), v.data()};
+        double* out[] = {x.data(), J.data(), dJdt_v.data()};
+        cassie_centre_of_mass_data(in, out, NULL, NULL, 0);
     }
 
     // Constraints
@@ -137,26 +152,26 @@ class CassieOSC : public osc::Model {
                                    Vector& c, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {c.data(), J.data(), dJdt_v.data(), nullptr};
-        cassie_fixed_achilles_rod_constraints(in, out, NULL, NULL, 0);
+        cassie_achilles_rod_constraints(in, out, NULL, NULL, 0);
     }
 
     // Dynamics
     void ComputeMassMatrix(const ConfigurationVector& q, Matrix& M) {
         const double* in[] = {q.data(), NULL};
         double* out[] = {M.data()};
-        cassie_fixed_mass_matrix(in, out, NULL, NULL, 0);
+        cassie_mass_matrix(in, out, NULL, NULL, 0);
     }
 
     void ComputeBiasVector(const ConfigurationVector& q, const TangentVector& v, Vector& h) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {h.data()};
-        cassie_fixed_bias_vector(in, out, NULL, NULL, 0);
+        cassie_bias_vector(in, out, NULL, NULL, 0);
     }
 
     void ComputeActuationMap(const ConfigurationVector& q, Matrix& B) {
         const double* in[] = {q.data()};
         double* out[] = {B.data()};
-        cassie_fixed_actuation_map(in, out, NULL, NULL, 0);
+        cassie_actuation_map(in, out, NULL, NULL, 0);
     }
 
    private:

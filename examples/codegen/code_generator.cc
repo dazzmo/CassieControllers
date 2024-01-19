@@ -47,6 +47,7 @@ int CodeGenerator::GenerateInertiaMatrix() {
 int CodeGenerator::GenerateBiasVector() {
     TangentVectorAD h(model_->nv);
     h = pinocchio::rnea(*model_, *data_, q_, v_, TangentVectorAD::Zero(model_->nv));
+
     casadi::SX cs_h;
     pinocchio::casadi::copy(h, cs_h);
     GenerateCode("bias_vector", casadi::SXVector{q_sx_, v_sx_}, casadi::SXVector{densify(cs_h)});
@@ -114,6 +115,25 @@ int CodeGenerator::GenerateEndEffectorData(const std::string &name,
     GenerateCode(name,
                  casadi::SXVector{q_sx_, v_sx_},
                  casadi::SXVector{densify(cs_p), densify(cs_J), densify(cs_dJdt_v)});
+
+    return 0;
+}
+
+// Generate Centre of Mass (CoM) coordinates and Jacobian
+int CodeGenerator::GenerateCoMData() {
+
+    // Compute CoM position and Jacobian in world frame
+    // Set acceleration of joints to zero so dJdt_v = x_dd
+    TangentVectorAD q_acc_zero = TangentVectorAD::Zero(model_->nv);
+    pinocchio::centerOfMass(*model_, *data_, q_, v_, q_acc_zero);
+    pinocchio::jacobianCenterOfMass(*model_, *data_, q_);
+
+    casadi::SX cs_x_com, cs_J_com, cs_dJdt_v_com;
+    pinocchio::casadi::copy(data_->com[0], cs_x_com);
+    pinocchio::casadi::copy(data_->Jcom, cs_J_com);
+    pinocchio::casadi::copy(data_->acom[0], cs_dJdt_v_com);
+    GenerateCode("centre_of_mass_data", casadi::SXVector{q_sx_, v_sx_}, 
+                 casadi::SXVector{densify(cs_x_com), densify(cs_J_com), densify(cs_dJdt_v_com)});
 
     return 0;
 }

@@ -7,7 +7,7 @@
 int main(int argc, char* argv[]) {
 
     // Initialise model from Cassie urdf
-    CodeGenerator cg("./cassie_fixed.urdf");
+    CodeGenerator cg("./cassie.urdf");
     cg.SetCodeGenerationDestination(argv[1]);
 
     // Define rotation matrix for sole of foot
@@ -199,6 +199,9 @@ int main(int argc, char* argv[]) {
                                Eigen::Vector3d(-0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
     cg.GenerateEndEffectorData("right_ankle", "RightFootPitch", "rightfoot",
                                Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Matrix3d::Identity());
+
+    // Generate centre of mass data
+    cg.GenerateCoMData();
 
     return 0;
 }

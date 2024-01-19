@@ -6,13 +6,14 @@
 <robot name ="cassie">
 	<!-- Robot Link Definitions -->
 	<!--     22 linkages        -->
-  <link name="base_link">
+<!-- TODO: Add in the base link -->
+  <!-- <link name="base_link">
     <inertial>
       <mass value="0.000001"/>
       <inertia ixx="0.000001" ixy="0" ixz="0" iyy="0.000001" iyz="0" izz="0.000001"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </inertial>
-  </link>
+  </link> -->
   <link name="pelvis">
 		<inertial>
 			<origin rpy="0 0 0" xyz="0.05066 0.000346 0.02841"/>
@@ -272,11 +273,12 @@
 
 	<!-- Robot Joint Definitions -->
 	<!--                         -->
-  <joint name="base_joint" type="floating">
+<!-- TODO: Add in the base link -->
+  <!-- <joint name="base_joint" type="floating">
     <child link="pelvis"/>
     <parent link="base_link"/>
     <origin rpy="0 0 0" xyz="0 0 0"/>
-  </joint>
+  </joint> -->
 	<joint name="LeftHipRoll" type="revolute">
 		<origin rpy="0 1.570796326794897 0" xyz="-0.049 0.135 0"/>
 		<axis xyz="0 0 1"/>

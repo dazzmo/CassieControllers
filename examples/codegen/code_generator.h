@@ -60,6 +60,7 @@ class CodeGenerator {
     int GenerateEndEffectorData(const std::string &name,
                                 const std::string &parent_joint, const std::string &parent_frame,
                                 const Eigen::Vector3d &r, const Eigen::Matrix3d &R);
+    int GenerateCoMData();
 
     // Code generation
 
