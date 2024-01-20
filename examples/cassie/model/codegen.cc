@@ -2,7 +2,6 @@
 
 // TODO: Read all the constants from a .yaml file (or similar)
 // TODO: Provide better estimate of damping terms? (see other Cassie groups)
-// TODO: Add mass matrix to next version (Cassie off stand)
 
 int main(int argc, char* argv[]) {
 
@@ -90,6 +89,18 @@ int main(int argc, char* argv[]) {
     // Note that dJdt = dJdq * dqdt by the chain rule
     casadi::SX Jcl = jacobian(cl, cg.GetQposSX());
     casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetQvelSX()), cg.GetQposSX());
+    // TODO: The multiplication above is no longer defined when nq != nv.
+
+    // What we actually need here is Jdot * v, not Jdot by itself.
+    // But doesn't that cause problems later with J and Jdot having different dimensions? Because in the tasks
+    // we explicitly use J*v to get the task velocity don't we? Yep, see tasks.cc
+
+    // Jacobians therefore need to be of shape 6 x nv, which they are not. This is a pretty fundamental issue
+    // which likely has a pretty simple answer. Ask Damian about it.
+
+    // This raises a bigger question of what should the state actually be here? Do we need a state
+    // estimator to estimate the position/orientation (and velocities) of the floating base?
+    // Take a look at the Apgar work and discuss with Damian. Answer is quite possibly yes.
 
     // Generate code for the constraints
     cg.GenerateCode(

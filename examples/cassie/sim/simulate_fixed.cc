@@ -8,7 +8,7 @@ int main() {
 
     // Create simulator and load model
     MujocoSimulator& sim = MujocoSimulator::getInstance();
-    sim.LoadModel("./agility_cassie/scene.xml");
+    sim.LoadModel("./agility_cassie/scene_fixed.xml");
     sim.Init();
 
     // Set controller options
