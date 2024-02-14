@@ -12,10 +12,10 @@ int main(int argc, char* argv[]) {
     // Define rotation matrix for sole of foot
     // TODO: Double-check the order (ZYX vs. XYZ)
     // Sole of foot frame (https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model)
-    Eigen::AngleAxisd rollAngle(-M_PI_2, Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd pitchAngle(-140.0 * M_PI / 180.0, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(0.0, Eigen::Vector3d::UnitZ());
-    Eigen::Quaterniond foot_rot_q = yawAngle * pitchAngle * rollAngle;
+    Eigen::AngleAxisd rollAngle(M_PI_2, Eigen::Vector3d::UnitX());
+    Eigen::AngleAxisd pitchAngle(0.0, Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd yawAngle(-140.0 * M_PI / 180.0, Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond foot_rot_q = rollAngle * pitchAngle * yawAngle;
     
     // Create useful reference frames
     cg.AddReferenceFrame("left_foot", "LeftFootPitch", "leftfoot",
@@ -85,11 +85,6 @@ int main(int argc, char* argv[]) {
                                          cg.GetQposSX()(cg.GetJointIdq("RightShinPitch")),
                                          cg.GetQposSX()(cg.GetJointIdq("RightAchillesSpring"))});
 
-    /**
-     * @brief This may be wrong
-     * 
-     */
-
     // Get Jacobian and its time-derivative for the constraints
     casadi::SX qjoints = cg.GetQposSX()(casadi::Slice(7, model.nq));
     casadi::SX vjoints = cg.GetQvelSX()(casadi::Slice(6, model.nv));
@@ -99,22 +94,8 @@ int main(int argc, char* argv[]) {
     casadi::SX dJcldt_qjoints = jacobian(mtimes(Jcl_qjoints, vjoints), qjoints);
 
     // Pad matrices with zeros to account for floating base
-    casadi::SX Jcl = casadi::horzcat(casadi::SX(Jcl_qjoints.size1(), 6), Jcl_qjoints);
-    casadi::SX dJcldt = casadi::horzcat(casadi::SX(dJcldt_qjoints.size1(), 6), dJcldt_qjoints);
-    
-
-    // TODO: The multiplication above is no longer defined when nq != nv.
-
-    // What we actually need here is Jdot * v, not Jdot by itself.
-    // But doesn't that cause problems later with J and Jdot having different dimensions? Because in the tasks
-    // we explicitly use J*v to get the task velocity don't we? Yep, see tasks.cc
-
-    // Jacobians therefore need to be of shape 6 x nv, which they are not. This is a pretty fundamental issue
-    // which likely has a pretty simple answer. Ask Damian about it.
-
-    // This raises a bigger question of what should the state actually be here? Do we need a state
-    // estimator to estimate the position/orientation (and velocities) of the floating base?
-    // Take a look at the Apgar work and discuss with Damian. Answer is quite possibly yes.
+    casadi::SX Jcl = casadi::SX::horzcat({casadi::SX(Jcl_qjoints.size1(), 6), Jcl_qjoints});
+    casadi::SX dJcldt = casadi::SX::horzcat({casadi::SX(dJcldt_qjoints.size1(), 6), dJcldt_qjoints});
 
     // Generate code for the constraints
     cg.GenerateCode(

@@ -12,13 +12,6 @@
 
 const double SIM_REFERESH_RATE = 1.0 / 60.0;
 
-// Initial state from cassie-mujoco-sim when pelvis is not a free joint
-const double QPOS_INIT_STAND[28] = { 
-    0.0045, 0, 0.4973, 0.9785, -0.0164, 0.01787, -0.2049,
-    -1.1997, 0, 1.4267, 0, -1.5244, 1.5244, -1.5968,
-    -0.0045, 0, 0.4973, 0.9786, 0.00386, -0.01524, -0.2051,
-    -1.1997, 0, 1.4267, 0, -1.5244, 1.5244, -1.5968};
-
 // Initial state from cassie-mujoco-sim from full Cassie model
 const double QPOS_INIT[35] = {0, 0, 1.01, 1, 0, 0, 0,
     0.0045, 0, 0.4973, 0.9785, -0.0164, 0.01787, -0.2049,
@@ -37,16 +30,9 @@ double real_time_seconds() {
 // Initialise Cassie state
 int init_cassie_model(MujocoSimulator& sim) {
 
-    // Number of states
+    // Number of states and initial pose
     int nq = sim.m_->nq;
-
-    // Check if fixed to stand or not
-    const double* qpos0;
-    if (nq == 28) {
-        qpos0 = QPOS_INIT_STAND;
-    } else {
-        qpos0 = QPOS_INIT;
-    }
+    const double* qpos0 = QPOS_INIT;
 
     // Reset data and initialise
     mj_resetData(sim.m_, sim.d_);

@@ -64,6 +64,10 @@ int CodeGenerator::AddReferenceFrame(const std::string &name,
     Eigen::Matrix<ADScalar, 3, 3> R_ad = R.cast<ADScalar>();
     Eigen::Matrix<ADScalar, 3, 1> r_ad = r.cast<ADScalar>();
 
+    std::cout << "The frame to add for " << name << " has : " << std::endl;
+    std::cout << "R: " << R_ad << std::endl;
+    std::cout << "r: " << r_ad.transpose() << std::endl;
+
     // Create frame on model
     model_->addFrame(pinocchio::FrameTpl<ADScalar>(
         name, model_->getJointId(parent_joint),

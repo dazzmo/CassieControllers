@@ -29,6 +29,10 @@ int main() {
     double sim_start;
     double t_ctrl = sim.GetSimulatorTime();
 
+    // TODO: Remove this
+    int exit_count = 0;
+    bool do_exit = false;
+
     while (!sim.WindowShouldClose()) {
 
         // Render at 60 Hz and make sure simulator and real-time are in sync
@@ -56,9 +60,19 @@ int main() {
                 // Apply controls and step forward
                 sim.ApplyControl(ctrl.ControlOutput().data(), ctrl.GetModel().size().nu);
                 sim.ForwardStep();
+
+                // TODO: Remove this
+                if (sim.GetSimulatorTime() - sim_start > 0) {
+                    exit_count++;
+                    if (exit_count > 20) {
+                        do_exit = true;
+                        break;
+                    }
+                }
             } 
         }
         sim.UpdateSceneAndRender();
+        if (do_exit) {break;} // TODO: Remove this
     } 
 
     return 0;
