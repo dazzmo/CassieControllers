@@ -85,10 +85,24 @@ int main(int argc, char* argv[]) {
                                          cg.GetQposSX()(cg.GetJointIdq("RightShinPitch")),
                                          cg.GetQposSX()(cg.GetJointIdq("RightAchillesSpring"))});
 
+    /**
+     * @brief This may be wrong
+     * 
+     */
+
     // Get Jacobian and its time-derivative for the constraints
+    casadi::SX qjoints = cg.GetQposSX()(casadi::Slice(7, model.nq));
+    casadi::SX vjoints = cg.GetQvelSX()(casadi::Slice(6, model.nv));
+    
     // Note that dJdt = dJdq * dqdt by the chain rule
-    casadi::SX Jcl = jacobian(cl, cg.GetQposSX());
-    casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetQvelSX()), cg.GetQposSX());
+    casadi::SX Jcl_qjoints = jacobian(cl, qjoints);
+    casadi::SX dJcldt_qjoints = jacobian(mtimes(Jcl_qjoints, vjoints), qjoints);
+
+    // Pad matrices with zeros to account for floating base
+    casadi::SX Jcl = casadi::horzcat(casadi::SX(Jcl_qjoints.size1(), 6), Jcl_qjoints);
+    casadi::SX dJcldt = casadi::horzcat(casadi::SX(dJcldt_qjoints.size1(), 6), dJcldt_qjoints);
+    
+
     // TODO: The multiplication above is no longer defined when nq != nv.
 
     // What we actually need here is Jdot * v, not Jdot by itself.
