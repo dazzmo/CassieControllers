@@ -36,7 +36,7 @@ int cassie_bias_vector_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *
 #define cassie_bias_vector_SZ_ARG 2
 #define cassie_bias_vector_SZ_RES 1
 #define cassie_bias_vector_SZ_IW 0
-#define cassie_bias_vector_SZ_W 467
+#define cassie_bias_vector_SZ_W 456
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

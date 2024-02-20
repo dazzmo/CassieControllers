@@ -36,7 +36,7 @@ int cassie_right_ankle_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *
 #define cassie_right_ankle_SZ_ARG 2
 #define cassie_right_ankle_SZ_RES 3
 #define cassie_right_ankle_SZ_IW 0
-#define cassie_right_ankle_SZ_W 88
+#define cassie_right_ankle_SZ_W 82
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

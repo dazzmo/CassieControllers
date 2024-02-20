@@ -36,7 +36,7 @@ int cassie_centre_of_mass_data_work(casadi_int *sz_arg, casadi_int* sz_res, casa
 #define cassie_centre_of_mass_data_SZ_ARG 2
 #define cassie_centre_of_mass_data_SZ_RES 3
 #define cassie_centre_of_mass_data_SZ_IW 0
-#define cassie_centre_of_mass_data_SZ_W 255
+#define cassie_centre_of_mass_data_SZ_W 248
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

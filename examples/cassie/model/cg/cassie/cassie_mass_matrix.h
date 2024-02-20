@@ -36,7 +36,7 @@ int cassie_mass_matrix_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *
 #define cassie_mass_matrix_SZ_ARG 1
 #define cassie_mass_matrix_SZ_RES 1
 #define cassie_mass_matrix_SZ_IW 0
-#define cassie_mass_matrix_SZ_W 372
+#define cassie_mass_matrix_SZ_W 362
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

@@ -36,7 +36,7 @@ int cassie_achilles_rod_constraints_work(casadi_int *sz_arg, casadi_int* sz_res,
 #define cassie_achilles_rod_constraints_SZ_ARG 2
 #define cassie_achilles_rod_constraints_SZ_RES 3
 #define cassie_achilles_rod_constraints_SZ_IW 0
-#define cassie_achilles_rod_constraints_SZ_W 406
+#define cassie_achilles_rod_constraints_SZ_W 401
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

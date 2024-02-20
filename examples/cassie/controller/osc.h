@@ -16,10 +16,10 @@
 #include "model/cg/cassie/cassie_bias_vector.h"
 #include "model/cg/cassie/cassie_mass_matrix.h"
 
-#include "model/cg/cassie/cassie_left_foot_back.h"
-#include "model/cg/cassie/cassie_left_foot_front.h"
-#include "model/cg/cassie/cassie_right_foot_back.h"
-#include "model/cg/cassie/cassie_right_foot_front.h"
+#include "model/cg/cassie/cassie_LeftFootFront.h"
+#include "model/cg/cassie/cassie_LeftFootBack.h"
+#include "model/cg/cassie/cassie_RightFootFront.h"
+#include "model/cg/cassie/cassie_RightFootBack.h"
 
 // OSC model
 #include "controllers/osc/model.h"
@@ -139,7 +139,7 @@ protected:
     {
         const double *in[] = {q.data(), v.data()};
         double *out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_left_foot_back(in, out, NULL, NULL, 0);
+        cassie_LeftFootBack(in, out, NULL, NULL, 0);
     }
 
     static void LeftFootFrontTask(const ConfigurationVector &q, const TangentVector &v,
@@ -147,7 +147,7 @@ protected:
     {
         const double *in[] = {q.data(), v.data()};
         double *out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_left_foot_front(in, out, NULL, NULL, 0);
+        cassie_LeftFootFront(in, out, NULL, NULL, 0);
     }
 
     static void RightFootBackTask(const ConfigurationVector &q, const TangentVector &v,
@@ -155,7 +155,7 @@ protected:
     {
         const double *in[] = {q.data(), v.data()};
         double *out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_right_foot_back(in, out, NULL, NULL, 0);
+        cassie_RightFootBack(in, out, NULL, NULL, 0);
     }
 
     static void RightFootFrontTask(const ConfigurationVector &q, const TangentVector &v,
@@ -163,7 +163,7 @@ protected:
     {
         const double *in[] = {q.data(), v.data()};
         double *out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_right_foot_front(in, out, NULL, NULL, 0);
+        cassie_RightFootFront(in, out, NULL, NULL, 0);
     }
 
     static void LeftAnklePositionTask(const ConfigurationVector &q, const TangentVector &v,
