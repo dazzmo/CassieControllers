@@ -13,7 +13,7 @@ int main() {
 
     // Set controller options
     controller::osc::Options opt;
-    opt.frequency = 1000.0;
+    opt.frequency = 2000.0;
     opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
 
     // Create an operational space controller model for Cassie leg
@@ -29,6 +29,8 @@ int main() {
     double sim_start;
     double t_ctrl = sim.GetSimulatorTime();
 
+    bool first_iteration = true;
+
     while (!sim.WindowShouldClose()) {
 
         // Render at 60 Hz and make sure simulator and real-time are in sync
@@ -39,10 +41,12 @@ int main() {
 
                 // Apply controller at desired frequency within simulator
                 if (sim.GetSimulatorTime() - t_ctrl > 1.0 / opt.frequency) {
-
+                    
                     // Update model state
                     ctrl.GetModel().UpdateState(cassie_ctrl.size().nq, sim.GetModelConfiguration(),
                                                 cassie_ctrl.size().nv, sim.GetModelVelocity());
+
+                    std::cout << ctrl.GetModel().state().q.transpose() << std::endl;
 
                     // Compute controls
                     ctrl.UpdateControl(sim.GetSimulatorTime(), 
@@ -58,6 +62,9 @@ int main() {
                 sim.ForwardStep();
 
             } 
+
+            // Indicate first iteration has been performed
+            first_iteration = true;
         }
 
         sim.UpdateSceneAndRender();
