@@ -36,7 +36,7 @@ int cassie_LeftFootFront_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int
 #define cassie_LeftFootFront_SZ_ARG 2
 #define cassie_LeftFootFront_SZ_RES 3
 #define cassie_LeftFootFront_SZ_IW 0
-#define cassie_LeftFootFront_SZ_W 86
+#define cassie_LeftFootFront_SZ_W 92
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

@@ -9,31 +9,18 @@ int main(int argc, char* argv[]) {
     // Initialise model from Cassie urdf
     CodeGenerator cg("./cassie_fixed.urdf");
     cg.SetCodeGenerationDestination(argv[1]);
-
-    // Define rotation matrix for sole of foot
-    // TODO: Double-check the order (ZYX vs. XYZ)
-    // Sole of foot frame (https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model)
-    Eigen::AngleAxisd rollAngle(-M_PI_2, Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd pitchAngle(-140.0 * M_PI / 180.0, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(0.0, Eigen::Vector3d::UnitZ());
-    Eigen::Quaterniond foot_rot_q = yawAngle * pitchAngle * rollAngle;
     
     // Create useful reference frames
-    cg.AddReferenceFrame("left_foot", "LeftFootPitch", "leftfoot",
-                         Eigen::Vector3d(0.01762, 0.05219, 0.0), foot_rot_q.matrix());
-    cg.AddReferenceFrame("right_foot", "RightFootPitch", "rightfoot",
-                         Eigen::Vector3d(0.01762, 0.05219, 0.0), foot_rot_q.matrix());
-
     // https://github.com/agilityrobotics/cassie-doc/wiki/Heel-Spring-Model
-    cg.AddReferenceFrame("left_heel_tip", "LeftAchillesSpring", "leftheelspring",
+    cg.AddReferenceFrame("left_heel_spring_tip", "LeftAchillesSpring",
                          Eigen::Vector3d(0.11877, -0.01, 0.0), Eigen::Matrix3d::Identity());
-    cg.AddReferenceFrame("right_heel_tip", "RightAchillesSpring", "rightheelspring",
+    cg.AddReferenceFrame("right_heel_spring_tip", "RightAchillesSpring",
                          Eigen::Vector3d(0.11877, -0.01, 0.0), Eigen::Matrix3d::Identity());
 
     // https://github.com/agilityrobotics/cassie-doc/wiki/Thigh-Model
-    cg.AddReferenceFrame("left_achilles_socket", "LeftHipPitch", "lefthippitch",
+    cg.AddReferenceFrame("left_achilles_rod_socket", "LeftHipPitch", 
                          Eigen::Vector3d(0.0, 0.0, 0.045), Eigen::Matrix3d::Identity());
-    cg.AddReferenceFrame("right_achilles_socket", "RightHipPitch", "righthippitch",
+    cg.AddReferenceFrame("right_achilles_rod_socket", "RightHipPitch",
                          Eigen::Vector3d(0.0, 0.0, 0.045), Eigen::Matrix3d::Identity());
 
     // Get model and data references, update forward kinematics
@@ -69,15 +56,21 @@ int main(int argc, char* argv[]) {
     model.rotorInertia[cg.GetJointIdv("RightKneePitch")] = 3.65e-04;
     model.rotorInertia[cg.GetJointIdv("RightFootPitch")] = 4.90e-06;
 
+    std::cout << "Inertia model" << std::endl;
+
+
     // Achilles rod on Cassie constrains each end to be 501.2mm apart:
     // https://github.com/agilityrobotics/cassie-doc/wiki/Achilles-Rod-Model
     const double achilles_length = 0.5012;
 
     // Create constraints, including for leaf springs, which we set to 0 deflection
-    CodeGenerator::ADData::Vector3 dl = data.oMf[model.getFrameId("left_achilles_socket")].translation() -
-                                        data.oMf[model.getFrameId("left_heel_tip")].translation();
-    CodeGenerator::ADData::Vector3 dr = data.oMf[model.getFrameId("right_achilles_socket")].translation() -
-                                        data.oMf[model.getFrameId("right_heel_tip")].translation();
+    CodeGenerator::ADData::Vector3 dl = data.oMf[model.getFrameId("left_achilles_rod_socket")].translation() -
+                                        data.oMf[model.getFrameId("left_heel_spring_tip")].translation();
+    CodeGenerator::ADData::Vector3 dr = data.oMf[model.getFrameId("right_achilles_rod_socket")].translation() -
+                                        data.oMf[model.getFrameId("right_heel_spring_tip")].translation();
+
+    std::cout << "Achilles disctances" << std::endl;
+
 
     casadi::SX cl = casadi::SX::vertcat({dl.squaredNorm() - achilles_length * achilles_length,
                                          dr.squaredNorm() - achilles_length * achilles_length,
@@ -184,21 +177,9 @@ int main(int argc, char* argv[]) {
 
     cg.GenerateCode("actuation_map", {cg.GetQposSX()}, {densify(B)});
 
-    // Generate end-effector data
-    // https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model
-    cg.GenerateEndEffectorData("left_foot_front", "LeftFootPitch", "left_foot",
-                               Eigen::Vector3d(0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
-    cg.GenerateEndEffectorData("left_foot_back", "LeftFootPitch", "left_foot",
-                               Eigen::Vector3d(-0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
-    cg.GenerateEndEffectorData("left_ankle", "LeftFootPitch", "leftfoot",
-                               Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Matrix3d::Identity());
-
-    cg.GenerateEndEffectorData("right_foot_front", "RightFootPitch", "right_foot",
-                               Eigen::Vector3d(0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
-    cg.GenerateEndEffectorData("right_foot_back", "RightFootPitch", "right_foot",
-                               Eigen::Vector3d(-0.09, 0.0, 0.0), Eigen::Matrix3d::Identity());
-    cg.GenerateEndEffectorData("right_ankle", "RightFootPitch", "rightfoot",
-                               Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Matrix3d::Identity());
+    // Add frames for the "ankle" (toe joint, see URDF)
+    cg.GenerateEndEffectorData("RightFootPitch");
+    cg.GenerateEndEffectorData("LeftFootPitch");
 
     return 0;
 }

@@ -46,6 +46,11 @@
       </geometry>
     </visual>
   </link>
+  <!-- End Effector Frames -->
+  <link name="hand_frame">
+  </link>
+
+
   <!-- JOINT DEFINITION -->
   <joint name="shoulder" type="revolute">
     <child link="first_link"/>
@@ -68,4 +73,10 @@
     <axis xyz="1 0 0"/>
     <origin rpy="0 0 0" xyz="0 0 -1.0"/>
   </joint>
+  <joint name="hand" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 -1.0"/>
+    <parent link="third_link"/>
+    <child link="hand_frame"/>
+  </joint>
+
 </robot>

@@ -16,9 +16,7 @@
 #include "model/cg/cassie/cassie_actuation_map.h"
 #include "model/cg/cassie/cassie_bias_vector.h"
 #include "model/cg/cassie/cassie_centre_of_mass_data.h"
-#include "model/cg/cassie/cassie_left_ankle.h"
 #include "model/cg/cassie/cassie_mass_matrix.h"
-#include "model/cg/cassie/cassie_right_ankle.h"
 
 // OSC model
 #include "controllers/osc/model.h"
@@ -95,8 +93,7 @@ class CassieOSC : public osc::Model {
         GetTask("com")->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
         GetTask("com")->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
 
-        // NOTE: Joint damping task not configured for nq != nv. Add it when
-        // ready
+        // NOTE: Joint damping task not configured for nq != nv. Add it when ready
 
         // Add kinematic constraint
         AddHolonomicConstraint("rigid bar", 6, &CassieOSC::RigidBarConstraint);
@@ -130,7 +127,7 @@ class CassieOSC : public osc::Model {
         GetEndEffectorTask("left_foot_back")
             ->SetReference(Eigen::Vector3d(-0.08,  0.135, 0));
 
-        GetTask("com")->SetReference(Eigen::Vector3d(0.0, 0.0, 0.7 - 0.1 * sin(time / 100.0)));
+        GetTask("com")->SetReference(Eigen::Vector3d(-0.01656, 0.0, 0.87)); //0.7 - 0.1 * (time / 100.0)));
 
         // Set their positions to stay at
         LOG(INFO) << "Left front position: "
@@ -182,22 +179,6 @@ class CassieOSC : public osc::Model {
         const double *in[] = {q.data(), v.data()};
         double *out[] = {x.data(), J.data(), dJdt_v.data()};
         cassie_RightFootFront(in, out, NULL, NULL, 0);
-    }
-
-    static void LeftAnklePositionTask(const ConfigurationVector &q,
-                                      const TangentVector &v, Vector &x,
-                                      Matrix &J, Vector &dJdt_v) {
-        const double *in[] = {q.data(), v.data()};
-        double *out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_left_ankle(in, out, NULL, NULL, 0);
-    }
-
-    static void RightAnklePositionTask(const ConfigurationVector &q,
-                                       const TangentVector &v, Vector &x,
-                                       Matrix &J, Vector &dJdt_v) {
-        const double *in[] = {q.data(), v.data()};
-        double *out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_right_ankle(in, out, NULL, NULL, 0);
     }
 
     static void CenterOfMassTask(const ConfigurationVector &q,

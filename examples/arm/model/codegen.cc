@@ -10,11 +10,7 @@ int main(int argc, char* argv[]) {
     cg.GenerateBiasVector();
 
     // Task for tip
-    cg.GenerateEndEffectorData("tip",
-                               "wrist", "third_link",
-                               Eigen::Vector3d(0, 0, -1.0),
-                               Eigen::Matrix3d::Identity());
-
+    cg.GenerateEndEffectorData("hand");
     CodeGenerator::ADModel& model = cg.GetModel();
 
     // Create actuation matrix (with gearing)
