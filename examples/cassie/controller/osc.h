@@ -26,6 +26,7 @@
 #define CASSIE_NQ (23)
 #define CASSIE_NV (22)
 #define CASSIE_NU (10)
+#define CASSIE_NJOINTS (16)
 
 using namespace controller;
 
@@ -39,17 +40,32 @@ class CassieOSC : public osc::Model {
 
         // Task weights
         Eigen::Vector<Scalar, CASSIE_NU> ctrl_weights;
+        Eigen::Vector<Scalar, CASSIE_NJOINTS> damping_weights;
         Vector3 com_weights;
         Vector3 contact_weights;
 
-        ctrl_weights.setConstant(1e-3);
-        com_weights.setConstant(1e1);
-        contact_weights.setConstant(1e2);
+        ctrl_weights.setConstant(1e-5);
+        com_weights.setConstant(5);
+        contact_weights.setConstant(10);
+        damping_weights.setConstant(1e-3);
 
         // Gains
-        // TODO: Add for centre of mass!
-        double contact_kp = 1e2;
-        double contact_kd = 1e1;
+        Eigen::Vector3d contact_kp(50,50,50);
+        Eigen::Vector3d contact_kd(5,5,5);
+
+        Eigen::Vector3d com_kp(500,500,100);
+        Eigen::Vector3d com_kd(10,10,5);
+
+        Eigen::VectorXd damping_kd = 5 * Eigen::VectorXd::Ones(CASSIE_NJOINTS);
+
+        // Fudge the joint damping for uncontrollable joints
+        // TODO: Make this neater later
+        damping_weights[4] = 0.0;
+        damping_weights[5] = 0.0;
+        damping_weights[6] = 0.0;
+        damping_weights[12] = 0.0;
+        damping_weights[13] = 0.0; 
+        damping_weights[14] = 0.0;
 
         // Set control weights in cost function
         SetControlWeighting(ctrl_weights);
@@ -59,41 +75,43 @@ class CassieOSC : public osc::Model {
         GetEndEffectorTask("right_foot_back")
             ->SetTaskWeightMatrix(contact_weights);
         GetEndEffectorTask("right_foot_back")
-            ->SetKpGains(contact_kp * Eigen::VectorXd::Ones(3));
+            ->SetKpGains(contact_kp);
         GetEndEffectorTask("right_foot_back")
-            ->SetKdGains(contact_kd * Eigen::VectorXd::Ones(3));
+            ->SetKdGains(contact_kd);
 
         AddEndEffectorTask("right_foot_front", &CassieOSC::RightFootFrontTask);
         GetEndEffectorTask("right_foot_front")
             ->SetTaskWeightMatrix(contact_weights);
         GetEndEffectorTask("right_foot_front")
-            ->SetKpGains(contact_kp * Eigen::VectorXd::Ones(3));
+            ->SetKpGains(contact_kp);
         GetEndEffectorTask("right_foot_front")
-            ->SetKdGains(contact_kd * Eigen::VectorXd::Ones(3));
+            ->SetKdGains(contact_kd);
 
         AddEndEffectorTask("left_foot_back", &CassieOSC::LeftFootBackTask);
         GetEndEffectorTask("left_foot_back")
             ->SetTaskWeightMatrix(contact_weights);
         GetEndEffectorTask("left_foot_back")
-            ->SetKpGains(contact_kp * Eigen::VectorXd::Ones(3));
+            ->SetKpGains(contact_kp);
         GetEndEffectorTask("left_foot_back")
-            ->SetKdGains(contact_kd * Eigen::VectorXd::Ones(3));
+            ->SetKdGains(contact_kd);
 
         AddEndEffectorTask("left_foot_front", &CassieOSC::LeftFootFrontTask);
         GetEndEffectorTask("left_foot_front")
             ->SetTaskWeightMatrix(contact_weights);
         GetEndEffectorTask("left_foot_front")
-            ->SetKpGains(contact_kp * Eigen::VectorXd::Ones(3));
+            ->SetKpGains(contact_kp);
         GetEndEffectorTask("left_foot_front")
-            ->SetKdGains(contact_kd * Eigen::VectorXd::Ones(3));
+            ->SetKdGains(contact_kd);
 
         // Add task for center of mass
         AddTask("com", 3, &CassieOSC::CenterOfMassTask);
         GetTask("com")->SetTaskWeightMatrix(com_weights);
-        GetTask("com")->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
-        GetTask("com")->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
+        GetTask("com")->SetKpGains(com_kp);
+        GetTask("com")->SetKdGains(com_kd);
 
-        // NOTE: Joint damping task not configured for nq != nv. Add it when ready
+        AddTask("joint_damping", CASSIE_NJOINTS, &CassieOSC::CustomJointDamping);
+        GetTask("joint_damping")->SetTaskWeightMatrix(damping_weights);
+        GetTask("joint_damping")->SetKdGains(damping_kd);
 
         // Add kinematic constraint
         AddHolonomicConstraint("rigid bar", 6, &CassieOSC::RigidBarConstraint);
@@ -103,14 +121,13 @@ class CassieOSC : public osc::Model {
     // Update the references for any tasks
     void UpdateReferences(Scalar time, const ConfigurationVector &q,
                           const TangentVector &v) {
-        // TODO: Contact not currently working??
+        
         // Make all points in contact
         GetEndEffectorTask("right_foot_front")->inContact = true;
         GetEndEffectorTask("right_foot_back")->inContact = true;
         GetEndEffectorTask("left_foot_front")->inContact = true;
         GetEndEffectorTask("left_foot_back")->inContact = true;
 
-        // Get current position of the feet and set that as the reference
         // Update tasks
         GetEndEffectorTask("right_foot_front")->Update(state().q, state().v);
         GetEndEffectorTask("right_foot_back")->Update(state().q, state().v);
@@ -127,20 +144,24 @@ class CassieOSC : public osc::Model {
         GetEndEffectorTask("left_foot_back")
             ->SetReference(Eigen::Vector3d(-0.08,  0.135, 0));
 
-        GetTask("com")->SetReference(Eigen::Vector3d(-0.01656, 0.0, 0.87)); //0.7 - 0.1 * (time / 100.0)));
+        GetTask("com")->SetReference(Eigen::Vector3d(-0.01656, 0.0, 0.75 - 0.1 * sin(2*M_PI*time / 2.0)));
+
+        Eigen::VectorXd joint_damping_ref = Eigen::VectorXd::Zero(CASSIE_NJOINTS);
+        GetTask("joint_damping")->SetReference(joint_damping_ref);
+
 
         // Set their positions to stay at
-        LOG(INFO) << "Left front position: "
-                  << GetEndEffectorTask("left_foot_front")->x().transpose();
-        LOG(INFO) << "Left back position: "
-                  << GetEndEffectorTask("left_foot_back")->x().transpose();
-        LOG(INFO) << "Right front position: "
-                  << GetEndEffectorTask("right_foot_front")->x().transpose();
-        LOG(INFO) << "Right back position: "
-                  << GetEndEffectorTask("right_foot_back")->x().transpose();
+        // LOG(INFO) << "Left front error: "
+        //           << GetEndEffectorTask("left_foot_front")->e().transpose();
+        // LOG(INFO) << "Left back error: "
+        //           << GetEndEffectorTask("left_foot_back")->e().transpose();
+        // LOG(INFO) << "Right front error: "
+        //           << GetEndEffectorTask("right_foot_front")->e().transpose();
+        // LOG(INFO) << "Right back error: "
+        //           << GetEndEffectorTask("right_foot_back")->e().transpose();
 
-        LOG(INFO) << "Center of mass position: "
-                  << GetTask("com")->x().transpose();
+        LOG(INFO) << "Center of mass error: "
+                  << GetTask("com")->e().transpose();
     }
 
     // Update controller state
@@ -148,7 +169,17 @@ class CassieOSC : public osc::Model {
                      const Scalar *v);
 
    protected:
+    
     // Tasks
+    static void CustomJointDamping(const ConfigurationVector &q,
+                                   const TangentVector &v, Vector &x, Matrix &J,
+                                   Vector &dJdt_v) {
+        // Set task to Kd * (0 - qvel_joints) to dampen joint movement
+        x = v.bottomRows(CASSIE_NJOINTS);
+        J.bottomRightCorner(CASSIE_NJOINTS, CASSIE_NJOINTS).setIdentity();
+        dJdt_v.setZero();
+    }
+    
     static void LeftFootBackTask(const ConfigurationVector &q,
                                  const TangentVector &v, Vector &x, Matrix &J,
                                  Vector &dJdt_v) {

@@ -4,7 +4,7 @@ int main() {
 
     // Initialise logging
     google::InitGoogleLogging("simulate");
-    FLAGS_logtostderr = 1;
+    FLAGS_logtostderr = 0;
 
     // Create simulator and load model
     MujocoSimulator& sim = MujocoSimulator::getInstance();
@@ -45,8 +45,6 @@ int main() {
                     // Update model state
                     ctrl.GetModel().UpdateState(cassie_ctrl.size().nq, sim.GetModelConfiguration(),
                                                 cassie_ctrl.size().nv, sim.GetModelVelocity());
-
-                    std::cout << ctrl.GetModel().state().q.transpose() << std::endl;
 
                     // Compute controls
                     ctrl.UpdateControl(sim.GetSimulatorTime(), 

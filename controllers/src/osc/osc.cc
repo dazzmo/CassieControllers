@@ -70,7 +70,6 @@ void OperationalSpaceController::Init() {
     // End-effector force friction cones
     int id = 0;
     for (auto const& ee : m_.GetEndEffectorTaskMap()) {
-        std::cout << id << std::endl;
         // Give each a unique contact id
         ee.second->SetId(id);
         // Set friction cone constraint
@@ -275,7 +274,13 @@ void OperationalSpaceController::UpdateControl(Scalar time,
 
     if (status != qpOASES::returnValue::SUCCESSFUL_RETURN) {
         LOG(ERROR) << "Failed";
-        throw std::runtime_error("OSC has failed to solve current QP");
+        // TODO: See about handling this in a proper and sophisticated way
+        int nWSR = opt_.max_number_working_set_recalculations;
+        status = qp_->init(qp_data_->H.data(), qp_data_->g.data(),
+                           qp_data_->A.data(), qp_data_->lbx.data(),
+                           qp_data_->ubx.data(), qp_data_->lbA.data(),
+                           qp_data_->ubA.data(), nWSR);
+        // throw std::runtime_error("OSC has failed to solve current QP");
     }
 
     // Get solution and data
