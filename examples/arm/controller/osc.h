@@ -11,7 +11,7 @@
 #include "model/cg/arm_bias_vector.h"
 #include "model/cg/arm_constraint.h"
 #include "model/cg/arm_mass_matrix.h"
-#include "model/cg/arm_tip.h"
+#include "model/cg/arm_hand.h"
 
 #define ARM_MODEL_NQ 3
 #define ARM_MODEL_NV 3
@@ -62,7 +62,7 @@ class ArmModel : public osc::Model {
                                 Vector& x, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        arm_tip(in, out, NULL, NULL, 0);
+        arm_hand(in, out, NULL, NULL, 0);
     }
 
     // Constraints

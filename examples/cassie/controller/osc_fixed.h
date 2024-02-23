@@ -10,8 +10,8 @@
 // Code-generated functions
 #include "model/cg/cassie-fixed/cassie_fixed_achilles_rod_constraints.h"
 #include "model/cg/cassie-fixed/cassie_fixed_actuation_map.h"
-#include "model/cg/cassie-fixed/cassie_fixed_left_ankle.h"
-#include "model/cg/cassie-fixed/cassie_fixed_right_ankle.h"
+#include "model/cg/cassie-fixed/cassie_fixed_LeftFootPitch.h"
+#include "model/cg/cassie-fixed/cassie_fixed_RightFootPitch.h"
 #include "model/cg/cassie-fixed/cassie_fixed_bias_vector.h"
 #include "model/cg/cassie-fixed/cassie_fixed_mass_matrix.h"
 
@@ -122,14 +122,14 @@ class CassieFixedOSC : public osc::Model {
                                   Vector& x, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_fixed_left_ankle(in, out, NULL, NULL, 0);
+        cassie_fixed_LeftFootPitch(in, out, NULL, NULL, 0);
     }
 
     static void RightAnklePositionTask(const ConfigurationVector& q, const TangentVector& v,
                                   Vector& x, Matrix& J, Vector& dJdt_v) {
         const double* in[] = {q.data(), v.data()};
         double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_fixed_right_ankle(in, out, NULL, NULL, 0);
+        cassie_fixed_RightFootPitch(in, out, NULL, NULL, 0);
     }
 
     // Constraints

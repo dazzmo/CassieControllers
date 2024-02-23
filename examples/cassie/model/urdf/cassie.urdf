@@ -268,7 +268,11 @@
 			</material>
 		</visual>
 	</link>
-	
+	<!-- Links for Operational Frames -->
+	<link name="leftfootfront"></link>
+	<link name="leftfootback"></link>
+	<link name="rightfootfront"></link>
+	<link name="rightfootback"></link>
 
 	<!-- Robot Joint Definitions -->
 	<!--                         -->
@@ -388,6 +392,29 @@
 		<parent link="righttarsus"/>
 		<child link="rightfoot"/>
 		<limit effort="0.9" lower="-2.4435" upper="-0.5236" velocity="11.52"/>
+	</joint>
+
+	<!-- Operational Frames to Use for End-Effector Contact -->
+	<joint name="LeftFootFront" type="fixed">
+		<origin xyz="-0.0407 0.107 0"/>
+		<parent link="leftfoot"/>
+		<child link="leftfootfront"/>
+	</joint>
+	<joint name="LeftFootBack" type="fixed">
+		<origin xyz="0.08 0.005 0"/>
+		<parent link="leftfoot"/>
+		<child link="leftfootback"/>
+	</joint>
+
+	<joint name="RightFootFront" type="fixed">
+		<origin xyz="-0.0407 0.107 0"/>
+		<parent link="rightfoot"/>
+		<child link="rightfootfront"/>
+	</joint>
+	<joint name="RightFootBack" type="fixed">
+		<origin xyz="0.08 0.005 0"/>
+		<parent link="rightfoot"/>
+		<child link="rightfootback"/>
 	</joint>
 
 	<!-- Robot Transmission Definitions -->

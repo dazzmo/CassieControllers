@@ -44,10 +44,16 @@ class CodeGenerator {
     casadi::SX &GetQposSX() { return q_sx_; }
     casadi::SX &GetQvelSX() { return v_sx_; }
 
-    int GetJointIdq(const std::string &name) {return model_->joints[model_->getJointId(name)].idx_q(); }
-    int GetJointIdv(const std::string &name) {return model_->joints[model_->getJointId(name)].idx_v(); }
+    int GetJointIdq(const std::string &name) {
+        return model_->joints[model_->getJointId(name)].idx_q();
+    }
+    int GetJointIdv(const std::string &name) {
+        return model_->joints[model_->getJointId(name)].idx_v();
+    }
 
-    void SetCodeGenerationDestination(const std::string &dest) { cg_dest_ = dest; }
+    void SetCodeGenerationDestination(const std::string &dest) {
+        cg_dest_ = dest;
+    }
 
     // Kinematics
 
@@ -55,11 +61,19 @@ class CodeGenerator {
     int GenerateInertiaMatrix();
     int GenerateBiasVector();
     int AddReferenceFrame(const std::string &name,
-                          const std::string &parent_joint, const std::string &parent_frame,
+                          const std::string &parent_joint,
                           const Eigen::Vector3d &r, const Eigen::Matrix3d &R);
-    int GenerateEndEffectorData(const std::string &name,
-                                const std::string &parent_joint, const std::string &parent_frame,
-                                const Eigen::Vector3d &r, const Eigen::Matrix3d &R);
+    
+    /**
+     * @brief Generates end-effector data for a given frame within the model.
+     * The frame must already exist in the model.
+     *
+     * @param name
+     * @return int
+     */
+    int GenerateEndEffectorData(const std::string &name);
+    
+    int GenerateCoMData();
 
     // Code generation
 
@@ -73,8 +87,7 @@ class CodeGenerator {
      * @param out
      * @return int
      */
-    int GenerateCode(const std::string &name,
-                     const casadi::SXVector &in,
+    int GenerateCode(const std::string &name, const casadi::SXVector &in,
                      const casadi::SXVector &out);
 
    private:

@@ -1,23 +1,23 @@
-#include "simulate.h"
+#include "simulate_fixed.h"
 
 int main() {
 
     // Initialise logging
     google::InitGoogleLogging("simulate");
-    FLAGS_logtostderr = 0;
+    FLAGS_logtostderr = 1;
 
     // Create simulator and load model
     MujocoSimulator& sim = MujocoSimulator::getInstance();
-    sim.LoadModel("./agility_cassie/scene.xml");
+    sim.LoadModel("./agility_cassie/scene_fixed.xml");
     sim.Init();
 
     // Set controller options
     controller::osc::Options opt;
-    opt.frequency = 2000.0;
+    opt.frequency = 1000.0;
     opt.qpoases_print_level = qpOASES::PrintLevel::PL_NONE;
 
     // Create an operational space controller model for Cassie leg
-    CassieOSC cassie_ctrl;
+    CassieFixedOSC cassie_ctrl;
     controller::osc::OperationalSpaceController ctrl(cassie_ctrl, opt);
     ctrl.Init();
 
@@ -29,8 +29,6 @@ int main() {
     double sim_start;
     double t_ctrl = sim.GetSimulatorTime();
 
-    bool first_iteration = true;
-
     while (!sim.WindowShouldClose()) {
 
         // Render at 60 Hz and make sure simulator and real-time are in sync
@@ -41,7 +39,7 @@ int main() {
 
                 // Apply controller at desired frequency within simulator
                 if (sim.GetSimulatorTime() - t_ctrl > 1.0 / opt.frequency) {
-                    
+
                     // Update model state
                     ctrl.GetModel().UpdateState(cassie_ctrl.size().nq, sim.GetModelConfiguration(),
                                                 cassie_ctrl.size().nv, sim.GetModelVelocity());
@@ -58,13 +56,8 @@ int main() {
                 // Apply controls and step forward
                 sim.ApplyControl(ctrl.ControlOutput().data(), ctrl.GetModel().size().nu);
                 sim.ForwardStep();
-
             } 
-
-            // Indicate first iteration has been performed
-            first_iteration = true;
         }
-
         sim.UpdateSceneAndRender();
     } 
 

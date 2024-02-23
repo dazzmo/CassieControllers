@@ -1,14 +1,16 @@
 #include "code_generator.h"
 
-// TODO: Read all the constants from a .yaml file (or similar)
+// TODO: Read all the constants from a .yaml file
 // TODO: Provide better estimate of damping terms? (see other Cassie groups)
+// TODO: Add mass matrix to next version (Cassie off stand)
 
 int main(int argc, char* argv[]) {
 
     // Initialise model from Cassie urdf
-    CodeGenerator cg("./cassie.urdf");
+    CodeGenerator cg("./cassie_fixed.urdf");
     cg.SetCodeGenerationDestination(argv[1]);
-
+    
+    // Create useful reference frames
     // https://github.com/agilityrobotics/cassie-doc/wiki/Heel-Spring-Model
     cg.AddReferenceFrame("left_heel_spring_tip", "LeftAchillesSpring",
                          Eigen::Vector3d(0.11877, -0.01, 0.0), Eigen::Matrix3d::Identity());
@@ -54,6 +56,9 @@ int main(int argc, char* argv[]) {
     model.rotorInertia[cg.GetJointIdv("RightKneePitch")] = 3.65e-04;
     model.rotorInertia[cg.GetJointIdv("RightFootPitch")] = 4.90e-06;
 
+    std::cout << "Inertia model" << std::endl;
+
+
     // Achilles rod on Cassie constrains each end to be 501.2mm apart:
     // https://github.com/agilityrobotics/cassie-doc/wiki/Achilles-Rod-Model
     const double achilles_length = 0.5012;
@@ -64,26 +69,20 @@ int main(int argc, char* argv[]) {
     CodeGenerator::ADData::Vector3 dr = data.oMf[model.getFrameId("right_achilles_rod_socket")].translation() -
                                         data.oMf[model.getFrameId("right_heel_spring_tip")].translation();
 
+    std::cout << "Achilles disctances" << std::endl;
+
+
     casadi::SX cl = casadi::SX::vertcat({dl.squaredNorm() - achilles_length * achilles_length,
                                          dr.squaredNorm() - achilles_length * achilles_length,
-                                         // Also zero the spring deflections 
                                          cg.GetQposSX()(cg.GetJointIdq("LeftShinPitch")),
                                          cg.GetQposSX()(cg.GetJointIdq("LeftAchillesSpring")),
                                          cg.GetQposSX()(cg.GetJointIdq("RightShinPitch")),
                                          cg.GetQposSX()(cg.GetJointIdq("RightAchillesSpring"))});
 
     // Get Jacobian and its time-derivative for the constraints
-    // Segment configuration and velocity into floating-base and joints [qbase, qjoints]/[vbase, vjoints]
-    casadi::SX qjoints = cg.GetQposSX()(casadi::Slice(7, model.nq));
-    casadi::SX vjoints = cg.GetQvelSX()(casadi::Slice(6, model.nv));
-
     // Note that dJdt = dJdq * dqdt by the chain rule
-    casadi::SX Jcl_qjoints = jacobian(cl, qjoints);
-    casadi::SX dJcldt_qjoints = jacobian(mtimes(Jcl_qjoints, vjoints), qjoints);
-
-    // Pad matrices with zeros to account for floating base
-    casadi::SX Jcl = casadi::SX::horzcat({casadi::SX(Jcl_qjoints.size1(), 6), Jcl_qjoints});
-    casadi::SX dJcldt = casadi::SX::horzcat({casadi::SX(dJcldt_qjoints.size1(), 6), dJcldt_qjoints});
+    casadi::SX Jcl = jacobian(cl, cg.GetQposSX());
+    casadi::SX dJcldt = jacobian(mtimes(Jcl, cg.GetQvelSX()), cg.GetQposSX());
 
     // Generate code for the constraints
     cg.GenerateCode(
@@ -178,18 +177,9 @@ int main(int argc, char* argv[]) {
 
     cg.GenerateCode("actuation_map", {cg.GetQposSX()}, {densify(B)});
 
-    // Print model
-    std::cout << cg.GetModel() << std::endl;
-
-    // Generate end-effector data
-    // https://github.com/agilityrobotics/cassie-doc/wiki/Toe-Model
-    cg.GenerateEndEffectorData("LeftFootFront");
-    cg.GenerateEndEffectorData("LeftFootBack");
-    cg.GenerateEndEffectorData("RightFootFront");
-    cg.GenerateEndEffectorData("RightFootBack");
-
-    // Generate centre of mass data
-    cg.GenerateCoMData();
+    // Add frames for the "ankle" (toe joint, see URDF)
+    cg.GenerateEndEffectorData("RightFootPitch");
+    cg.GenerateEndEffectorData("LeftFootPitch");
 
     return 0;
 }
