@@ -7,17 +7,14 @@
 #include "eigen3/Eigen/Cholesky"
 #include "eigen3/Eigen/Dense"
 
-// Code-generated functions
-#include "model/cg/cassie-fixed/cassie_fixed_achilles_rod_constraints.h"
-#include "model/cg/cassie-fixed/cassie_fixed_actuation_map.h"
-#include "model/cg/cassie-fixed/cassie_fixed_LeftFootPitch.h"
-#include "model/cg/cassie-fixed/cassie_fixed_RightFootPitch.h"
-#include "model/cg/cassie-fixed/cassie_fixed_bias_vector.h"
-#include "model/cg/cassie-fixed/cassie_fixed_mass_matrix.h"
+// damotion
+#include <damotion/control/osc/osc.h>
 
-// OSC model
-#include "controllers/osc/model.h"
-#include "controllers/osc/tasks/joint_track_task.h"
+// pinocchio
+#include "pinocchio/parsers/urdf.hpp"
+
+// model
+#include "model/closed_loop_constraint.h"
 
 // Sizes
 #define CASSIE_FIXED_NQ (16)
@@ -26,141 +23,151 @@
 
 using namespace controller;
 
-class CassieFixedOSC : public osc::Model {
-
+class CassieFixedOSC {
    public:
-    CassieFixedOSC() : osc::Model(DynamicModel::Size(CASSIE_FIXED_NQ, CASSIE_FIXED_NV, CASSIE_FIXED_NU)) {
+    CassieFixedOSC() {
+        // Load cassie model
+        pinocchio::Model model;
+        pinocchio::urdf::buildModel("./cassie.urdf", model, true);
+        pinocchio::Data data(model);
+        // Wrap model
+        casadi_utils::PinocchioModelWrapper wrapper(model);
 
-        // Order: hip roll, yaw, pitch, knee, shin (spring), tarsus, heel spring, toe
-        initial_state().q <<  0.0045, 0.0, 0.4973, -1.1997, 0.0, 1.4267, 0.0, -1.5968,
-                             -0.0045, 0.0, 0.4973, -1.1997, 0.0, 1.4267, 0.0, -1.5968;
+        // Create OSC
+        osc_ = damotion::OSCController(model.nq, model.nv, CASSIE_FIXED_NU);
 
-        // Add bounds (from cassie.xml, different from kinematic model on wiki)
-        bounds().qmin << -15.0, -22.5, -50.0, -164.0, -20.0,  50.0, -20.0, -140.0,
-                         -15.0, -22.5, -50.0, -164.0, -20.0,  50.0, -20.0, -140.0; 
-        bounds().qmax <<  22.5,  22.5,  80.0,  -37.0,  20.0, 170.0,  20.0,  -30.0,
-                          22.5,  22.5,  80.0,  -37.0,  20.0, 170.0,  20.0,  -30.0;
-        bounds().qmin *= M_PI /180;
-        bounds().qmax *= M_PI /180;
+        // Get variables from the program
+        casadi::SX qpos = osc_.GetParameters("qpos"),
+                   qvel = osc_.GetParameters("qvel"),
+                   qacc = osc_.GetVariables("qacc"),
+                   ctrl = osc_.GetVariables("ctrl");
 
-        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9,
-                         4.5, 4.5, 12.2, 12.2, 0.9;
-        bounds().vmax << 12.15, 12.15, 8.5, 8.5, 20, 20, 20, 11.52,
-                         12.15, 12.15, 8.5, 8.5, 20, 20, 20, 11.52; // From cassie.urdf
-        bounds().amax.setConstant(1e4);                             // This is a guess
+        // Add dynamics for fixed-cassie
+        casadi::SX B(CASSIE_FIXED_NV, CASSIE_FIXED_NU);
 
-        // Task weights
-        Eigen::Vector<Scalar, CASSIE_FIXED_NU> ctrl_weights;
-        Eigen::Vector<Scalar, CASSIE_FIXED_NQ> damp_weights;
-        Vector3 ankle_weights;
+        // Compute inverse dynamics M qacc + C qvel + G
+        casadi::SX dyn =
+            wrapper_.rnea()(casadi::SXVector({qpos, qvel, qacc}))[0];
 
-        ctrl_weights.setConstant(1e-3);
-        ankle_weights.setConstant(1e0);
-        damp_weights.setConstant(1e-4);
+        // Add any additional nonlinearities (e.g. spring/damping of joints)
+        casadi::SX spring_forces(CASSIE_FIXED_NV), damping(CASSIE_FIXED_NV);
+        // TODO - We could add these variables as parameters to the program with
+        // TODO - osc_.AddParameter() which can be adjusted during optimisation
+        double k_heel = 2400.0, k_achilles = 2000.0;  // Spring Constants (N/m)
 
-        // PD weights: damping on all joints except springs
-        double ankle_kp = 50.0;
-        double ankle_kd = 5.0;
-        
-        Eigen::Vector<Scalar, CASSIE_FIXED_NV> damp_kds;
-        damp_kds.setConstant(10.0); 
-        damp_kds[4] = 0.0;
-        damp_kds[6] = 0.0;
-        damp_kds[12] = 0.0;
-        damp_kds[14] = 0.0;
+        pinocchio::Joint shin_l =
+                             model.joints[model.getJointId("LeftShinPitch")],
+                         shin_r =
+                             model.joints[model.getJointId("RightShinPitch")],
+                         tarsus_l =
+                             model.joints[model.getJointId("LeftShinPitch")],
+                         tarsus_r =
+                             model.joints[model.getJointId("LeftShinPitch")];
 
-        // Set control weights in cost function
-        SetControlWeighting(ctrl_weights);
+        spring_forces(shin_l.idx_v()) = k_heel * qpos(shin_l.idx_q());
+        spring_forces(shin_r.idx_v()) = k_heel * qpos(shin_r.idx_q());
+        spring_forces(tarsus_l.idx_v()) = k_heel * qpos(tarsus_l.idx_q());
+        spring_forces(tarsus_r.idx_v()) = k_heel * qpos(tarsus_r.idx_q());
 
-        // Add task for tracking ankles in 3D space
-        AddTask("left ankle", 3, &CassieFixedOSC::LeftAnklePositionTask);
-        GetTask("left ankle")->SetTaskWeightMatrix(ankle_weights);
-        GetTask("left ankle")->SetKpGains(Vector3(ankle_kp, ankle_kp, ankle_kp));
-        GetTask("left ankle")->SetKdGains(Vector3(ankle_kd, ankle_kd, ankle_kd));
+        // Add generalised inputs
+        dyn -= mtimes(B, ctrl) - spring_forces - damping;
 
-        AddTask("right ankle", 3, &CassieFixedOSC::RightAnklePositionTask);
-        GetTask("right ankle")->SetTaskWeightMatrix(ankle_weights);
-        GetTask("right ankle")->SetKpGains(Vector3(ankle_kp, ankle_kp, ankle_kp));
-        GetTask("right ankle")->SetKdGains(Vector3(ankle_kd, ankle_kd, ankle_kd));
+        // Create new function with actuation included
+        casadi::Function dynamics =
+            casadi::Function("dynamics", {qpos, qvel, qacc, ctrl}, {dyn},
+                             {"qpos", "qvel", "qacc", "ctrl"}, {"dyn"});
 
-        // Joint damping
-        joint_track_task_ = new osc::JointTrackTask(this->size());
-        AddTask("joint damp", std::shared_ptr<controller::osc::Task>(joint_track_task_));
-        GetTask("joint damp")->SetTaskWeightMatrix(damp_weights);
-        GetTask("joint damp")->SetKdGains(damp_kds);
+        osc_.AddDynamics(controlled_dynamics);
 
-        // Add kinematic constraint
-        AddHolonomicConstraint("rigid bar", 6, &CassieFixedOSC::RigidBarConstraint);
+        // Register any end-effectors
+        wrapper.addEndEffector("LeftFootFront");
+        wrapper.addEndEffector("RightFootFront");
+
+        osc_.AddTrackingTask(
+            "LeftFootFront", wrapper.end_effector("LeftFootFront").x,
+            damotion::control::OSCController::TrackingTask::Type::kFull);
+
+        osc_.AddTrackingTask(
+            "RightFootFront", wrapper.end_effector("LeftFootFront").x,
+            damotion::control::OSCController::TrackingTask::Type::kFull);
+
+        /* Holonomic constraints */
+        casadi::SX cl = CassieClosedLoopConstraint(wrapper.model(),
+                                                   wrapper.data(), qpos, qvel);
+        // Compute first and second derivatives
+        casadi::SX Jcl = jacobian(cl, qpos),
+                   dJcldt = jacobian(mtimes(Jcl_qjoints, qvel), qpos);
+
+        casadi::SX dcl = mtimes(Jcl, qvel),
+                   ddcl = mtimes(Jcl, qacc) + mtimes(dJcldt, qvel);
+        // Create function
+        casadi::Function fcl("closed_loop", {qpos, qvel, qacc}, {cl, dcl, ddcl},
+                             {"qpos", "qvel", "qacc"}, {"cl", "dcl", "ddcl"});
+
+        // Add to OSC
+        osc_.AddHolonomicConstraint("closed_loop", fcl);
+
+        // Initialise program with given constraints
+        osc_.Initialise();
+
+        // // Order: hip roll, yaw, pitch, knee, shin (spring), tarsus, heel
+        // // spring, toe
+        // initial_state().q << 0.0045, 0.0, 0.4973, -1.1997, 0.0, 1.4267, 0.0,
+        //     -1.5968, -0.0045, 0.0, 0.4973, -1.1997, 0.0, 1.4267, 0.0,
+        //     -1.5968;
+
+        // // Add bounds (from cassie.xml, different from kinematic model on
+        // wiki) bounds().qmin << -15.0, -22.5, -50.0, -164.0, -20.0, 50.0,
+        // -20.0,
+        //     -140.0, -15.0, -22.5, -50.0, -164.0, -20.0, 50.0, -20.0, -140.0;
+        // bounds().qmax << 22.5, 22.5, 80.0, -37.0, 20.0, 170.0, 20.0, -30.0,
+        //     22.5, 22.5, 80.0, -37.0, 20.0, 170.0, 20.0, -30.0;
+        // bounds().qmin *= M_PI / 180;
+        // bounds().qmax *= M_PI / 180;
+
+        // Add bounds to the control variables
+        // TODO - Update variable bounds
+
+        bounds().umax << 4.5, 4.5, 12.2, 12.2, 0.9, 4.5, 4.5, 12.2, 12.2, 0.9;
+        // bounds().vmax << 12.15, 12.15, 8.5, 8.5, 20, 20, 20, 11.52, 12.15,
+        // 12.15, 8.5, 8.5, 20, 20, 20, 11.52;  // From cassie.urdf
+        // bounds().amax.setConstant(1e4);          // This is a guess
+
+        // Show the program details
+        osc_.PrintProgramSummary();
     }
     ~CassieFixedOSC() = default;
 
     // Update the references for any tasks
-    void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        double l_phase = -2.0*M_PI/4.0*time;
-        double l_xpos = 0.0 + 0.2*cos(l_phase);
-        double l_ypos = 0.1;
-        double l_zpos = -0.7 + 0.2*sin(l_phase);
+    void UpdateReferences(Scalar time, const ConfigurationVector& q,
+                          const TangentVector& v) {
+        // double l_phase = -2.0*M_PI/4.0*time;
+        // double l_xpos = 0.0 + 0.2*cos(l_phase);
+        // double l_ypos = 0.1;
+        // double l_zpos = -0.7 + 0.2*sin(l_phase);
 
-        double r_phase = -2.0*M_PI/4.0*time + M_PI_2;
-        double r_xpos = 0.0 + 0.2*cos(r_phase);
-        double r_ypos = -0.1;
-        double r_zpos = -0.7 + 0.2*sin(r_phase);
-        
-        GetTask("left ankle")->SetReference(Vector3(l_xpos, l_ypos, l_zpos));
-        GetTask("right ankle")->SetReference(Vector3(r_xpos, r_ypos, r_zpos));
+        // double r_phase = -2.0*M_PI/4.0*time + M_PI_2;
+        // double r_xpos = 0.0 + 0.2*cos(r_phase);
+        // double r_ypos = -0.1;
+        // double r_zpos = -0.7 + 0.2*sin(r_phase);
 
-        LOG(INFO) << "Left ankle tracking error: " << GetTask("left ankle")->e().transpose();
-        LOG(INFO) << "Right ankle tracking error: " << GetTask("right ankle")->e().transpose();
+        // GetTask("left ankle")->SetReference(Vector3(l_xpos, l_ypos, l_zpos));
+        // GetTask("right ankle")->SetReference(Vector3(r_xpos, r_ypos,
+        // r_zpos));
+
+        // LOG(INFO) << "Left ankle tracking error: " << GetTask("left
+        // ankle")->e().transpose(); LOG(INFO) << "Right ankle tracking error: "
+        // << GetTask("right ankle")->e().transpose();
     }
 
     // Update controller state
-    void UpdateState(Dimension nq, const Scalar* q, Dimension nv, const Scalar* v);
+    void UpdateState(Dimension nq, const Scalar* q, Dimension nv,
+                     const Scalar* v);
 
    protected:
-    // Tasks
-    static void LeftAnklePositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                  Vector& x, Matrix& J, Vector& dJdt_v) {
-        const double* in[] = {q.data(), v.data()};
-        double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_fixed_LeftFootPitch(in, out, NULL, NULL, 0);
-    }
-
-    static void RightAnklePositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                  Vector& x, Matrix& J, Vector& dJdt_v) {
-        const double* in[] = {q.data(), v.data()};
-        double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        cassie_fixed_RightFootPitch(in, out, NULL, NULL, 0);
-    }
-
-    // Constraints
-    static void RigidBarConstraint(const ConfigurationVector& q, const TangentVector& v,
-                                   Vector& c, Matrix& J, Vector& dJdt_v) {
-        const double* in[] = {q.data(), v.data()};
-        double* out[] = {c.data(), J.data(), dJdt_v.data(), nullptr};
-        cassie_fixed_achilles_rod_constraints(in, out, NULL, NULL, 0);
-    }
-
-    // Dynamics
-    void ComputeMassMatrix(const ConfigurationVector& q, Matrix& M) {
-        const double* in[] = {q.data(), NULL};
-        double* out[] = {M.data()};
-        cassie_fixed_mass_matrix(in, out, NULL, NULL, 0);
-    }
-
-    void ComputeBiasVector(const ConfigurationVector& q, const TangentVector& v, Vector& h) {
-        const double* in[] = {q.data(), v.data()};
-        double* out[] = {h.data()};
-        cassie_fixed_bias_vector(in, out, NULL, NULL, 0);
-    }
-
-    void ComputeActuationMap(const ConfigurationVector& q, Matrix& B) {
-        const double* in[] = {q.data()};
-        double* out[] = {B.data()};
-        cassie_fixed_actuation_map(in, out, NULL, NULL, 0);
-    }
-
    private:
-    osc::JointTrackTask* joint_track_task_;
+    damotion::osc::OSCController osc_;
+    // Solver
 };
 
 #endif /* OSC_FIXED_HPP */

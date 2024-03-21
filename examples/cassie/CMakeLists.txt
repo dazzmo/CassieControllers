@@ -5,9 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(glog REQUIRED)
+find_package(damotion REQUIRED)
 find_package(Eigen3 3.3 REQUIRED)
-find_package(pinocchio)
-find_package(casadi)
 
 # include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
