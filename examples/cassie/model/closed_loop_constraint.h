@@ -28,31 +28,31 @@ casadi::SX CassieClosedLoopConstraint(pinocchio::ModelTpl<casadi::SX> &model,
 
     // Left spring tip
     model.addFrame(pinocchio::FrameTpl<Scalar>(
-        "left_heel_spring_tip", model->getJointId("LeftAchillesSpring"), 0,
-        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3d::Identity(),
-                                  Eigen::Vector3d(0.11877, -0.01, 0.0)),
+        "left_heel_spring_tip", model.getJointId("LeftAchillesSpring"), 0,
+        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3<Scalar>::Identity(),
+                                  Eigen::Vector3<Scalar>(0.11877, -0.01, 0.0)),
         pinocchio::OP_FRAME));
     // Right spring tip
     model.addFrame(pinocchio::FrameTpl<Scalar>(
-        "right_heel_spring_tip", model->getJointId("RightAchillesSpring"), 0,
-        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3d::Identity(),
-                                  Eigen::Vector3d(0.11877, -0.01, 0.0)),
+        "right_heel_spring_tip", model.getJointId("RightAchillesSpring"), 0,
+        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3<Scalar>::Identity(),
+                                  Eigen::Vector3<Scalar>(0.11877, -0.01, 0.0)),
         pinocchio::OP_FRAME));
 
     // https://github.com/agilityrobotics/cassie-doc/wiki/Thigh-Model
 
     // Socket of the left achilles rod
     model.addFrame(pinocchio::FrameTpl<Scalar>(
-        "left_achilles_rod_socket", model->getJointId("LeftHipPitch"), 0,
-        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3d::Identity(),
-                                  Eigen::Vector3d(0.0, 0.0, 0.045)),
+        "left_achilles_rod_socket", model.getJointId("LeftHipPitch"), 0,
+        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3<Scalar>::Identity(),
+                                  Eigen::Vector3<Scalar>(0.0, 0.0, 0.045)),
         pinocchio::OP_FRAME));
 
     // Socket of the right achilles rod
     model.addFrame(pinocchio::FrameTpl<Scalar>(
-        "right_achilles_rod_socket", model->getJointId("RightHipPitch"), 0,
-        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3d::Identity(),
-                                  Eigen::Vector3d(0.0, 0.0, 0.045)),
+        "right_achilles_rod_socket", model.getJointId("RightHipPitch"), 0,
+        pinocchio::SE3Tpl<Scalar>(Eigen::Matrix3<Scalar>::Identity(),
+                                  Eigen::Vector3<Scalar>(0.0, 0.0, 0.045)),
         pinocchio::OP_FRAME));
 
     // Update data for new model frames
@@ -76,14 +76,17 @@ casadi::SX CassieClosedLoopConstraint(pinocchio::ModelTpl<casadi::SX> &model,
     // Length of the achilles rods (m)
     double achilles_rod_length = 0.5012;
 
+    auto shin_l = model.joints[model.getJointId("LeftShinPitch")],
+         shin_r = model.joints[model.getJointId("RightShinPitch")],
+         achilles_l = model.joints[model.getJointId("LeftAchillesSpring")],
+         achilles_r = model.joints[model.getJointId("RightAchillesSpring")];
+
     casadi::SX cl = casadi::SX::vertcat(
         {dl.squaredNorm() - achilles_rod_length * achilles_rod_length,
          dr.squaredNorm() - achilles_rod_length * achilles_rod_length,
          // Also zero the spring deflections
-         qpos(shin_l.idx()),
-         qpos(shin_r.idx()),
-         qpos(shin_r.idx()),
-         qpos(shin_r.idx())}); // TODO - Give actual joints here
+         qpos(shin_l.idx_q()), qpos(shin_r.idx_q()), qpos(achilles_l.idx_q()),
+         qpos(achilles_r.idx_q())});  // TODO - Give actual joints here
 
     // Return constraint
     return cl;

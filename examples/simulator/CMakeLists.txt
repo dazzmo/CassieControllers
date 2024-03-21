@@ -8,6 +8,7 @@ find_package(mujoco REQUIRED)
 find_package(glfw3 REQUIRED)
 
 #TODO: Jesse suggested not usin GLOB, write out file path instead?
+# TODO: Noted, will look at alternatives
 file(GLOB_RECURSE SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cc

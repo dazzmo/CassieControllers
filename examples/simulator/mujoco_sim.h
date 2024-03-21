@@ -10,8 +10,6 @@
 #include <iostream>
 #include <string>
 
-using namespace std::placeholders;
-
 class MujocoSimulator {
    public:
     ~MujocoSimulator() {
