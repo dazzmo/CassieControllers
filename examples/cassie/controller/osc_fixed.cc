@@ -19,6 +19,6 @@ void CassieFixedOSC::UpdateState(int nq, const double *q, int nv,
         v[15], v[19], v[20], v[21], v[22], v[25];
 
     // Update parameter vectors in OSC
-    osc_.SetParameter("qpos", qpos);
-    osc_.SetParameter("qvel", qvel);
+    osc_.SetParameters("qpos", qpos);
+    osc_.SetParameters("qvel", qvel);
 }

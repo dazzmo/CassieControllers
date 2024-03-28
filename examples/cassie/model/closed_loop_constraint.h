@@ -61,7 +61,7 @@ casadi::SX CassieClosedLoopConstraint(pinocchio::ModelTpl<casadi::SX> &model,
     // Get model and data references, update forward kinematics
     // Convert
     Eigen::VectorX<Scalar> qpos_e;
-    casadi_utils::eigen::toEigen(qpos, qpos_e);
+    damotion::utils::casadi::toEigen(qpos, qpos_e);
     pinocchio::framesForwardKinematics(model, data, qpos_e);
 
     // Get distance of the two parts
@@ -86,7 +86,7 @@ casadi::SX CassieClosedLoopConstraint(pinocchio::ModelTpl<casadi::SX> &model,
          dr.squaredNorm() - achilles_rod_length * achilles_rod_length,
          // Also zero the spring deflections
          qpos(shin_l.idx_q()), qpos(shin_r.idx_q()), qpos(achilles_l.idx_q()),
-         qpos(achilles_r.idx_q())});  // TODO - Give actual joints here
+         qpos(achilles_r.idx_q())});
 
     // Return constraint
     return cl;

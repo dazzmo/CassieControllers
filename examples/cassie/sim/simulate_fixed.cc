@@ -38,6 +38,7 @@ int main() {
                         CASSIE_FIXED_NV, sim.GetModelVelocity());
 
                     // Compute controls
+                    cassie_osc.Solve();
                     // cassie_osc.UpdateControl();
 
                     // Update timer and log
