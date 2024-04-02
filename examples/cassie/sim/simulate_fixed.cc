@@ -16,6 +16,8 @@ int main() {
     // Create an operational space controller model for Cassie
     CassieFixedOSC cassie_osc;
 
+    // TODO Here we could set some parameters such as cost weightings and whatnot
+
     // Set the initial pose for Cassie
     init_cassie_model(sim);
 
@@ -37,17 +39,17 @@ int main() {
                         CASSIE_FIXED_NQ, sim.GetModelConfiguration(),
                         CASSIE_FIXED_NV, sim.GetModelVelocity());
 
+                    // Update references
+                    cassie_osc.UpdateReferences(sim.GetSimulatorTime());
                     // Compute controls
                     cassie_osc.Solve();
-                    // cassie_osc.UpdateControl();
-
                     // Update timer and log
                     t_ctrl = sim.GetSimulatorTime();
                 }
 
                 // Apply controls and step forward
-                // sim.ApplyControl(ctrl.ControlOutput().data(),
-                // ctrl.GetModel().size().nu);
+                sim.ApplyControl(cassie_osc.CurrentControlSolution().data(),
+                                 CASSIE_FIXED_NU);
                 sim.ForwardStep();
             }
         }

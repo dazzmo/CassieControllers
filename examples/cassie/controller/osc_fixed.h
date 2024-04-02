@@ -8,7 +8,9 @@
 
 // damotion
 #include <damotion/control/osc/osc.h>
+#include <damotion/solvers/solve_qpoases.h>
 
+#include "damotion/solvers/bounds.h"
 #include "damotion/solvers/program.h"
 // model
 #include "model/actuation.h"
@@ -34,27 +36,29 @@ class CassieFixedOSC {
         // Wrap model for casadi functionality
         damotion::utils::casadi::PinocchioModelWrapper wrapper(model);
 
-        // Create symbolic vectors for cost and constraint creation
-        casadi::SX qpos = casadi::SX::sym("qpos", model.nq),
-                   qvel = casadi::SX::sym("qvel", model.nv),
-                   qacc = casadi::SX::sym("qacc", model.nv),
-                   ctrl = casadi::SX::sym("ctrl", CASSIE_FIXED_NU);
+        // Create symbolic variables for constraint/cost creation
+        std::unordered_map<std::string, casadi::SX> sym_var;
+        sym_var["qpos"] = casadi::SX::sym("qpos", model.nq);
+        sym_var["qvel"] = casadi::SX::sym("qvel", model.nv);
+        sym_var["qacc"] = casadi::SX::sym("qacc", model.nv);
+        sym_var["ctrl"] = casadi::SX::sym("ctrl", CASSIE_FIXED_NU);
+
+        qpos_ = Eigen::VectorXd(model.nq);
+        qvel_ = Eigen::VectorXd(model.nq);
 
         // Create program variables
-        sym::VariableVector qacc_v =
-                                sym::CreateVariableVector("qacc", model.nv),
-                            ctrl_v = sym::CreateVariableVector("ctrl",
-                                                               CASSIE_FIXED_NU);
+        qacc_ = sym::CreateVariableVector("qacc", model.nv),
+        ctrl_ = sym::CreateVariableVector("ctrl", CASSIE_FIXED_NU);
 
         // Create mathematical program
-        opt::Program program;
-        program.AddDecisionVariables(qacc_v);
-        program.AddDecisionVariables(ctrl_v);
+        program_ = opt::Program("osc");
+        program_.AddDecisionVariables(qacc_);
+        program_.AddDecisionVariables(ctrl_);
 
         // Add parameters
-        Eigen::Ref<const Eigen::MatrixXd> qpos_p = program.AddParameters(
+        Eigen::Ref<const Eigen::MatrixXd> qpos = program_.AddParameters(
                                               "qpos", model.nq),
-                                          qvel_p = program.AddParameters(
+                                          qvel = program_.AddParameters(
                                               "qvel", model.nv);
 
         /**
@@ -62,75 +66,113 @@ class CassieFixedOSC {
          *
          */
         // Get actuation matrix for Cassie
-        casadi::SX B =
-            CassieActuationMatrix(wrapper.model(), wrapper.data(), qpos, qvel);
+        casadi::SX B = CassieActuationMatrix(wrapper.model(), wrapper.data(),
+                                             sym_var["qpos"], sym_var["qvel"]);
 
         // Add any additional nonlinearities (e.g. spring/damping of joints)
-        casadi::SX spring_forces = CassieSpringForces(
-                       wrapper.model(), wrapper.data(), qpos, qvel),
+        casadi::SX spring_forces =
+                       CassieSpringForces(wrapper.model(), wrapper.data(),
+                                          sym_var["qpos"], sym_var["qvel"]),
                    damping = CassieJointDampingForces(
-                       wrapper.model(), wrapper.data(), qpos, qvel);
+                       wrapper.model(), wrapper.data(), sym_var["qpos"],
+                       sym_var["qvel"]);
 
         // Compute inverse dynamics M qacc + C qvel + G
-        sym::Expression dynamics =
-            wrapper.rnea()(casadi::SXVector({qpos, qvel, qacc}))[0];
+        sym::Expression dynamics = wrapper.rnea()(casadi::SXVector(
+            {sym_var["qpos"], sym_var["qvel"], sym_var["qacc"]}))[0];
         // Add inputs and other features
-        dynamics -= mtimes(B, ctrl);
+        dynamics -= mtimes(B, sym_var["ctrl"]);
         dynamics -= (spring_forces + damping);
 
-        /** Register End-Effector **/
+        /** Register End-Effectors **/
 
         // Add any end-effectors of interest to the model
         wrapper.addEndEffector("LeftFootFront");
         wrapper.addEndEffector("RightFootFront");
 
         // Compute end-effector data for end-effectors
-        casadi::SXVector left_foot_x =
-                             wrapper.end_effector("LeftFootFront")
-                                 .x(casadi::SXVector({qpos, qvel, qacc})),
-                         right_foot_x =
-                             wrapper.end_effector("RightFootFront")
-                                 .x(casadi::SXVector({qpos, qvel, qacc}));
+        casadi::SXVector foot_l_x = wrapper.end_effector("LeftFootFront")
+                                        .x(casadi::SXVector({sym_var["qpos"],
+                                                             sym_var["qvel"],
+                                                             sym_var["qacc"]})),
+                         foot_r_x = wrapper.end_effector("RightFootFront")
+                                        .x(casadi::SXVector({sym_var["qpos"],
+                                                             sym_var["qvel"],
+                                                             sym_var["qacc"]}));
 
         // Create end-effector data for tracking/contact
-        osc::EndEffector left_foot, right_foot;
-        left_foot.SetPosition(left_foot_x[0]);
-        left_foot.SetVelocity(left_foot_x[1]);
-        left_foot.SetAcceleration(left_foot_x[2]);
+        osc::EndEffector foot_l("foot_l"), foot_r("foot_r");
+        // Create expressions for the end-effectors
+        foot_l.SetPosition(foot_l_x[0]);
+        foot_l.SetVelocity(foot_l_x[1]);
+        foot_l.SetAcceleration(foot_l_x[2]);
 
-        right_foot.SetPosition(right_foot_x[0]);
-        right_foot.SetVelocity(right_foot_x[1]);
-        right_foot.SetAcceleration(right_foot_x[2]);
+        foot_r.SetPosition(foot_r_x[0]);
+        foot_r.SetVelocity(foot_r_x[1]);
+        foot_r.SetAcceleration(foot_r_x[2]);
 
-        left_foot.GenerateFunction("left_foot", true, "./");
-        right_foot.GenerateFunction("right_foot", true, "./");
+        // Set inputs for the expressions for the state of the end-effectors
+        foot_l.SetInputs({sym_var["qacc"]}, {sym_var["qpos"], sym_var["qvel"]});
+        foot_r.SetInputs({sym_var["qacc"]}, {sym_var["qpos"], sym_var["qvel"]});
+
+        foot_l.GenerateFunction("foot_l", true, "./");
+        foot_r.GenerateFunction("foot_r", true, "./");
+
+        // Add these to the map
+        ee_idx_[foot_l.id()] = ee_.size();
+        ee_.push_back(foot_l);
+        ee_idx_[foot_r.id()] = ee_.size();
+        ee_.push_back(foot_r);
 
         /**
          * Tracking Tasks
          *
          */
 
-        // Create tracking tasks for any desired end-effectors
-        tracking_tasks_["foot_l"] = osc::TrackingTaskData();
-        tracking_tasks_["foot_r"] = osc::TrackingTaskData();
+        // Create tracking data for each foot
+        osc::TrackingTaskData foot_l_track, foot_r_track;
 
-        // Add parameters to program
+        foot_l_track.end_effector_id = foot_l.id();
+        foot_l_track.type = osc::TrackingTaskData::Type::kTranslational;
 
-        std::vector<osc::EndEffector> ee = {left_foot, right_foot};
+        foot_r_track.end_effector_id = foot_r.id();
+        foot_r_track.type = osc::TrackingTaskData::Type::kTranslational;
+
+        tracking_tasks_["foot_l"] = foot_l_track;
+        tracking_tasks_["foot_r"] = foot_r_track;
 
         // Add tracking costs
-        for (osc::EndEffector e : ee) {
+        for (auto& task : tracking_tasks_) {
+            // Get task
+            std::string name = task.first;
+            osc::TrackingTaskData& data = task.second;
+            osc::EndEffector& ee = ee_[ee_idx_[data.end_effector_id]];
+
+            data.Kp.resize(3);
+            data.Kd.resize(3);
+
+            data.Kp.diagonal().setOnes();
+            data.Kd.diagonal().setOnes();
+
             // Create parameter for program for acceleration tracking
-            Eigen::Ref<const Eigen::MatrixXd> xacc_d_p =
-                program.AddParameters(e.name() + "_xaccd", e.Dimension());
+            Eigen::Ref<const Eigen::MatrixXd> xaccd =
+                program_.AddParameters(name + "_xaccd", 3);
+
             // Create objective for tracking
-            casadi::SX xacc_d = casadi::SX::sym("xacc_d", e.Dimension());
-            sym::Expression obj =
-                osc::TaskAccelerationErrorCost(e.Acceleration(), xacc_d);
-            obj.SetInputs({qacc}, {qpos, qvel, xacc_d});
+            casadi::SX sym_xaccd = casadi::SX::sym("xacc_d", 3);
+            sym::Expression obj = osc::TaskAccelerationErrorCost(
+                ee.Acceleration()(casadi::Slice(0, 3)), sym_xaccd);
+            obj *= 1e2;
+            obj.SetInputs({sym_var["qacc"]},
+                          {sym_var["qpos"], sym_var["qvel"], sym_xaccd});
+
             // Add objective to program
-            program.AddCost(obj, {qacc_v}, {qpos_p, qvel_p, xacc_d_p});
+            std::shared_ptr<opt::QuadraticCost> task_cost =
+                std::make_shared<opt::QuadraticCost>(obj, name + "_tracking");
+            program_.AddQuadraticCost(task_cost, {qacc_}, {qpos, qvel, xaccd});
         }
+
+        std::cout << "Tracking\n";
 
         /**
          * Contact Tasks
@@ -142,24 +184,90 @@ class CassieFixedOSC {
          *
          */
 
-        casadi::SX cl = CassieClosedLoopConstraint(wrapper.model(),
-                                                   wrapper.data(), qpos, qvel);
+        casadi::SX cl = CassieClosedLoopConstraint(
+            wrapper.model(), wrapper.data(), sym_var["qpos"], sym_var["qvel"]);
+        // Create holonomic constraint
+        osc::HolonomicConstraint closed_loop("cassie_closed_loop");
 
         // Compute first and second derivatives
-        casadi::SX Jcl = jacobian(cl, qpos);
-        casadi::SX dJcldt = jacobian(mtimes(Jcl, qvel), qpos);
+        casadi::SX Jcl = jacobian(cl, sym_var["qpos"]);
+        casadi::SX dJcldt =
+            jacobian(mtimes(Jcl, sym_var["qvel"]), sym_var["qpos"]);
 
-        casadi::SX dcl = mtimes(Jcl, qvel);
-        casadi::SX ddcl = mtimes(Jcl, qacc) + mtimes(dJcldt, qvel);
+        closed_loop.SetConstraint(cl);
+        closed_loop.SetConstraintFirstDerivative(mtimes(Jcl, sym_var["qvel"]));
+        closed_loop.SetConstraintSecondDerivative(
+            mtimes(Jcl, sym_var["qacc"]) + mtimes(dJcldt, sym_var["qvel"]));
+
+        // Add constraint forces
+        sym::VariableVector lam_closed_loop =
+            sym::CreateVariableVector("lam_closed_loop", cl.size1());
+        program_.AddDecisionVariables(lam_closed_loop);
+        // Add bounds to constraint forces
+        program_.AddBoundingBoxConstraint(-1e3, 1e3, lam_closed_loop);
+
+        constraints_.push_back(closed_loop);
+        constraint_forces_.push_back(lam_closed_loop);
 
         // Convert to linear constraint in qacc
         casadi::SX A, b;
-        osc::NoSlipConstraintCoefficients(ddcl, qacc, A, b);
+        osc::NoSlipConstraintCoefficients(
+            closed_loop.ConstraintSecondDerivative(), sym_var["qacc"], A, b);
         auto no_slip = std::make_shared<opt::LinearConstraint>(
-            A, b, casadi::SXVector({qpos, qvel}));
+            A, b, casadi::SXVector({sym_var["qpos"], sym_var["qvel"]}),
+            opt::BoundsType::kEquality, "closed_loop");
+
         // Add linear constraint to program, binding variables and constraints
         // to it
-        program.AddLinearConstraint(no_slip, {qacc_v}, {qpos_p, qvel_p});
+        program_.AddLinearConstraint(no_slip, {qacc_}, {qpos, qvel});
+
+        std::cout << "Constraints\n";
+
+        /**
+         *
+         *  Constrained dynamics
+         *
+         */
+        casadi::SXVector in = {sym_var["qacc"], sym_var["ctrl"]};
+        sym::VariableVector in_dyn(qacc_.size() + ctrl_.size());
+        in_dyn << qacc_, ctrl_;
+
+        // For each constraint
+        for (int i = 0; i < constraints_.size(); i++) {
+            in_dyn.conservativeResize(in_dyn.size() +
+                                      constraint_forces_[i].size());
+            in_dyn.bottomRows(constraint_forces_[i].size())
+                << constraint_forces_[i];
+            casadi::SX lam =
+                casadi::SX::sym("lam", constraint_forces_[i].size());
+            in.push_back(lam);
+            casadi::SX J = jacobian(constraints_[i].ConstraintFirstDerivative(),
+                                    sym_var["qvel"]);
+            dynamics -= mtimes(J.T(), lam);
+        }
+        // For each contact point
+        for (int i = 0; i < contact_tasks_.size(); i++) {
+            in_dyn.conservativeResize(in_dyn.size() +
+                                      contact_forces_[i].size());
+            in_dyn.bottomRows(contact_forces_[i].size()) << contact_forces_[i];
+            casadi::SX lam = casadi::SX::sym("lam", contact_forces_[i].size());
+            in.push_back(lam);
+            casadi::SX J = jacobian(ee_[i].Velocity(), sym_var["qvel"]);
+            dynamics -= mtimes(J.T(), lam);
+        }
+
+        std::cout << "Dynamics\n";
+
+        // Create single vector for linear expression
+        // Set inputs for expression
+        dynamics.SetInputs({vertcat(in)}, {sym_var["qpos"], sym_var["qvel"]});
+        // Add constraint with variable bindings
+        casadi::SX::linear_coeff(dynamics, vertcat(in), A, b, true);
+        std::shared_ptr<opt::LinearConstraint> dynamics_con =
+            std::make_shared<opt::LinearConstraint>(A, b, dynamics.Parameters(),
+                                                    opt::BoundsType::kEquality,
+                                                    "dynamics");
+        program_.AddLinearConstraint(dynamics_con, {in_dyn}, {qpos, qvel});
 
         /**
          *
@@ -167,121 +275,110 @@ class CassieFixedOSC {
          *
          */
 
-        // Add a torque-regularisation cost
-        sym::Expression u2 = casadi::SX::dot(ctrl, ctrl);
-        u2.SetInputs({ctrl}, {});
-        program.AddCost(u2, {ctrl_v}, {});
+        // Joint damping
+        casadi::SX damping_task_error = sym_var["qacc"] - sym_var["qvel"];
+        sym::Expression joint_damping =
+            casadi::SX::dot(damping_task_error, damping_task_error);
 
-        std::cout << "Added Everything\n";
+        // Add a torque-regularisation cost
+        sym::Expression u2 =
+            1e-4 * casadi::SX::dot(sym_var["ctrl"], sym_var["ctrl"]);
+        u2.SetInputs({sym_var["ctrl"]}, {});
+        std::shared_ptr<opt::QuadraticCost> pu2 =
+            std::make_shared<opt::QuadraticCost>(u2, "torque-cost");
+        program_.AddQuadraticCost(pu2, {ctrl_}, {});
+
+        std::cout << "Costs\n";
 
         /**
          * Decision Variable Vector
          *
          */
 
-        // Create optimisation vector
-        sym::VariableVector x(qacc_v.size() + ctrl_v.size());
-        x << qacc_v, ctrl_v;
-        program.SetDecisionVariableVector(x);
+        // Create optimisation vector [qacc, ctrl, lambda]
+        sym::VariableVector x(program_.NumberOfDecisionVariables());
+        // Set it as qacc, ctrl, constraint forces
+        x.topRows(qacc_.size() + ctrl_.size()) << qacc_, ctrl_;
+        int idx = qacc_.size() + ctrl_.size();
+        for (int i = 0; i < constraint_forces_.size(); ++i) {
+            x.middleRows(idx, constraint_forces_[i].size()) =
+                constraint_forces_[i];
+        }
+        program_.SetDecisionVariableVector(x);
+        std::cout << "Vector\n";
 
         /**
          * Bounds
          *
          */
+        // Joint accelerations
+        Eigen::VectorXd lb_qacc(model.nv), ub_qacc(model.nv);
+        lb_qacc.setConstant(-1e4);
+        ub_qacc.setConstant(1e4);
+        program_.AddBoundingBoxConstraint(lb_qacc, ub_qacc, qacc_);
+        // Control inputs
+        Eigen::VectorXd lb_ctrl(CASSIE_FIXED_NU), ub_ctrl(CASSIE_FIXED_NU);
+        ub_ctrl << 4.5, 4.5, 12.2, 12.2, 0.9, 4.5, 4.5, 12.2, 12.2, 0.9;
+        lb_ctrl = -ub_ctrl;
+        program_.AddBoundingBoxConstraint(lb_ctrl, ub_ctrl, ctrl_);
 
-        // Order: hip roll, yaw, pitch, knee, shin (spring), tarsus, heel
-        // spring, toe
-        // initial_state().q << 0.0045, 0.0, 0.4973, -1.1997, 0.0, 1.4267,
-        // 0.0,
-        //     -1.5968, -0.0045, 0.0, 0.4973, -1.1997, 0.0, 1.4267, 0.0,
-        //     -1.5968;
-
-        // Add bounds (from cassie.xml, different from kinematic model on
-        // wiki)
-        // bounds().qmin << -15.0, -22.5, -50.0, -164.0, -20.0, 50.0, -20.0,
-        //     -140.0, -15.0, -22.5, -50.0, -164.0, -20.0, 50.0, -20.0,
-        //     -140.0;
-        // bounds().qmax << 22.5, 22.5, 80.0, -37.0, 20.0, 170.0, 20.0,
-        // -30.0,
-        //     22.5, 22.5, 80.0, -37.0, 20.0, 170.0, 20.0, -30.0;
-        // bounds().qmin *= M_PI / 180;
-        // bounds().qmax *= M_PI / 180;
-        // bounds().vmax << 12.15, 12.15, 8.5, 8.5, 20, 20,
-        // 20, 11.52, 12.15, 12.15, 8.5, 8.5, 20, 20, 20, 11.52;
-
-        // Add bounds to the control variables
-        // osc_.GetDecisionVariables("ctrl").UpperBound()
-        // << 4.5, 4.5, 12.2, 12.2,
-        //     0.9, 4.5, 4.5, 12.2, 12.2, 0.9;
-        // osc_.GetDecisionVariables("ctrl").LowerBound() << -4.5, -4.5, -12.2,
-        //     -12.2, -0.9, -4.5, -4.5, -12.2, -12.2, -0.9;
-
-        // osc_.GetDecisionVariables("qacc").UpperBound().setConstant(1e4);
-        // osc_.GetDecisionVariables("qacc").LowerBound().setConstant(-1e4);
-
-        // osc_.UpdateDecisionVariableVectorBounds("ctrl");
-        // osc_.UpdateDecisionVariableVectorBounds("qacc");
-
-        // Set up any tracking parameters
-        tracking_tasks_["foot_l"].Kp.diagonal().setOnes();
-        tracking_tasks_["foot_l"].Kd.diagonal().setOnes();
-
-        tracking_tasks_["foot_r"].Kp.diagonal().setOnes();
-        tracking_tasks_["foot_r"].Kd.diagonal().setOnes();
+        std::cout << "Bounds\n";
 
         // Show the program details
-        osc_.PrintProgramSummary();
+        program_.PrintProgramSummary();
         // Print detailed list of variables and constraints
-        osc_.ListVariables();
-        osc_.ListParameters();
-        osc_.ListCosts();
-        osc_.ListConstraints();
+        program_.ListDecisionVariables();
+        program_.ListParameters();
+        program_.ListCosts();
+        program_.ListConstraints();
+
+        // Create solver for the program
+        solver_ =
+            std::make_unique<opt::solvers::QPOASESSolverInstance>(program_);
     }
 
     ~CassieFixedOSC() = default;
 
     // Update the references for any tasks
-    void UpdateReferences(double time, const Eigen::VectorXd& qpos,
-                          const Eigen::VectorXd& qvel) {
-        double l_phase = -(2.0 * M_PI / 4.0) * time;
-
-        Eigen::Vector3d &xl = tracking_task_["LeftFootFront"].xr,
-                        &xr = tracking_task_["RightFootFront"].xr;
-
-        xl[0] = 0.0 + 0.2 * cos(l_phase);
-        xl[1] = 0.1;
-        xl[2] = -0.7 + 0.2 * sin(l_phase);
-
-        xr[0] = 0.0 + 0.2 * cos(l_phase);
-        xr[1] = 0.1;
-        xr[2] = -0.7 + 0.2 * sin(l_phase);
-
-        // Compute new tracking errors
-        // osc::GetTaskError();
-
-        program.SetParameter("left_foot_xaccd", xl);
-        program.SetParameter("right_foot_xaccd", xr);
-    }
+    void UpdateReferences(double time);
 
     // Update controller state
     void UpdateState(int nq, const double* q, int nv, const double* v);
 
     void Solve() {
-        // Update program parameters
-        osc_.UpdateProgramParameters();
-        // Update solver with current program
-        solver_->UpdateProgram(osc_);
-        // Call a solver for the created program
-        // solver_->Solve();
+        solver_->UpdateProgram(program_);
+        solver_->Solve();
+    }
+
+    Eigen::VectorXd CurrentControlSolution() {
+        return solver_->GetVariableValues(ctrl_);
     }
 
    protected:
    private:
+    // Program
+    opt::Program program_;
     // Solver
-    std::unique_ptr<damotion::optimisation::solvers::SolverBase> solver_;
+    std::unique_ptr<opt::solvers::QPOASESSolverInstance> solver_;
 
+    Eigen::VectorXd qpos_;
+    Eigen::VectorXd qvel_;
+
+    std::vector<osc::EndEffector> ee_;
+    std::unordered_map<osc::EndEffector::Id, int> ee_idx_;
+
+    // Standard optimisation variables
+    sym::VariableVector qacc_;
+    sym::VariableVector ctrl_;
+    // Vector of contact-force variables
+    std::vector<sym::VariableVector> contact_forces_;
+    // Vector of other constraint-based variables
+    std::vector<sym::VariableVector> constraint_forces_;
+
+    // Tasks
     std::unordered_map<std::string, osc::TrackingTaskData> tracking_tasks_;
-    // std::unordered_map<std::string, osc::ContactTask> contact_tasks_;
+    std::unordered_map<std::string, osc::ContactTaskData> contact_tasks_;
+    std::vector<osc::HolonomicConstraint> constraints_;
 };
 
 #endif /* CONTROLLER_OSC_FIXED_H */
