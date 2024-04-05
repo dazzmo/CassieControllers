@@ -24,26 +24,21 @@ void CassieFixedOSC::UpdateReferences(double time) {
     double l_phase = -(2.0 * M_PI / 4.0) * time;
 
     // Update all end-effector state estimates
-    for (osc::EndEffector &e : ee_) {
-        e.Function().setInput(1, qpos_.data());
-        e.Function().setInput(2, qvel_.data());
-        e.Function().call();
+    for (std::shared_ptr<osc::EndEffector>&e : ee_) {
+        e->Function().setInput(1, qpos_.data());
+        e->Function().setInput(2, qvel_.data());
+        e->Function().call();
     }
 
     // Create tracking references
-    Eigen::Vector3d &xl = tracking_tasks_["foot_l"].xr,
-                    &xr = tracking_tasks_["foot_r"].xr;
+    osc::EndEffector &foot_l = tracking_tasks_["foot_l"]->GetEndEffector();
+    osc::EndEffector &foot_r = tracking_tasks_["foot_r"]->GetEndEffector();
+    // Create references
+    Eigen::Vector3d &xl = tracking_tasks_["foot_l"]->xr,
+                    &xr = tracking_tasks_["foot_r"]->xr;
 
-    std::cout << "Left: "
-              << ee_[ee_idx_[tracking_tasks_["foot_l"].end_effector_id]]
-                     .EvalPosition()
-                     .transpose()
-              << std::endl;
-    std::cout << "Right: "
-              << ee_[ee_idx_[tracking_tasks_["foot_r"].end_effector_id]]
-                     .EvalPosition()
-                     .transpose()
-              << std::endl;
+    std::cout << "Left: " << foot_l.EvalPosition().transpose() << std::endl;
+    std::cout << "Right: " << foot_r.EvalPosition().transpose() << std::endl;
 
     // Create trajectories
     xl[0] = 0.0 + 0.2 * cos(l_phase);
@@ -54,21 +49,12 @@ void CassieFixedOSC::UpdateReferences(double time) {
     xr[1] = -0.1;
     xr[2] = -0.7 + 0.2 * sin(l_phase);
 
-    tracking_tasks_["foot_l"].qr = osc::RPYToQuaterion(0, 0, 0);
-    tracking_tasks_["foot_r"].qr = osc::RPYToQuaterion(0, 0, 0);
+    tracking_tasks_["foot_l"]->qr = osc::RPYToQuaterion(0, 0, 0);
+    tracking_tasks_["foot_r"]->qr = osc::RPYToQuaterion(0, 0, 0);
 
     // Compute new tracking errors
-    Eigen::VectorXd xaccd = osc::DesiredTrackingTaskAcceleration(
-        tracking_tasks_["foot_l"],
-        ee_[tracking_tasks_["foot_l"].end_effector_id]);
-    program_.SetParameters("foot_l_xaccd", -xaccd);
-
-    std::cout << xaccd.transpose() << std::endl;
-
-    xaccd = osc::DesiredTrackingTaskAcceleration(
-        tracking_tasks_["foot_r"],
-        ee_[tracking_tasks_["foot_r"].end_effector_id]);
-    program_.SetParameters("foot_r_xaccd", -xaccd);
-
-    std::cout << xaccd.transpose() << std::endl;
+    program_.SetParameters("foot_l_xaccd",
+                           tracking_tasks_["foot_l"]->GetPDError());
+    program_.SetParameters("foot_r_xaccd",
+                           tracking_tasks_["foot_r"]->GetPDError());
 }
