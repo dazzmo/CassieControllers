@@ -1,65 +1,53 @@
-#include <glog/logging.h>
-
-#include <chrono>
-#include <cstdio>
-#include <cstring>
-
+#include "simulate.h"
 #include "controller/osc.h"
-#include "controllers/osc/osc.h"
-#include "mujoco_sim.h"
 
-// Useful for tracking real-time visuals
-double RealTimeSeconds() {
-    auto tp = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now());
-    auto tmp = std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch());
-    auto time_micro = tmp.count();
-    return time_micro / 1e6;
-}
-
-int main(int argc, const char** argv) {
+int main() {
+    // Initialise logging
     google::InitGoogleLogging("simulate");
     FLAGS_logtostderr = 1;
 
     // Create simulator and load model
     MujocoSimulator& sim = MujocoSimulator::getInstance();
-
     sim.LoadModel("./scene.xml");
     sim.Init();
 
-    // Create OSC model
-    ArmModel arm;
-    // Create OSC controller for arm model
-    controller::osc::Options opt;
-    opt.frequency = 500.0;
-    controller::osc::OperationalSpaceController c(arm, opt);
-    c.Init();
+    // Set controller options
+    double frequency = 1000.0;
+
+    // Create an operational space controller model for Cassie
+    ArmOSC arm_osc;
+
+    // TODO Here we could set some parameters such as cost weightings and
+    // TODO whatnot
 
     // Simulate the model
+    double real_start;
+    double sim_start;
     double t_ctrl = sim.GetSimulatorTime();
 
-    double sim_time = 0.0, real_time = 0.0;
-    // c.StartRamp(0.0, 5e-1, OutputPrescale::RampType::RAMP_UP);
-
     while (!sim.WindowShouldClose()) {
-        // Run simulator at a reasonable frame rate in real time
-        double sim_start = sim.GetSimulatorTime();
-        double real_start = RealTimeSeconds();
-        while (RealTimeSeconds() - real_start < 1.0 / 60.0) {
-            // Compute simulation up to next frame in real-time
-            if (sim.GetSimulatorTime() - sim_start < 1.0 / 60.0) {
-                // Apply control at desired frequency within simulator
-                if (sim.GetSimulatorTime() - t_ctrl > 1.0 / opt.frequency) {
+        // Render at 60 Hz and make sure simulator and real-time are in sync
+        real_start = real_time_seconds();
+        sim_start = sim.GetSimulatorTime();
+        while (real_time_seconds() - real_start < SIM_REFERESH_RATE) {
+            if (sim.GetSimulatorTime() - sim_start < SIM_REFERESH_RATE) {
+                // Apply controller at desired frequency within simulator
+                if (sim.GetSimulatorTime() - t_ctrl > 1.0 / frequency) {
                     // Update model state
-                    c.GetModel().UpdateState(arm.size().nq, sim.GetModelConfiguration(),
-                                             arm.size().nv, sim.GetModelVelocity());
-                    // Compute control based on updated model state
-                    c.UpdateControl(sim.GetSimulatorTime(),
-                                    c.GetModel().state().q, c.GetModel().state().v);
+                    arm_osc.UpdateState(ARM_NQ, sim.GetModelConfiguration(),
+                                        ARM_NV, sim.GetModelVelocity());
 
+                    // Update references
+                    arm_osc.UpdateReferences(sim.GetSimulatorTime());
+                    // Compute controls
+                    arm_osc.Solve();
+                    // Update timer and log
                     t_ctrl = sim.GetSimulatorTime();
                 }
-                // Zero-order hold on control signal
-                sim.ApplyControl(c.ControlOutput().data(), c.GetModel().size().nu);
+
+                // Apply controls and step forward
+                sim.ApplyControl(arm_osc.CurrentControlSolution().data(),
+                                 ARM_NU);
                 sim.ForwardStep();
             }
         }

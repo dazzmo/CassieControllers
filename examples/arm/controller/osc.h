@@ -1,100 +1,88 @@
-#ifndef CASSIE_CONTROLLER_OSC_HPP
-#define CASSIE_CONTROLLER_OSC_HPP
+#ifndef CONTROLLER_OSC_FIXED_H
+#define CONTROLLER_OSC_FIXED_H
 
 #include <glog/logging.h>
 
-#include "controllers/osc/model.h"
-#include "controllers/osc/tasks/joint_track_task.h"
-#include "eigen3/Eigen/Cholesky"
-#include "eigen3/Eigen/Dense"
-#include "model/cg/arm_actuation_matrix.h"
-#include "model/cg/arm_bias_vector.h"
-#include "model/cg/arm_constraint.h"
-#include "model/cg/arm_mass_matrix.h"
-#include "model/cg/arm_hand.h"
+// pinocchio
+#include <pinocchio/parsers/urdf.hpp>
 
-#define ARM_MODEL_NQ 3
-#define ARM_MODEL_NV 3
-#define ARM_MODEL_NU 3
+// damotion
+#include <damotion/control/osc/osc.h>
+#include <damotion/solvers/solve_qpoases.h>
 
-using namespace controller;
+#include "damotion/solvers/bounds.h"
+#include "damotion/solvers/program.h"
+// model
+#include "model/actuation.h"
 
-class ArmModel : public osc::Model {
+// Sizes
+#define ARM_NQ (3)
+#define ARM_NV (3)
+#define ARM_NU (3)
+
+namespace sym = damotion::symbolic;
+namespace opt = damotion::optimisation;
+namespace osc = damotion::control::osc;
+
+class ArmOSC {
    public:
-    ArmModel() : osc::Model(DynamicModel::Size(ARM_MODEL_NQ, ARM_MODEL_NV, ARM_MODEL_NU)) {
-        // Model bounds
-        initial_state().q << 0.0, 0.0, 0.0;
-        bounds().qmin << -M_PI, -M_PI, -M_PI;
-        bounds().qmax << M_PI, M_PI, M_PI;
-        bounds().umax << 20.0, 20.0, 20.0;
-        bounds().vmax.setConstant(1e1);
-        bounds().amax.setConstant(1e6);
+    /**
+     * @brief Constructs the OSC program for the cassie-fixed model
+     *
+     */
+    ArmOSC();
+    ~ArmOSC() = default;
 
-        // Set control weights in cost function
-        SetControlWeighting(Eigen::Vector<Scalar, ARM_MODEL_NU>(1, 1, 1));
+    // Update the references for any tasks
+    void UpdateReferences(double time);
 
-        // Add tasks here
-        AddTask("tip", 3, &ArmModel::TipPositionTask);
-        GetTask("tip")->SetTaskWeightMatrix(Vector3(1.0, 1.0, 1.0));
-        GetTask("tip")->SetKpGains(Vector3(0.0, 1e2, 1e2));
-        GetTask("tip")->SetKdGains(Vector3(0.0, 1e1, 1e1));
+    /**
+     * @brief Remaps the measured state to the state expected by our model
+     *
+     * @param nq
+     * @param q
+     * @param nv
+     * @param v
+     */
+    void UpdateState(int nq, const double* q, int nv, const double* v);
 
-        // Joint damping
-        joint_track_task = new osc::JointTrackTask(this->size());
-        AddTask("joint track", std::shared_ptr<controller::osc::Task>(joint_track_task));
-        GetTask("joint track")->SetTaskWeightMatrix(Vector3(1.0, 1.0, 1.0));
-        GetTask("joint track")->SetKdGains(Vector3(5.0, 5.0, 5.0));
+    void Solve() {
+        solver_->UpdateProgram(program_);
+
+        solver_->Solve();
+        // Check current cost values
+        for (auto& c : solver_->GetCurrentProgram().GetAllCostBindings()) {
+            std::cout << c.Get().name() << " "
+                      << c.Get().ObjectiveFunction().getOutput(0) << std::endl;
+        }
     }
 
-    // Function that gets called every time control is updated
-    void UpdateReferences(Scalar time, const ConfigurationVector& q, const TangentVector& v) {
-        // GetTask("tip")->SetReference(Vector3(0.0, 1.0, -1.0));
-        double phase = 2.0*M_PI/4.0*time;
-        double xpos = 0.0;
-        double ypos = 1.0 - 1.0*sin(phase);
-        double zpos = -1.0 + 1.0*cos(phase);
-        GetTask("tip")->SetReference(Vector3(xpos, ypos, zpos));
-        GetTask("joint track")->SetReference(Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.0, 0.0));
-    }
-
-    // Tasks
-    static void TipPositionTask(const ConfigurationVector& q, const TangentVector& v,
-                                Vector& x, Matrix& J, Vector& dJdt_v) {
-        const double* in[] = {q.data(), v.data()};
-        double* out[] = {x.data(), J.data(), dJdt_v.data()};
-        arm_hand(in, out, NULL, NULL, 0);
-    }
-
-    // Constraints
-    static void WristAngleTask(const ConfigurationVector& q, const TangentVector& v,
-                               Vector& x, Matrix& J, Vector& dJdt_v) {
-        x << q[2] - 0.0;
-        J << 0, 0, 1.0;
-        dJdt_v << 0;
+    Eigen::VectorXd CurrentControlSolution() {
+        return solver_->GetVariableValues(ctrl_);
     }
 
    protected:
-    // Dynamics
-    void
-    ComputeMassMatrix(const ConfigurationVector& q, Matrix& M) {
-        const double* in[] = {q.data(), NULL};
-        double* out[] = {M.data()};
-        arm_mass_matrix(in, out, NULL, NULL, 0);
-    }
+   private:
+    // Program
+    opt::Program program_;
+    // Solver
+    std::unique_ptr<opt::solvers::QPOASESSolverInstance> solver_;
 
-    void ComputeBiasVector(const ConfigurationVector& q, const TangentVector& v, Vector& h) {
-        const double* in[] = {q.data(), v.data()};
-        double* out[] = {h.data()};
-        arm_bias_vector(in, out, NULL, NULL, 0);
-    }
+    Eigen::VectorXd qpos_;
+    Eigen::VectorXd qvel_;
 
-    void ComputeActuationMap(const ConfigurationVector& q, Matrix& B) {
-        const double* in[] = {q.data()};
-        double* out[] = {B.data()};
-        arm_actuation_matrix(in, out, NULL, NULL, 0);
-    }
+    std::vector<std::shared_ptr<osc::EndEffector>> ee_;
 
-    osc::JointTrackTask* joint_track_task;
+    // Standard optimisation variables
+    sym::VariableVector qacc_;
+    sym::VariableVector ctrl_;
+    // Vector of constraint forces
+    std::vector<sym::VariableVector> constraint_forces_;
+
+    // Tasks
+    std::unordered_map<std::string, std::unique_ptr<osc::TrackingTaskData>>
+        tracking_tasks_;
+    std::vector<osc::HolonomicConstraint> constraints_;
 };
 
-#endif /* CASSIE_CONTROLLER_OSC_HPP */
+#endif/* CONTROLLER_OSC_FIXED_H */
