@@ -132,7 +132,7 @@ CassieFixedOSC::CassieFixedOSC() {
 
         // Create objective as || xacc_d - xacc ||^2
         sym::Expression obj =
-            1e-2 *
+            1e1 *
             casadi::SX::dot(ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd,
                             ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd);
         // Set inputs to the expression

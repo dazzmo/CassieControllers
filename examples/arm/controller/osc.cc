@@ -3,7 +3,7 @@
 ArmOSC::ArmOSC() {
     // Load cassie model
     pinocchio::Model model;
-    pinocchio::urdf::buildModel("./arm.urdf", model);
+    pinocchio::urdf::buildModel("./arm.urdf", model, true);
     pinocchio::Data data(model);
     // Wrap model for casadi functionality
     damotion::utils::casadi::PinocchioModelWrapper wrapper(model);
@@ -47,9 +47,11 @@ ArmOSC::ArmOSC() {
     // Add inputs and other features
     dynamics -= mtimes(B, sym_var["ctrl"]);
 
-    std::cout << dynamics << std::endl;
-
-    /** Register End-Effectors **/
+    /** 
+     * 
+     * Register End-Effectors 
+     * 
+     */
 
     // Add any end-effectors of interest to the model
     wrapper.addEndEffector("hand");
@@ -101,7 +103,7 @@ ArmOSC::ArmOSC() {
             program_.AddParameters(name + "_xaccd", 3);
 
         // Set tracking gains for the end-effectors
-        task.second->Kp.diagonal().setConstant(2e2);
+        task.second->Kp.diagonal().setConstant(1e1);
         task.second->Kd.diagonal().setConstant(1e0);
 
         // Create objective for tracking
@@ -109,7 +111,7 @@ ArmOSC::ArmOSC() {
 
         // Create objective as || xacc_d - xacc ||^2
         sym::Expression obj =
-            1e-2 *
+            1e2 *
             casadi::SX::dot(ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd,
                             ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd);
         // Set inputs to the expression
@@ -144,22 +146,6 @@ ArmOSC::ArmOSC() {
     casadi::SXVector in = {sym_var["qacc"], sym_var["ctrl"]};
     sym::VariableVector in_dyn(qacc_.size() + ctrl_.size());
     in_dyn << qacc_, ctrl_;
-
-    // For each holonomic constraint
-    // for (int i = 0; i < constraints_.size(); i++) {
-    //     // Add constraint forces to the dynamic expression input
-    //     in_dyn.conservativeResize(in_dyn.size() + constraint_forces_[i].size());
-    //     in_dyn.bottomRows(constraint_forces_[i].size())
-    //         << constraint_forces_[i];
-    //     // Create symbolic representation of the constraint forces
-    //     casadi::SX lam = casadi::SX::sym("lam", constraint_forces_[i].size());
-    //     in.push_back(lam);
-    //     // Get constraint Jacobian
-    //     casadi::SX J = jacobian(constraints_[i].ConstraintFirstDerivative(),
-    //                             sym_var["qvel"]);
-    //     // Add joint-space forces based on the constraints
-    //     dynamics -= mtimes(J.T(), lam);
-    // }
 
     std::cout << "Dynamics\n";
 
@@ -262,7 +248,7 @@ void ArmOSC::UpdateReferences(double time) {
 
     // Compute new tracking errors
     program_.SetParameters("hand_xaccd",
-                           tracking_tasks_["hand"]->GetPDError());
+                           -tracking_tasks_["hand"]->GetPDError());
 }
 
 void ArmOSC::UpdateState(int nq, const double *q, int nv, const double *v) {

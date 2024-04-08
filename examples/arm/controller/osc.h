@@ -48,7 +48,6 @@ class ArmOSC {
 
     void Solve() {
         solver_->UpdateProgram(program_);
-
         solver_->Solve();
         // Check current cost values
         for (auto& c : solver_->GetCurrentProgram().GetAllCostBindings()) {
@@ -58,7 +57,8 @@ class ArmOSC {
     }
 
     Eigen::VectorXd CurrentControlSolution() {
-        return solver_->GetVariableValues(ctrl_);
+        Eigen::VectorXd u = solver_->GetVariableValues(ctrl_);
+        return u;
     }
 
    protected:
