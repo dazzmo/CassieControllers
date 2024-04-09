@@ -105,10 +105,10 @@ CassieFixedOSC::CassieFixedOSC() {
     // Create tracking data for each foot
     osc::TrackingTaskDataFactory tracking_factory;
     // Create tasks
-    tracking_tasks_["foot_l"] = tracking_factory.Create(
-        foot_l, osc::TrackingTaskData::Type::kTranslational);
-    tracking_tasks_["foot_r"] = tracking_factory.Create(
-        foot_r, osc::TrackingTaskData::Type::kTranslational);
+    tracking_tasks_["foot_l"] =
+        tracking_factory.Create(foot_l, osc::TrackingTaskData::Type::kFull);
+    tracking_tasks_["foot_r"] =
+        tracking_factory.Create(foot_r, osc::TrackingTaskData::Type::kFull);
 
     // Add tracking costs
     for (auto &task : tracking_tasks_) {
@@ -121,20 +121,19 @@ CassieFixedOSC::CassieFixedOSC() {
         // minimisation
         // TODO - Include task dimension in damotion library
         Eigen::Ref<const Eigen::MatrixXd> xaccd =
-            program_.AddParameters(name + "_xaccd", 3);
+            program_.AddParameters(name + "_xaccd", 6);
 
         // Set tracking gains for the end-effectors
         task.second->Kp.diagonal().setConstant(2e2);
-        task.second->Kd.diagonal().setConstant(1e0);
+        task.second->Kd.diagonal().setConstant(1e1);
 
         // Create objective for tracking
-        casadi::SX sym_xaccd = casadi::SX::sym("xacc_d", 3);
+        casadi::SX sym_xaccd = casadi::SX::sym("xacc_d", 6);
 
         // Create objective as || xacc_d - xacc ||^2
         sym::Expression obj =
-            1e1 *
-            casadi::SX::dot(ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd,
-                            ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd);
+            1e0 * casadi::SX::dot(ee.Acceleration() - sym_xaccd,
+                                  ee.Acceleration() - sym_xaccd);
         // Set inputs to the expression
         obj.SetInputs({sym_var["qacc"]},
                       {sym_var["qpos"], sym_var["qvel"], sym_xaccd});
@@ -181,7 +180,7 @@ CassieFixedOSC::CassieFixedOSC() {
         sym::CreateVariableVector("lam_closed_loop", cl.size1());
     program_.AddDecisionVariables(lam_closed_loop);
     // Add bounds to constraint forces
-    program_.AddBoundingBoxConstraint(-1e3, 1e3, lam_closed_loop);
+    program_.AddBoundingBoxConstraint(-1e6, 1e6, lam_closed_loop);
 
     constraints_.push_back(closed_loop);
     constraint_forces_.push_back(lam_closed_loop);
@@ -245,13 +244,28 @@ CassieFixedOSC::CassieFixedOSC() {
      */
 
     // Joint damping
-    casadi::SX damping_task_error = sym_var["qacc"] - sym_var["qvel"];
+    casadi::SX damping_task_error = sym_var["qacc"] - 1.0 * sym_var["qvel"];
     sym::Expression joint_damping =
-        casadi::SX::dot(damping_task_error, damping_task_error);
+        1e-3 * casadi::SX::dot(damping_task_error, damping_task_error);
+    joint_damping.SetInputs({sym_var["qacc"]}, {sym_var["qvel"]});
+    std::shared_ptr<opt::QuadraticCost> pdamping =
+        std::make_shared<opt::QuadraticCost>("damping", joint_damping);
+    program_.AddQuadraticCost(pdamping, {qacc_}, {qvel});
 
     // Add a torque-regularisation cost
-    sym::Expression u2 =
-        1e-4 * casadi::SX::dot(sym_var["ctrl"], sym_var["ctrl"]);
+    // Create normalised torque outputs
+    casadi::SX u_normalised = sym_var["ctrl"];
+    u_normalised(0) /= 4.5;
+    u_normalised(1) /= 4.5;
+    u_normalised(2) /= 12.2;
+    u_normalised(3) /= 12.2;
+    u_normalised(4) /= 0.9;
+    u_normalised(5) /= 4.5;
+    u_normalised(6) /= 4.5;
+    u_normalised(7) /= 12.2;
+    u_normalised(8) /= 12.2;
+    u_normalised(9) /= 0.9;
+    sym::Expression u2 = 1e-4 * casadi::SX::dot(u_normalised, u_normalised);
     u2.SetInputs({sym_var["ctrl"]}, {});
     std::shared_ptr<opt::QuadraticCost> pu2 =
         std::make_shared<opt::QuadraticCost>("torque_cost", u2);
@@ -304,7 +318,7 @@ CassieFixedOSC::CassieFixedOSC() {
 }
 
 void CassieFixedOSC::UpdateReferences(double time) {
-    double l_phase = -(2.0 * M_PI / 4.0) * time;
+    double l_phase = (2.0 * M_PI / 10.0) * time;
 
     // Update all end-effector state estimates
     for (std::shared_ptr<osc::EndEffector> &e : ee_) {
@@ -320,23 +334,22 @@ void CassieFixedOSC::UpdateReferences(double time) {
     Eigen::Vector3d &xl = tracking_tasks_["foot_l"]->xr,
                     &xr = tracking_tasks_["foot_r"]->xr;
 
-    std::cout << "Left: " << foot_l.EvalPosition().topRows(3).transpose()
-              << std::endl;
-    std::cout << "Right: " << foot_r.EvalPosition().topRows(3).transpose()
-              << std::endl;
-
     // Create trajectories
     xl[0] = 0.0 + 0.2 * cos(l_phase);
-    xl[1] = 0.1;
-    xl[2] = -0.7 + 0.2 * sin(l_phase);
+    xl[1] = 0.2;
+    xl[2] = -0.8 + 0.2 * sin(l_phase);
 
     xr[0] = 0.0 + 0.2 * cos(l_phase);
-    xr[1] = -0.1;
-    xr[2] = -0.7 + 0.2 * sin(l_phase);
+    xr[1] = -0.2;
+    xr[2] = -0.8 + 0.2 * sin(l_phase);
 
+    std::cout << "Left: " << foot_l.EvalPosition().topRows(3).transpose()
+              << std::endl;
     std::cout << "Left Desired: " << xl.transpose() << std::endl;
     std::cout << "Left Error: "
               << tracking_tasks_["foot_l"]->GetPDError().transpose()
+              << std::endl;
+    std::cout << "Right: " << foot_r.EvalPosition().topRows(3).transpose()
               << std::endl;
     std::cout << "Right Desired: " << xr.transpose() << std::endl;
     std::cout << "Right Error: "
@@ -348,9 +361,9 @@ void CassieFixedOSC::UpdateReferences(double time) {
 
     // Compute new tracking errors
     program_.SetParameters("foot_l_xaccd",
-                           tracking_tasks_["foot_l"]->GetPDError());
+                           -tracking_tasks_["foot_l"]->GetPDError());
     program_.SetParameters("foot_r_xaccd",
-                           tracking_tasks_["foot_r"]->GetPDError());
+                           -tracking_tasks_["foot_r"]->GetPDError());
 }
 
 void CassieFixedOSC::UpdateState(int nq, const double *q, int nv,

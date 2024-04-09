@@ -54,6 +54,12 @@ class ArmOSC {
             std::cout << c.Get().name() << " "
                       << c.Get().ObjectiveFunction().getOutput(0) << std::endl;
         }
+
+        Eigen::VectorXd a = solver_->GetVariableValues(qacc_);
+        Eigen::VectorXd u = solver_->GetVariableValues(ctrl_);
+
+        std::cout << "a: " << a.transpose() << std::endl;
+        std::cout << "u: " << u.transpose() << std::endl;
     }
 
     Eigen::VectorXd CurrentControlSolution() {
@@ -83,6 +89,7 @@ class ArmOSC {
     std::unordered_map<std::string, std::unique_ptr<osc::TrackingTaskData>>
         tracking_tasks_;
     std::vector<osc::HolonomicConstraint> constraints_;
+
 };
 
 #endif/* CONTROLLER_OSC_FIXED_H */

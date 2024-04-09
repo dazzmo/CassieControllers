@@ -47,10 +47,10 @@ ArmOSC::ArmOSC() {
     // Add inputs and other features
     dynamics -= mtimes(B, sym_var["ctrl"]);
 
-    /** 
-     * 
-     * Register End-Effectors 
-     * 
+    /**
+     *
+     * Register End-Effectors
+     *
      */
 
     // Add any end-effectors of interest to the model
@@ -103,15 +103,15 @@ ArmOSC::ArmOSC() {
             program_.AddParameters(name + "_xaccd", 3);
 
         // Set tracking gains for the end-effectors
-        task.second->Kp.diagonal().setConstant(1e1);
-        task.second->Kd.diagonal().setConstant(1e0);
+        task.second->Kp.diagonal().setConstant(1e2);
+        task.second->Kd.diagonal().setConstant(1e1);
 
         // Create objective for tracking
         casadi::SX sym_xaccd = casadi::SX::sym("xacc_d", 3);
 
         // Create objective as || xacc_d - xacc ||^2
         sym::Expression obj =
-            1e2 *
+            1e1 *
             casadi::SX::dot(ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd,
                             ee.Acceleration()(casadi::Slice(0, 3)) - sym_xaccd);
         // Set inputs to the expression
@@ -168,7 +168,7 @@ ArmOSC::ArmOSC() {
 
     // Add a torque-regularisation cost
     sym::Expression u2 =
-        1e-4 * casadi::SX::dot(sym_var["ctrl"], sym_var["ctrl"]);
+        1e-2 * casadi::SX::dot(sym_var["ctrl"], sym_var["ctrl"]);
     u2.SetInputs({sym_var["ctrl"]}, {});
     std::shared_ptr<opt::QuadraticCost> pu2 =
         std::make_shared<opt::QuadraticCost>("torque_cost", u2);
@@ -197,14 +197,9 @@ ArmOSC::ArmOSC() {
      *
      */
     // Joint accelerations
-    Eigen::VectorXd lb_qacc(model.nv), ub_qacc(model.nv);
-    lb_qacc.setConstant(-1e4);
-    ub_qacc.setConstant(1e4);
-    program_.AddBoundingBoxConstraint(lb_qacc, ub_qacc, qacc_);
+    program_.AddBoundingBoxConstraint(-1e4, 1e4, qacc_);
     // Control inputs
-    Eigen::VectorXd ctrl_max(ARM_NU);
-    ctrl_max << 50.0, 50.0, 50.0;
-    program_.AddBoundingBoxConstraint(-ctrl_max, ctrl_max, ctrl_);
+    program_.AddBoundingBoxConstraint(-50.0, 50.0, ctrl_);
 
     std::cout << "Bounds\n";
 
@@ -238,17 +233,17 @@ void ArmOSC::UpdateReferences(double time) {
               << std::endl;
 
     // Create trajectories
-    x[0] = 0.0 + 0.2 * cos(l_phase);
-    x[1] = 0.0;
-    x[2] = -0.7 + 0.2 * sin(l_phase);
+    x[0] = 0.0;
+    x[1] = 0.0 + 0.2 * cos(l_phase);
+    x[2] = -1.5 + 0.2 * sin(l_phase);
 
-    std::cout << "Hand Desired: " << x.transpose() << std::endl;
-    std::cout << "Hand Error: "
-              << tracking_tasks_["hand"]->GetPDError().transpose() << std::endl;
+    std::cout << "Desired: " << x.transpose() << std::endl;
+    std::cout << "Error: " << tracking_tasks_["hand"]->GetPDError().transpose()
+              << std::endl;
 
     // Compute new tracking errors
-    program_.SetParameters("hand_xaccd",
-                           -tracking_tasks_["hand"]->GetPDError());
+    program_.SetParameters("hand_xaccd", -tracking_tasks_["hand"]->GetPDError());
+    program_.ListParameters();
 }
 
 void ArmOSC::UpdateState(int nq, const double *q, int nv, const double *v) {

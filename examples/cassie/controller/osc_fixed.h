@@ -60,6 +60,7 @@ class CassieFixedOSC {
     }
 
     Eigen::VectorXd CurrentControlSolution() {
+        // TODO - Provide output PD controller for joint stabilisation? Instead of including it in program?
         return solver_->GetVariableValues(ctrl_);
     }
 
