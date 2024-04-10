@@ -18,7 +18,7 @@
  */
 casadi::SX CassieSpringForces(pinocchio::ModelTpl<casadi::SX> &model,
                               pinocchio::DataTpl<casadi::SX> &data,
-                              casadi::SX &qpos, casadi::SX &qvel,
+                              const casadi::SX &qpos, const casadi::SX &qvel,
                               const double k_spring_shin = 1500.0,
                               const double k_spring_heel = 1250.0) {
     typedef casadi::SX Scalar;
@@ -51,7 +51,7 @@ casadi::SX CassieSpringForces(pinocchio::ModelTpl<casadi::SX> &model,
  */
 casadi::SX CassieSpringForces(pinocchio::ModelTpl<casadi::SX> &model,
                               pinocchio::DataTpl<casadi::SX> &data,
-                              casadi::SX &qpos, casadi::SX &qvel,
+                              const casadi::SX &qpos, const casadi::SX &qvel,
                               const casadi::SX &k_spring_shin,
                               const casadi::SX &k_spring_heel) {
     typedef casadi::SX Scalar;
@@ -76,7 +76,7 @@ casadi::SX CassieSpringForces(pinocchio::ModelTpl<casadi::SX> &model,
 
 casadi::SX CassieJointDampingForces(pinocchio::ModelTpl<casadi::SX> &model,
                                     pinocchio::DataTpl<casadi::SX> &data,
-                                    casadi::SX &qpos, casadi::SX &qvel) {
+                                    const casadi::SX &qpos, const casadi::SX &qvel) {
     typedef casadi::SX Scalar;
 
     // Add any additional nonlinearities (e.g. spring/damping of joints)

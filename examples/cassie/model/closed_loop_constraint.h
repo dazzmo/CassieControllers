@@ -18,7 +18,7 @@
  */
 casadi::SX CassieClosedLoopConstraint(pinocchio::ModelTpl<casadi::SX> &model,
                                       pinocchio::DataTpl<casadi::SX> &data,
-                                      casadi::SX &qpos, casadi::SX &qvel) {
+                                      const casadi::SX &qpos, const casadi::SX &qvel) {
     typedef casadi::SX Scalar;
 
     // Create reference frames for the closed-loop constraint locations (two
