@@ -67,21 +67,24 @@ CassieFixedOSC::CassieFixedOSC() {
      */
 
     // Create tasks
-    auto foot_l_task = std::make_shared<osc::PositionTask>("foot_l", foot_l);
-    auto foot_r_task = std::make_shared<osc::PositionTask>("foot_r", foot_r);
+    left_foot_ = std::make_shared<osc::PositionTask>("foot_l", foot_l);
+    right_foot_ = std::make_shared<osc::PositionTask>("foot_r", foot_r);
+    right_foot_orientation_ = std::make_shared<osc::OrientationTask>("foot_r_orientation", foot_r);
+    
     // Set gains
-    foot_l_task->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
-    foot_l_task->SetKdGains(Eigen::Vector3d(1.0, 1.0, 1.0));
+    left_foot_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
+    left_foot_->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
 
-    foot_r_task->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
-    foot_r_task->SetKdGains(Eigen::Vector3d(1.0, 1.0, 1.0));
+    right_foot_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
+    right_foot_->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
 
-    position_tasks_["foot_l"] = foot_l_task;
-    position_tasks_["foot_r"] = foot_r_task;
+    right_foot_orientation_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
+    right_foot_orientation_->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
 
     // Add motion tasks to OSC
-    osc_->AddMotionTask(foot_l_task);
-    osc_->AddMotionTask(foot_r_task);
+    osc_->AddMotionTask(left_foot_);
+    osc_->AddMotionTask(right_foot_);
+    osc_->AddMotionTask(right_foot_orientation_);
 
 
     std::cout << "Motion tasks\n";
@@ -190,12 +193,18 @@ void CassieFixedOSC::UpdateReferences(double time) {
     rr[1] = -0.1;
     rr[2] = -0.8 + 0.2 * sin(l_phase);
 
-    // Update frame placements
-    position_tasks_["foot_l"]->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(16));
-    position_tasks_["foot_r"]->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(16));
 
-    position_tasks_["foot_l"]->SetReference(rl, Eigen::Vector3d::Zero());
-    position_tasks_["foot_r"]->SetReference(rr, Eigen::Vector3d::Zero());
+    // Update frame placements
+    left_foot_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(16));
+    right_foot_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(16));
+
+    left_foot_->SetReference(rl, Eigen::Vector3d::Zero());
+    right_foot_->SetReference(rr, Eigen::Vector3d::Zero());
+    // TODO - Look up what the correct orientation for the foot is to keep it level
+    right_foot_orientation_->SetReference(osc::RPYToQuaterion(0, 0, 0), Eigen::Vector3d::Zero());
+    std::cout << right_foot_orientation_->GetReference().q  << std::endl;
+    std::cout << right_foot_orientation_->Frame().pos()  << std::endl;
+    std::cout << right_foot_orientation_->Frame().vel()  << std::endl;
 
 }
 

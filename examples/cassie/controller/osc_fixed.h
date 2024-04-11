@@ -70,12 +70,11 @@ class CassieFixedOSC {
 
    protected:
    private:
-    std::unordered_map<std::string, std::shared_ptr<osc::PositionTask>>
-        position_tasks_;
-    std::unordered_map<std::string, std::shared_ptr<osc::OrientationTask>>
-        orientation_tasks_;
-    std::unordered_map<std::string, std::shared_ptr<osc::Pose6DTask>>
-        pose_tasks_;
+    // End-effector tasks
+    std::shared_ptr<osc::PositionTask> left_foot_;
+    std::shared_ptr<osc::PositionTask> right_foot_;
+
+    std::shared_ptr<osc::OrientationTask> right_foot_orientation_;
 
     // OSC program
     std::unique_ptr<osc::OSC> osc_;
