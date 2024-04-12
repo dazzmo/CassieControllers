@@ -55,6 +55,10 @@ class CassieOSC {
         solver_->UpdateProgram(osc_->GetProgram());
 
         solver_->Solve();
+        std::cout << "u: "
+                  << solver_->GetVariableValues(osc_->GetVariables().ctrl())
+                         .transpose()
+                  << std::endl;
         // Check current cost values
         for (auto& c : solver_->GetCurrentProgram().GetAllCostBindings()) {
             std::cout << c.Get().name() << " "
@@ -63,9 +67,9 @@ class CassieOSC {
     }
 
     Eigen::VectorXd CurrentControlSolution() {
-        // TODO - Provide output PD controller for joint stabilisation? Instead
-        // TODO - of including it in program?
-        return solver_->GetVariableValues(osc_->GetVariables().ctrl());
+        Eigen::VectorXd u =
+            solver_->GetVariableValues(osc_->GetVariables().ctrl());
+        return u;
     }
 
    protected:

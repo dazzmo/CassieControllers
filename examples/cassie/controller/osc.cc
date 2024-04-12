@@ -43,8 +43,7 @@ CassieOSC::CassieOSC() {
     sym::Expression dynamics = wrapper.rnea()(casadi::SXVector(
         {sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc()}))[0];
     // Add inputs and other features
-    dynamics -= mtimes(B, sym_terms.ctrl());
-    dynamics += (spring_forces + damping);
+    dynamics += (spring_forces + damping) - mtimes(B, sym_terms.ctrl());
 
     // Add dynamics to the OSC program
     osc_->AddUnconstrainedInverseDynamics(dynamics);
@@ -59,13 +58,14 @@ CassieOSC::CassieOSC() {
     auto foot_rf = wrapper.AddEndEffector("RightFootFront");
     auto foot_rb = wrapper.AddEndEffector("RightFootBack");
     auto pelvis = wrapper.AddEndEffector("base_joint");
-    // auto com = wrapper.com();
+    auto com = wrapper.com();
 
     foot_lf->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
     foot_lb->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
     foot_rf->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
     foot_rb->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
     pelvis->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
+    com->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
 
     /**
      * Motion Tasks
@@ -79,16 +79,31 @@ CassieOSC::CassieOSC() {
     foot_rb_ = std::make_shared<osc::ContactTask3D>("foot_rb", foot_rb);
 
     pelvis_ = std::make_shared<osc::OrientationTask>("pelvis", pelvis);
+    pelvis_->SetWeighting(1e2);
+
+    com_ = std::make_shared<osc::PositionTask>("com", com);
+    com_->SetWeighting(1e1);
+
+    // Contact normals
+    foot_lf_->SetWeighting(1e0);
+    foot_lb_->SetWeighting(1e0);
+    foot_rf_->SetWeighting(1e0);
+    foot_rb_->SetWeighting(1e0);
+
+    foot_lf_->SetNormal(Eigen::Vector3d::UnitZ());
+    foot_lb_->SetNormal(Eigen::Vector3d::UnitZ());
+    foot_rf_->SetNormal(Eigen::Vector3d::UnitZ());
+    foot_rb_->SetNormal(Eigen::Vector3d::UnitZ());
 
     // Set default friction constraints
-    foot_lf_->SetFrictionForceLimits(Eigen::Vector3d(-1e3, -1e3, 0.0),
-                                     Eigen::Vector3d(1e3, 1e3, 1e3));
-    foot_lb_->SetFrictionForceLimits(Eigen::Vector3d(-1e3, -1e3, 0.0),
-                                     Eigen::Vector3d(1e3, 1e3, 1e3));
-    foot_rf_->SetFrictionForceLimits(Eigen::Vector3d(-1e3, -1e3, 0.0),
-                                     Eigen::Vector3d(1e3, 1e3, 1e3));
-    foot_rb_->SetFrictionForceLimits(Eigen::Vector3d(-1e3, -1e3, 0.0),
-                                     Eigen::Vector3d(1e3, 1e3, 1e3));
+    foot_lf_->SetFrictionForceLimits(Eigen::Vector3d(-1e6, -1e6, 0.0),
+                                     Eigen::Vector3d(1e6, 1e6, 1e6));
+    foot_lb_->SetFrictionForceLimits(Eigen::Vector3d(-1e6, -1e6, 0.0),
+                                     Eigen::Vector3d(1e6, 1e6, 1e6));
+    foot_rf_->SetFrictionForceLimits(Eigen::Vector3d(-1e6, -1e6, 0.0),
+                                     Eigen::Vector3d(1e6, 1e6, 1e6));
+    foot_rb_->SetFrictionForceLimits(Eigen::Vector3d(-1e6, -1e6, 0.0),
+                                     Eigen::Vector3d(1e6, 1e6, 1e6));
 
     // Set default references for foot locations
     foot_lf_->SetReference(Eigen::Vector3d(0.08, 0.135, 0));
@@ -96,8 +111,22 @@ CassieOSC::CassieOSC() {
     foot_rf_->SetReference(Eigen::Vector3d(0.08, -0.135, 0));
     foot_rb_->SetReference(Eigen::Vector3d(-0.08, -0.135, 0));
 
-    // Set gains
-    // TODO
+    // Set gains for PD tracking
+    foot_lf_->SetKpGains(Eigen::Vector3d(5e1, 5e1, 5e1));
+    foot_lb_->SetKpGains(Eigen::Vector3d(5e1, 5e1, 5e1));
+    foot_rf_->SetKpGains(Eigen::Vector3d(5e1, 5e1, 5e1));
+    foot_rb_->SetKpGains(Eigen::Vector3d(5e1, 5e1, 5e1));
+
+    foot_lf_->SetKdGains(Eigen::Vector3d(5e0, 5e0, 5e0));
+    foot_lb_->SetKdGains(Eigen::Vector3d(5e0, 5e0, 5e0));
+    foot_rf_->SetKdGains(Eigen::Vector3d(5e0, 5e0, 5e0));
+    foot_rb_->SetKdGains(Eigen::Vector3d(5e0, 5e0, 5e0));
+
+    pelvis_->SetKpGains(Eigen::Vector3d(5e1, 5e1, 5e1));
+    pelvis_->SetKdGains(Eigen::Vector3d(10, 10, 10));
+
+    com_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
+    com_->SetKdGains(Eigen::Vector3d(10, 10, 10));
 
     // Add motion tasks to OSC
     osc_->AddContactPoint(foot_lf_);
@@ -105,6 +134,7 @@ CassieOSC::CassieOSC() {
     osc_->AddContactPoint(foot_rf_);
     osc_->AddContactPoint(foot_rb_);
     osc_->AddMotionTask(pelvis_);
+    osc_->AddMotionTask(com_);
 
     std::cout << "Motion tasks\n";
 
@@ -119,6 +149,7 @@ CassieOSC::CassieOSC() {
     // Get Jacobian wrt to joints only
     casadi::SX q_joints = sym_terms.qpos()(casadi::Slice(7, 23));
     casadi::SX v_joints = sym_terms.qvel()(casadi::Slice(6, 22));
+    casadi::SX a_joints = sym_terms.qacc()(casadi::Slice(6, 22));
 
     // Compute first and second derivatives
     casadi::SX Jcl = jacobian(cl, q_joints);
@@ -148,7 +179,7 @@ CassieOSC::CassieOSC() {
      */
 
     // Joint damping
-    casadi::SX damping_task_error = sym_terms.qacc() - 1.0 * sym_terms.qvel();
+    casadi::SX damping_task_error = a_joints - 1.0 * v_joints;
     sym::Expression joint_damping =
         1e-3 * casadi::SX::dot(damping_task_error, damping_task_error);
     joint_damping.SetInputs({sym_terms.qacc()}, {sym_terms.qvel()});
@@ -171,7 +202,7 @@ CassieOSC::CassieOSC() {
     u_normalised(7) /= 12.2;
     u_normalised(8) /= 12.2;
     u_normalised(9) /= 0.9;
-    sym::Expression u2 = 1e-4 * casadi::SX::dot(u_normalised, u_normalised);
+    sym::Expression u2 = 1e-5 * casadi::SX::dot(u_normalised, u_normalised);
     u2.SetInputs({sym_terms.ctrl()}, {});
     std::shared_ptr<opt::QuadraticCost> pu2 =
         std::make_shared<opt::QuadraticCost>("torque_cost", u2);
@@ -210,37 +241,51 @@ CassieOSC::CassieOSC() {
 
 void CassieOSC::UpdateReferences(double time) {
     // Update all task states
-    foot_lf_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(CASSIE_NV)); 
-    foot_lb_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(CASSIE_NV)); 
-    foot_rf_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(CASSIE_NV)); 
-    foot_rb_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(CASSIE_NV)); 
+    foot_lf_->inContact = true;
+    foot_lb_->inContact = true;
+    foot_rf_->inContact = true;
+    foot_rb_->inContact = true;
 
-    // com_->SetReference(Eigen::Vector3d(
-    //     -0.01656, 0.0, 0.75 - 0.1 * sin(2 * M_PI * time / 2.0)));
+    foot_lf_->Frame().UpdateState(qpos_, qvel_,
+                                  Eigen::VectorXd::Zero(CASSIE_NV));
+    foot_lb_->Frame().UpdateState(qpos_, qvel_,
+                                  Eigen::VectorXd::Zero(CASSIE_NV));
+    foot_rf_->Frame().UpdateState(qpos_, qvel_,
+                                  Eigen::VectorXd::Zero(CASSIE_NV));
+    foot_rb_->Frame().UpdateState(qpos_, qvel_,
+                                  Eigen::VectorXd::Zero(CASSIE_NV));
 
-    // Eigen::Vector3d rl, rr;
-    // rl[0] = 0.0 + 0.2 * cos(l_phase);
-    // rl[1] = 0.1;
-    // rl[2] = -0.8 + 0.2 * sin(l_phase);
+    pelvis_->Frame().UpdateState(qpos_, qvel_,
+                                 Eigen::VectorXd::Zero(CASSIE_NV));
 
-    // rr[0] = 0.0 + 0.2 * cos(l_phase);
-    // rr[1] = -0.1;
-    // rr[2] = -0.8 + 0.2 * sin(l_phase);
+    com_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(CASSIE_NV));
 
-    // // Update frame placements
-    // left_foot_->Frame().UpdateState(qpos_, qvel_, Eigen::VectorXd::Zero(16));
-    // right_foot_->Frame().UpdateState(qpos_, qvel_,
-    // Eigen::VectorXd::Zero(16));
+    // We can update a contact point by addressing the program
+    // e.g. osc_->UpdateContactPoint(foot_lf_);
 
-    // left_foot_->SetReference(rl, Eigen::Vector3d::Zero());
-    // right_foot_->SetReference(rr, Eigen::Vector3d::Zero());
-    // // TODO - Look up what the correct orientation for the foot is to keep it
-    // // level
-    // right_foot_orientation_->SetReference(osc::RPYToQuaterion(0, 0, 0),
-    //                                       Eigen::Vector3d::Zero());
-    // std::cout << right_foot_orientation_->GetReference().q << std::endl;
-    // std::cout << right_foot_orientation_->Frame().pos() << std::endl;
-    // std::cout << right_foot_orientation_->Frame().vel() << std::endl;
+    std::cout << "foot_lf_ = " << foot_lf_->pos().transpose() << std::endl;
+    std::cout << "foot_lb_ = " << foot_lb_->pos().transpose() << std::endl;
+    std::cout << "foot_rf_ = " << foot_rf_->pos().transpose() << std::endl;
+    std::cout << "foot_rb_ = " << foot_rb_->pos().transpose() << std::endl;
+    std::cout << "CoM = " << com_->pos().transpose() << std::endl;
+
+    // Lambda
+    for (int i = 0; i < 4; i++) {
+        std::cout << solver_->GetVariableValues(osc_->GetVariables().lambda(i))
+                         .transpose()
+                  << std::endl;
+    }
+
+    std::cout << "Pelvis: " << pelvis_->pos().transpose() << std::endl;
+    std::cout << "Pelvis Desired: " << osc::RPYToQuaterion(0, 0, 0) << std::endl;
+    std::cout << "Pelvis Error: " << pelvis_->Error().transpose() << std::endl;
+    std::cout << "Pelvis Error Derivative: " << pelvis_->ErrorDerivative().transpose() << std::endl;
+
+    pelvis_->SetReference(osc::RPYToQuaterion(0.6 * sin((2.0 * M_PI / 0.7) * time + 0.2), 0.0, 0.8 * sin((2.0 * M_PI / 0.5) * time)),
+                          Eigen::Vector3d::Zero());
+
+    com_->SetReference(Eigen::Vector3d(-0.02, 0.0, 0.8 + 0.05 * sin((2.0 * M_PI / 3.0) * time)),
+                       Eigen::Vector3d::Zero());
 }
 
 void CassieOSC::UpdateState(int nq, const double *q, int nv, const double *v) {
