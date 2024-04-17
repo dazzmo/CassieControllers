@@ -20,9 +20,11 @@ file(GLOB_RECURSE CTRL_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/model/actuation.h
     ${CMAKE_CURRENT_SOURCE_DIR}/model/closed_loop_constraint.h
     ${CMAKE_CURRENT_SOURCE_DIR}/model/springs.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/model/spring_deflection.h
     ${CMAKE_CURRENT_SOURCE_DIR}/model/actuation.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/model/closed_loop_constraint.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/model/springs.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/model/spring_deflection.cc
 )
 
 add_library(cassie_control SHARED ${CTRL_SRC})

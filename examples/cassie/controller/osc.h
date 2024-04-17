@@ -15,6 +15,7 @@
 // model
 #include "model/actuation.h"
 #include "model/closed_loop_constraint.h"
+#include "model/spring_deflection.h"
 #include "model/springs.h"
 
 // Sizes
@@ -88,6 +89,9 @@ class CassieOSC {
 
     // CoM position
     std::shared_ptr<osc::PositionTask> com_;
+
+    // Heel-spring deflection estimator
+    std::unique_ptr<SpringDeflectionEstimator> heel_spring_estimator_;
 
     // OSC program
     std::unique_ptr<osc::OSC> osc_;

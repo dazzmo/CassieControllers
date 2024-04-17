@@ -50,6 +50,10 @@ CassieOSC::CassieOSC() {
 
     std::cout << "Dynamics made\n";
 
+    /** Create heel spring estimator **/
+    heel_spring_estimator_ = std::make_unique<SpringDeflectionEstimator>(
+        wrapper.model(), wrapper.data(), sym_terms.qpos(), sym_terms.qvel());
+
     /** Register End-Effectors **/
 
     // Add any end-effectors of interest to the model
@@ -277,15 +281,21 @@ void CassieOSC::UpdateReferences(double time) {
     }
 
     std::cout << "Pelvis: " << pelvis_->pos().transpose() << std::endl;
-    std::cout << "Pelvis Desired: " << osc::RPYToQuaterion(0, 0, 0) << std::endl;
+    std::cout << "Pelvis Desired: " << osc::RPYToQuaterion(0, 0, 0)
+              << std::endl;
     std::cout << "Pelvis Error: " << pelvis_->Error().transpose() << std::endl;
-    std::cout << "Pelvis Error Derivative: " << pelvis_->ErrorDerivative().transpose() << std::endl;
+    std::cout << "Pelvis Error Derivative: "
+              << pelvis_->ErrorDerivative().transpose() << std::endl;
 
-    pelvis_->SetReference(osc::RPYToQuaterion(0.6 * sin((2.0 * M_PI / 0.7) * time + 0.2), 0.0, 0.8 * sin((2.0 * M_PI / 0.5) * time)),
-                          Eigen::Vector3d::Zero());
+    pelvis_->SetReference(
+        osc::RPYToQuaterion(0.6 * sin((2.0 * M_PI / 0.7) * time + 0.2), 0.0,
+                            0.8 * sin((2.0 * M_PI / 0.5) * time)),
+        Eigen::Vector3d::Zero());
 
-    com_->SetReference(Eigen::Vector3d(-0.02, 0.0, 0.8 + 0.05 * sin((2.0 * M_PI / 3.0) * time)),
-                       Eigen::Vector3d::Zero());
+    com_->SetReference(
+        Eigen::Vector3d(-0.02, 0.0,
+                        0.8 + 0.05 * sin((2.0 * M_PI / 3.0) * time)),
+        Eigen::Vector3d::Zero());
 }
 
 void CassieOSC::UpdateState(int nq, const double *q, int nv, const double *v) {
@@ -297,4 +307,16 @@ void CassieOSC::UpdateState(int nq, const double *q, int nv, const double *v) {
     qvel_ << v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[12], v[13],
         v[14], v[15], v[18], v[19], v[20], v[21], v[25], v[26], v[27], v[28],
         v[31];
+
+    // Estimate the spring-deflection via basic gradient-descent estimation
+    // Get the leg angles
+    Eigen::Ref<Eigen::VectorXd> q_leg_l = qpos_.middleRows(7, 8),
+                                q_leg_r = qpos_.middleRows(15, 8);
+    std::cout << "Leg Left True = " << q_leg_l.transpose() << std::endl;
+    heel_spring_estimator_->EstimateHeelSpringDeflection(q_leg_l);
+    std::cout << "Leg Left Estimate = " << q_leg_l.transpose() << std::endl;
+    std::cout << "Leg Right True = " << q_leg_r.transpose() << std::endl;
+    heel_spring_estimator_->EstimateHeelSpringDeflection(q_leg_r);
+    std::cout << "Leg Right Estimate = " << q_leg_r.transpose() << std::endl;
+
 }
