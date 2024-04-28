@@ -63,6 +63,14 @@ class MujocoSimulator {
     const mjtNum* GetModelVelocity() { return d_->qvel; }
 
     /**
+     * @brief Returns the pointer to the joint sensors data array for the configuration
+     * of the model (nq x 1)
+     *
+     * @return const mjtNum*
+     */
+    const mjtNum* GetSensorData() { return d_->sensordata; }
+
+    /**
      * @brief Returns the pointer to the qacc data array for the acceleration
      * of the model (nv x 1)
      *

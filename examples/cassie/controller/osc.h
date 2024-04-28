@@ -54,8 +54,14 @@ class CassieOSC {
         osc_->Update(qpos_, qvel_);
         // Update solver with current program
         solver_->UpdateProgram(osc_->GetProgram());
-
-        solver_->Solve();
+        // Solve the program (currently using the qpOASES solver)
+        qpOASES::returnValue ret = solver_->Solve();
+        if (ret != qpOASES::returnValue::SUCCESSFUL_RETURN) {
+            // Perform error handling or use previous solution (currently using
+            // previous solution)
+            // TODO - Error handle such as safe-shutdown if rerurn status is
+            // TODO - very bad
+        }
         std::cout << "u: "
                   << solver_->GetVariableValues(osc_->GetVariables().ctrl())
                          .transpose()
