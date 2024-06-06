@@ -20,7 +20,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/controller/osc.cc
 )
 
 target_include_directories(arm_control PUBLIC ${pinocchio_INCLUDE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/")
-target_link_libraries(arm_control damotion::damotion pinocchio::pinocchio )
+target_link_libraries(arm_control damotion pinocchio::pinocchio )
 set_target_properties(arm_control PROPERTIES LINKER_LANGUAGE CXX)
 
 add_executable(arm_simulator sim/simulate.cc)

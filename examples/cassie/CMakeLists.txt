@@ -29,7 +29,7 @@ file(GLOB_RECURSE CTRL_SRC
 
 add_library(cassie_control SHARED ${CTRL_SRC})
 target_include_directories(cassie_control PUBLIC ${pinocchio_INCLUDE_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/")
-target_link_libraries(cassie_control damotion::damotion pinocchio::pinocchio )
+target_link_libraries(cassie_control damotion pinocchio::pinocchio )
 set_target_properties(cassie_control PROPERTIES LINKER_LANGUAGE CXX)
 
 add_executable(cassie_sim_fixed sim/simulate_fixed.cc)
