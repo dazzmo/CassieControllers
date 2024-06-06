@@ -27,9 +27,9 @@ CassieFixedOSC::CassieFixedOSC() {
                                          sym_terms.qpos(), sym_terms.qvel());
 
     // Create a joint-damping output PD term
-    casadi::SX pd_joint_out = mtimes(pinv(B), 10.0 * sym_terms.qvel());
+    // casadi::SX pd_joint_out = mtimes(pinv(B), 10.0 * sym_terms.qvel());
     // Create a function that generates the output
-    casadi::Function pd_out("pd_out", {sym_terms.qvel()}, {pd_joint_out});
+    // casadi::Function pd_out("pd_out", {sym_terms.qvel()}, {pd_joint_out});
 
     // Add any additional nonlinearities (e.g. spring/damping of joints)
     casadi::SX spring_forces =
@@ -56,7 +56,6 @@ CassieFixedOSC::CassieFixedOSC() {
     // Add any end-effectors of interest to the model
     auto foot_l = wrapper.AddEndEffector("LeftFootFront");
     auto foot_r = wrapper.AddEndEffector("RightFootFront");
-    // auto com = wrapper.CentreOfMass();
 
     foot_l->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
     foot_r->UpdateState(sym_terms.qpos(), sym_terms.qvel(), sym_terms.qacc());
@@ -69,7 +68,7 @@ CassieFixedOSC::CassieFixedOSC() {
     // Create tasks
     left_foot_ = std::make_shared<osc::PositionTask>("foot_l", foot_l);
     right_foot_ = std::make_shared<osc::PositionTask>("foot_r", foot_r);
-    right_foot_orientation_ = std::make_shared<osc::OrientationTask>("foot_r_orientation", foot_r);
+    // right_foot_orientation_ = std::make_shared<osc::OrientationTask>("foot_r_orientation", foot_r);
     
     // Set gains
     left_foot_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
@@ -78,13 +77,13 @@ CassieFixedOSC::CassieFixedOSC() {
     right_foot_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
     right_foot_->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
 
-    right_foot_orientation_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
-    right_foot_orientation_->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
+    // right_foot_orientation_->SetKpGains(Eigen::Vector3d(1e2, 1e2, 1e2));
+    // right_foot_orientation_->SetKdGains(Eigen::Vector3d(1e1, 1e1, 1e1));
 
     // Add motion tasks to OSC
     osc_->AddMotionTask(left_foot_);
     osc_->AddMotionTask(right_foot_);
-    osc_->AddMotionTask(right_foot_orientation_);
+    // osc_->AddMotionTask(right_foot_orientation_);
 
 
     std::cout << "Motion tasks\n";
@@ -121,7 +120,7 @@ CassieFixedOSC::CassieFixedOSC() {
      */
 
     // Joint damping
-    casadi::SX damping_task_error = sym_terms.qacc() - 1.0 * sym_terms.qvel();
+    casadi::SX damping_task_error = sym_terms.qacc() + 100.0 * sym_terms.qvel();
     sym::Expression joint_damping =
         1e-3 * casadi::SX::dot(damping_task_error, damping_task_error);
     joint_damping.SetInputs({sym_terms.qacc()}, {sym_terms.qvel()});
@@ -182,16 +181,16 @@ CassieFixedOSC::CassieFixedOSC() {
 }
 
 void CassieFixedOSC::UpdateReferences(double time) {
-    double l_phase = (2.0 * M_PI / 10.0) * time;
+    double l_phase = (2.0 * M_PI / 4.0) * time;
 
     Eigen::Vector3d rl, rr;
     rl[0] = 0.0 + 0.2 * cos(l_phase);
     rl[1] = 0.1;
-    rl[2] = -0.8 + 0.2 * sin(l_phase);
+    rl[2] = -0.7 + 0.2 * sin(l_phase);
 
-    rr[0] = 0.0 + 0.2 * cos(l_phase);
+    rr[0] = 0.0 + 0.2 * cos(l_phase + M_PI_2);
     rr[1] = -0.1;
-    rr[2] = -0.8 + 0.2 * sin(l_phase);
+    rr[2] = -0.7 + 0.2 * sin(l_phase + M_PI_2);
 
 
     // Update frame placements
@@ -200,11 +199,11 @@ void CassieFixedOSC::UpdateReferences(double time) {
 
     left_foot_->SetReference(rl, Eigen::Vector3d::Zero());
     right_foot_->SetReference(rr, Eigen::Vector3d::Zero());
-    // TODO - Look up what the correct orientation for the foot is to keep it level
-    right_foot_orientation_->SetReference(osc::RPYToQuaterion(0, 0, 0), Eigen::Vector3d::Zero());
-    std::cout << right_foot_orientation_->GetReference().q  << std::endl;
-    std::cout << right_foot_orientation_->Frame().pos()  << std::endl;
-    std::cout << right_foot_orientation_->Frame().vel()  << std::endl;
+    // // TODO - Look up what the correct orientation for the foot is to keep it level
+    // right_foot_orientation_->SetReference(osc::RPYToQuaterion(0, 0, 0), Eigen::Vector3d::Zero());
+    // std::cout << right_foot_orientation_->GetReference().q  << std::endl;
+    // std::cout << right_foot_orientation_->Frame().pos()  << std::endl;
+    // std::cout << right_foot_orientation_->Frame().vel()  << std::endl;
 
 }
 
